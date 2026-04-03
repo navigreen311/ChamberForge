@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.command import router as command_router
 from app.core.config import settings
-from app.api.v1.billing import router as billing_router
-from app.api.v1.webhooks.stripe import router as stripe_webhook_router
+from app.api.v1.storage import router as storage_router
+from app.api.v1.exports import router as exports_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -23,9 +23,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Billing & Stripe
-app.include_router(billing_router)
-app.include_router(stripe_webhook_router)
+# Routers
+app.include_router(storage_router)
+app.include_router(exports_router)
 
 
 @app.get("/api/health")
