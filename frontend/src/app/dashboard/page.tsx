@@ -78,7 +78,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-chamber-950 p-8 flex items-center justify-center">
+      <div className="min-h-screen bg-chamber-950 p-4 sm:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-8 max-w-md mx-auto">
             <h2 className="text-xl font-bold text-red-400 mb-2">Failed to Load Dashboard</h2>
@@ -102,11 +102,11 @@ export default function DashboardPage() {
   const clientHealth = data?.dashboard?.client_health ?? [];
 
   return (
-    <div className="min-h-screen bg-chamber-950 p-8">
+    <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-1">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-1">
             Command Dashboard
           </h1>
           <p className="text-chamber-400">

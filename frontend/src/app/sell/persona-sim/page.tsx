@@ -111,18 +111,18 @@ export default function PersonaSimPage() {
   const activePersona = personas.find((p) => p.id === selectedPersona);
 
   return (
-    <div className="min-h-screen bg-chamber-950 p-8">
+    <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
       <a href="/sell" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Sell</a>
-      <h1 className="text-3xl font-display font-bold text-white mb-1">Persona Simulator</h1>
-      <p className="text-chamber-400 mb-8">Practice your pitch against AI-simulated buyer personas</p>
+      <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-1">Persona Simulator</h1>
+      <p className="text-chamber-400 mb-6 sm:mb-8">Practice your pitch against AI-simulated buyer personas</p>
 
       {error && (
         <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Persona Selection */}
-        <div className="space-y-4">
+        {/* Persona Selection — horizontal scroll on mobile, sidebar on lg+ */}
+        <div className="space-y-4 max-lg:order-2">
           <h3 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider">Select Persona</h3>
           {personas.map((p) => (
             <button
@@ -179,8 +179,8 @@ export default function PersonaSimPage() {
           )}
         </div>
 
-        {/* Chat Interface */}
-        <div className="lg:col-span-2 bg-chamber-900 rounded-xl border border-chamber-800 flex flex-col h-[600px]">
+        {/* Chat Interface — full width on mobile, takes priority order */}
+        <div className="lg:col-span-2 bg-chamber-900 rounded-xl border border-chamber-800 flex flex-col h-[70vh] sm:h-[600px] max-lg:order-1">
           <div className="p-4 border-b border-chamber-800">
             <h3 className="text-white font-semibold">
               {sessionId

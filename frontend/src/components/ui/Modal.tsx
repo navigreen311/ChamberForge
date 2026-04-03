@@ -15,10 +15,10 @@ interface ModalProps {
 }
 
 const sizeStyles: Record<ModalSize, string> = {
-  sm: 'max-w-sm',
-  md: 'max-w-lg',
-  lg: 'max-w-2xl',
-  xl: 'max-w-4xl',
+  sm: 'sm:max-w-sm',
+  md: 'sm:max-w-lg',
+  lg: 'sm:max-w-2xl',
+  xl: 'sm:max-w-4xl',
 };
 
 export default function Modal({
@@ -49,19 +49,21 @@ export default function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Panel */}
+      {/* Panel — full screen on mobile, centered modal on sm+ */}
       <div
         className={clsx(
-          'relative w-full rounded-xl bg-chamber-900 shadow-2xl',
+          'relative w-full bg-chamber-900 shadow-2xl',
+          'h-[95vh] rounded-t-2xl sm:h-auto sm:rounded-xl',
           sizeStyles[size],
-          'mx-4 max-h-[90vh] overflow-y-auto',
+          'sm:mx-4 sm:max-h-[90vh] overflow-y-auto',
+          'animate-in slide-in-from-bottom sm:animate-in sm:fade-in sm:zoom-in-95',
         )}
       >
         {/* Header */}

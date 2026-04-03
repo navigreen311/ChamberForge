@@ -41,12 +41,20 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
         </div>
       </div>
 
-      {/* Right: connection dot + notifications + user menu */}
-      <div className="ml-auto flex items-center gap-2">
+      {/* Right: mobile search icon + connection dot + notifications + user menu */}
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        {/* Mobile search icon */}
+        <button
+          className="rounded-md p-2 text-chamber-400 hover:bg-chamber-800 hover:text-white md:hidden"
+          aria-label="Search"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+
         {/* WebSocket connection status indicator */}
         {!isDisabled && (
           <span
-            className={`h-2 w-2 rounded-full ${
+            className={`hidden h-2 w-2 rounded-full sm:inline-block ${
               isConnected ? 'bg-green-400' : 'bg-red-400'
             }`}
             title={`WebSocket: ${wsStatus}`}
@@ -57,7 +65,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
           className="relative rounded-md p-2 text-chamber-400 hover:bg-chamber-800 hover:text-white"
           aria-label="Notifications"
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
           {/* Unread dot */}
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-gold-400" />
         </button>

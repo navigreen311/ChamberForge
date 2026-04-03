@@ -16,13 +16,13 @@ export default function SettingsPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-chamber-950 p-8">
-      <h1 className="text-3xl font-display font-bold text-white mb-2">Settings</h1>
-      <p className="text-chamber-400 mb-8">
+    <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
+      <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Settings</h1>
+      <p className="text-chamber-400 mb-6 sm:mb-8">
         Manage your profile, workspace, team members, and account.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isDanger = tab.label === 'Danger Zone';

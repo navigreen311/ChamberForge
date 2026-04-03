@@ -85,12 +85,12 @@ export default function DiscoverPage() {
 
   if (loading && problems.length === 0) {
     return (
-      <div className="min-h-screen bg-chamber-950 p-8">
+      <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
         <Skeleton className="h-10 w-64 mb-2" />
-        <Skeleton className="h-5 w-96 mb-8" />
-        <div className="grid grid-cols-4 gap-6">
-          <Skeleton className="h-96" />
-          <div className="col-span-3 grid grid-cols-2 gap-4">
+        <Skeleton className="h-5 w-full max-w-96 mb-8" />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <Skeleton className="h-48 lg:h-96" />
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-44" />)}
           </div>
         </div>
@@ -99,10 +99,10 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-chamber-950 p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white mb-1">Problem Discovery</h1>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-1">Problem Discovery</h1>
           <p className="text-chamber-400">Find high-value problems in the premium services market</p>
         </div>
         <button
@@ -131,21 +131,23 @@ export default function DiscoverPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filter Sidebar */}
-        <div className="space-y-6">
+        {/* Filter Sidebar — horizontal on mobile, vertical sidebar on lg+ */}
+        <div className="space-y-4 lg:space-y-6">
           <h3 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider">Filters</h3>
-          {filterConfig.map((f) => (
-            <div key={f.label}>
-              <label className="text-sm text-chamber-300 mb-2 block">{f.label}</label>
-              <select
-                value={activeFilters[f.label] || "All"}
-                onChange={(e) => setActiveFilters((p) => ({ ...p, [f.label]: e.target.value }))}
-                className="w-full bg-chamber-900 border border-chamber-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-400"
-              >
-                {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-              </select>
-            </div>
-          ))}
+          <div className="grid grid-cols-3 gap-3 lg:grid-cols-1 lg:gap-4">
+            {filterConfig.map((f) => (
+              <div key={f.label}>
+                <label className="text-sm text-chamber-300 mb-2 block">{f.label}</label>
+                <select
+                  value={activeFilters[f.label] || "All"}
+                  onChange={(e) => setActiveFilters((p) => ({ ...p, [f.label]: e.target.value }))}
+                  className="w-full bg-chamber-900 border border-chamber-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-400"
+                >
+                  {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
           <div className="pt-4 border-t border-chamber-800">
             <p className="text-xs text-chamber-500">Showing {problems.length} of {totalCount} problems</p>
           </div>
