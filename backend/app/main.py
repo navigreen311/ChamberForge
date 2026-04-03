@@ -89,6 +89,7 @@ from app.api.v1.metrics import router as metrics_router  # noqa: E402
 from app.api.v1.security import router as security_router  # noqa: E402
 from app.api.v1.profile import router as profile_router  # noqa: E402
 from app.api.v1.workspace_settings import router as workspace_settings_router  # noqa: E402
+from app.api.v1.webhooks.stripe import router as stripe_webhook_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -122,6 +123,7 @@ app.include_router(metrics_router)
 app.include_router(security_router)
 app.include_router(profile_router)
 app.include_router(workspace_settings_router)
+app.include_router(stripe_webhook_router)
 
 
 @app.on_event("startup")

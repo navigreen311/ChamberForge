@@ -79,17 +79,18 @@ class TestWorkspaceSchemas:
 
 class TestProblemSchemas:
     def test_problem_create_required(self):
-        ws = uuid.uuid4()
+        # ProblemCreate.workspace_id is str, not UUID
+        ws = str(uuid.uuid4())
         p = ProblemCreate(workspace_id=ws, title="Test")
-        assert p.status == "active"
+        assert p.urgency_score == 5
 
     def test_problem_create_missing_title_fails(self):
         with pytest.raises(Exception):
-            ProblemCreate(workspace_id=uuid.uuid4())
+            ProblemCreate(workspace_id=str(uuid.uuid4()))
 
     def test_problem_create_with_enum_values(self):
         p = ProblemCreate(
-            workspace_id=uuid.uuid4(),
+            workspace_id=str(uuid.uuid4()),
             title="T",
             wealth_tier="UHNWI",
             buyer_type="Founder",
@@ -101,8 +102,8 @@ class TestProblemSchemas:
         now = datetime.utcnow()
 
         class FakeP:
-            id = uuid.uuid4()
-            workspace_id = uuid.uuid4()
+            id = str(uuid.uuid4())
+            workspace_id = str(uuid.uuid4())
             title = "T"
             description = None
             wealth_tier = "HNWI"
@@ -117,8 +118,9 @@ class TestProblemSchemas:
             delivery_model = None
             proof_metric = None
             lifecycle_stage = None
-            status = "active"
-            created_by = None
+            wtp_confidence = None
+            source = None
+            geo = None
             created_at = now
             updated_at = now
 
@@ -130,7 +132,12 @@ class TestProblemSchemas:
 
 class TestEvidenceSchemas:
     def test_evidence_create(self):
-        e = EvidenceCreate(workspace_id=uuid.uuid4())
+        e = EvidenceCreate(
+            workspace_id=uuid.uuid4(),
+            source_url="https://example.com",
+            source_type="peer_reviewed",
+            publication_date=date(2025, 1, 1),
+        )
         assert e.extracted_claims == []
 
     def test_evidence_read(self):
@@ -144,7 +151,7 @@ class TestEvidenceSchemas:
             source_type = "regulatory"
             publication_date = date(2025, 1, 1)
             credibility_score = 0.9
-            extracted_claims = ["claim1"]
+            extracted_claims = [{"claim_text": "claim1", "confidence": 0.9, "category": "factual"}]
             contradiction_flags = []
             recency_decay_score = 0.1
             created_at = now
@@ -158,12 +165,16 @@ class TestEvidenceSchemas:
 
 class TestOfferSchemas:
     def test_offer_create(self):
-        o = OfferCreate(workspace_id=uuid.uuid4(), name="O")
+        o = OfferCreate(
+            workspace_id=uuid.uuid4(),
+            name="O",
+            delivery_model="done_for_you",
+        )
         assert o.status == "draft"
 
     def test_offer_create_missing_name_fails(self):
         with pytest.raises(Exception):
-            OfferCreate(workspace_id=uuid.uuid4())
+            OfferCreate(workspace_id=uuid.uuid4(), delivery_model="done_for_you")
 
 
 # ---------- Client ----------
