@@ -1,92 +1,101 @@
-"use client";
+'use client';
 
-import { useState, FormEvent } from "react";
-import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
 export default function LoginPage() {
+  const router = useRouter();
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError("");
-    setIsSubmitting(true);
+    setError('');
+    setLoading(true);
+
     try {
       await login(email, password);
-    } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "Login failed. Please try again."
-      );
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Invalid email or password';
+      setError(message);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">
-          Sign in to ChamberForge
-        </h1>
+    <div className="flex min-h-screen items-center justify-center bg-chamber-950 px-4">
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <h1 className="font-display text-3xl font-bold text-gold-400">
+            ChamberForge
+          </h1>
+          <p className="mt-2 text-sm text-chamber-400">
+            Premium-service operating system for HNW/UHNW markets
+          </p>
+        </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Form card */}
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5 rounded-xl border border-chamber-800 bg-chamber-900 p-6"
+        >
+          <h2 className="text-lg font-semibold text-white">Sign in</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {error && (
+            <div className="rounded-lg border border-red-800 bg-red-900/30 px-4 py-2.5 text-sm text-red-300">
+              {error}
+            </div>
+          )}
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium mb-1"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <Input
+            label="Email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-          <button
+          <Input
+            label="Password"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-lg bg-blue-600 text-white py-2.5 font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+            variant="primary"
+            size="md"
+            loading={loading}
+            className="w-full"
           >
-            {isSubmitting ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+            Sign in
+          </Button>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-blue-600 hover:underline">
-            Create one
-          </Link>
-        </p>
+          <p className="text-center text-sm text-chamber-400">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/register"
+              className="font-medium text-gold-400 hover:text-gold-300"
+            >
+              Register
+            </Link>
+          </p>
+        </form>
       </div>
     </div>
   );

@@ -1,94 +1,103 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { useState, useEffect, useCallback } from 'react';
+import api from '@/lib/api';
+import type { User, AuthTokens, LoginRequest, RegisterRequest } from '@/types';
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  workspace_id: string | null;
-  is_active: boolean;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  name: string;
-  workspace_name: string;
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    isAuthenticated: false,
+    isAdmin: false,
+    isLoading: true,
+  });
 
-  const fetchUser = useCallback(async () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const { data } = await api.get("/api/v1/auth/me");
-      setUser(data);
-    } catch {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      setUser(null);
-    } finally {
-      setIsLoading(false);
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    const token = localStorage.getItem('access_token');
+    if (stored && token) {
+      try {
+        const user: User = JSON.parse(stored);
+        setState({
+          user,
+          isAuthenticated: true,
+          isAdmin: user.role === 'admin',
+          isLoading: false,
+        });
+      } catch {
+        setState((s) => ({ ...s, isLoading: false }));
+      }
+    } else {
+      setState((s) => ({ ...s, isLoading: false }));
     }
   }, []);
 
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+  const login = useCallback(async (email: string, password: string) => {
+    const payload: LoginRequest = { email, password };
+    const { data } = await api.post<AuthTokens & { user: User }>(
+      '/api/v1/auth/login',
+      payload,
+    );
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { data } = await api.post("/api/v1/auth/login", {
-        email,
-        password,
-      });
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
-      await fetchUser();
-      router.push("/dashboard");
-    },
-    [fetchUser, router]
-  );
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
-  const register = useCallback(
-    async (payload: RegisterData) => {
-      const { data } = await api.post("/api/v1/auth/register", payload);
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refresh_token);
-      await fetchUser();
-      router.push("/dashboard");
-    },
-    [fetchUser, router]
-  );
+    setState({
+      user: data.user,
+      isAuthenticated: true,
+      isAdmin: data.user.role === 'admin',
+      isLoading: false,
+    });
 
-  const logout = useCallback(async () => {
-    try {
-      await api.post("/api/v1/auth/logout");
-    } catch {
-      // ignore
-    }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    setUser(null);
-    router.push("/login");
-  }, [router]);
+    return data.user;
+  }, []);
+
+  const register = useCallback(async (payload: RegisterRequest) => {
+    const { data } = await api.post<AuthTokens & { user: User }>(
+      '/api/v1/auth/register',
+      payload,
+    );
+
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    setState({
+      user: data.user,
+      isAuthenticated: true,
+      isAdmin: data.user.role === 'admin',
+      isLoading: false,
+    });
+
+    return data.user;
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+
+    setState({
+      user: null,
+      isAuthenticated: false,
+      isAdmin: false,
+      isLoading: false,
+    });
+
+    window.location.href = '/login';
+  }, []);
 
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    isAdmin: user?.role === "admin",
+    ...state,
     login,
     register,
     logout,

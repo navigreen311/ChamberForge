@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "ChamberForge",
@@ -13,9 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className="min-h-screen bg-chamber-950 text-white antialiased">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

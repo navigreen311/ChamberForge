@@ -1,51 +1,43 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
-  headers: { "Content-Type": "application/json" },
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30_000,
 });
 
-// Attach JWT from localStorage on every request
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// ─── Request interceptor: attach Bearer token ────────────────────────────────
+
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
-  }
-  return config;
-});
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
-// On 401, try refreshing the token once
+// ─── Response interceptor: handle 401 → redirect to login ───────────────────
+
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const original = error.config;
-    if (
-      error.response?.status === 401 &&
-      !original._retry &&
-      typeof window !== "undefined"
-    ) {
-      original._retry = true;
-      const refreshToken = localStorage.getItem("refresh_token");
-      if (refreshToken) {
-        try {
-          const { data } = await axios.post(
-            `${api.defaults.baseURL}/api/v1/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-          localStorage.setItem("access_token", data.access_token);
-          localStorage.setItem("refresh_token", data.refresh_token);
-          original.headers.Authorization = `Bearer ${data.access_token}`;
-          return api(original);
-        } catch {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-        }
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
