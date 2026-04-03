@@ -1,22 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
+import api from "@/lib/api";
 
 interface HealthChecks {
-  db: boolean;
-  redis: boolean;
-  elasticsearch: boolean;
+  [key: string]: boolean;
 }
 
 interface HealthData {
@@ -32,23 +20,6 @@ interface MetricsData {
   ai_cost_total: number;
 }
 
-interface CostByAgent {
-  agent: string;
-  cost: number;
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-async function fetchJSON<T>(url: string): Promise<T | null> {
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
-
 function StatusBadge({ ok }: { ok: boolean }) {
   return (
     <span
@@ -62,37 +33,27 @@ function StatusBadge({ ok }: { ok: boolean }) {
 export default function MonitoringPage() {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
-  const [costByAgent, setCostByAgent] = useState<CostByAgent[]>([]);
-  const [latencyHistory, setLatencyHistory] = useState<
-    { time: string; latency: number }[]
-  >([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      const [h, m] = await Promise.all([
-        fetchJSON<HealthData>(`${API_BASE}/api/v1/health/ready`),
-        fetchJSON<MetricsData>(`${API_BASE}/api/v1/metrics/`),
-      ]);
-
-      setHealth(h);
-      setMetrics(m);
-
-      // Simulated cost-by-agent breakdown (would come from a real endpoint)
-      if (m) {
-        setCostByAgent([
-          { agent: "Concierge", cost: m.ai_cost_total * 0.4 },
-          { agent: "Portfolio", cost: m.ai_cost_total * 0.25 },
-          { agent: "Research", cost: m.ai_cost_total * 0.2 },
-          { agent: "Compliance", cost: m.ai_cost_total * 0.15 },
+      try {
+        const [hRes, mRes] = await Promise.allSettled([
+          api.get("/api/v1/health/ready"),
+          api.get("/api/v1/metrics"),
         ]);
 
-        setLatencyHistory((prev) => [
-          ...prev.slice(-29),
-          {
-            time: new Date().toLocaleTimeString(),
-            latency: m.avg_latency_ms,
-          },
-        ]);
+        if (hRes.status === "fulfilled") setHealth(hRes.value.data);
+        if (mRes.status === "fulfilled") setMetrics(mRes.value.data);
+
+        if (hRes.status === "rejected" && mRes.status === "rejected") {
+          setError("Failed to load monitoring data");
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to load monitoring data");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -101,14 +62,30 @@ export default function MonitoringPage() {
     return () => clearInterval(interval);
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-chamber-950 text-chamber-100 p-8">
+        <h1 className="text-3xl font-bold mb-8 text-white">Monitoring Dashboard</h1>
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => <div key={i} className="animate-pulse bg-chamber-800 rounded-lg h-24" />)}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-8">
-      <h1 className="text-3xl font-bold mb-8">Monitoring Dashboard</h1>
+    <div className="min-h-screen bg-chamber-950 text-chamber-100 p-8">
+      <a href="/admin" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Admin</a>
+      <h1 className="text-3xl font-bold mb-8 text-white">Monitoring Dashboard</h1>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-4 text-red-400 mb-6">{error}</div>
+      )}
 
       {/* Health Status */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-          <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">
+        <div className="bg-chamber-900 rounded-lg p-6 border border-chamber-800">
+          <h2 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
             System Status
           </h2>
           <p
@@ -116,7 +93,7 @@ export default function MonitoringPage() {
               health?.status === "ready" ? "text-green-400" : "text-yellow-400"
             }`}
           >
-            {health?.status ?? "Loading..."}
+            {health?.status ?? "Unknown"}
           </p>
         </div>
 
@@ -124,14 +101,14 @@ export default function MonitoringPage() {
           Object.entries(health.checks).map(([service, ok]) => (
             <div
               key={service}
-              className="bg-gray-900 rounded-lg p-6 border border-gray-800"
+              className="bg-chamber-900 rounded-lg p-6 border border-chamber-800"
             >
-              <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">
+              <h2 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
                 {service}
               </h2>
               <div className="flex items-center gap-2">
-                <StatusBadge ok={ok} />
-                <span className="text-lg font-semibold">
+                <StatusBadge ok={ok as boolean} />
+                <span className="text-lg font-semibold text-white">
                   {ok ? "Connected" : "Down"}
                 </span>
               </div>
@@ -160,56 +137,26 @@ export default function MonitoringPage() {
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* AI Cost by Agent */}
-        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-          <h2 className="text-lg font-semibold mb-4">AI Cost by Agent</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={costByAgent}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="agent" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" tickFormatter={(v) => `$${v.toFixed(2)}`} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
-                }}
-                formatter={(value: number) => [`$${value.toFixed(4)}`, "Cost"]}
-              />
-              <Bar dataKey="cost" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* AI Calls */}
+      {metrics && (
+        <div className="bg-chamber-900 rounded-lg p-6 border border-chamber-800">
+          <h2 className="text-lg font-semibold mb-4 text-white">AI Usage Summary</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-chamber-800/50 rounded-lg">
+              <p className="text-chamber-400 text-sm">Total AI Calls</p>
+              <p className="text-2xl font-bold text-white">{metrics.ai_calls_total.toLocaleString()}</p>
+            </div>
+            <div className="p-4 bg-chamber-800/50 rounded-lg">
+              <p className="text-chamber-400 text-sm">Cost per AI Call</p>
+              <p className="text-2xl font-bold text-gold-400">
+                {metrics.ai_calls_total > 0
+                  ? `$${(metrics.ai_cost_total / metrics.ai_calls_total).toFixed(4)}`
+                  : "--"}
+              </p>
+            </div>
+          </div>
         </div>
-
-        {/* Latency Over Time */}
-        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-          <h2 className="text-lg font-semibold mb-4">Latency (ms)</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={latencyHistory}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="time" stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  border: "1px solid #374151",
-                  borderRadius: "0.5rem",
-                }}
-                formatter={(value: number) => [`${value.toFixed(2)} ms`, "Latency"]}
-              />
-              <Line
-                type="monotone"
-                dataKey="latency"
-                stroke="#10B981"
-                strokeWidth={2}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -225,14 +172,14 @@ function MetricCard({
 }) {
   return (
     <div
-      className={`bg-gray-900 rounded-lg p-6 border ${
-        alert ? "border-red-600" : "border-gray-800"
+      className={`bg-chamber-900 rounded-lg p-6 border ${
+        alert ? "border-red-600" : "border-chamber-800"
       }`}
     >
-      <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">
+      <h2 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
         {label}
       </h2>
-      <p className={`text-2xl font-bold ${alert ? "text-red-400" : ""}`}>
+      <p className={`text-2xl font-bold ${alert ? "text-red-400" : "text-white"}`}>
         {value}
       </p>
     </div>

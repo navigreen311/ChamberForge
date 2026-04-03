@@ -1,23 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const initialRecords = [
-  { id: 1, client: "Henderson Family Office", type: "Data Processing", jurisdiction: "GDPR", granted: "2025-06-15", expires: "2026-06-15", status: "active" as const },
-  { id: 2, client: "Henderson Family Office", type: "Marketing Communications", jurisdiction: "GDPR", granted: "2025-06-15", expires: "2026-06-15", status: "active" as const },
-  { id: 3, client: "Blackwell Holdings", type: "Data Processing", jurisdiction: "CCPA", granted: "2025-09-01", expires: "2026-09-01", status: "active" as const },
-  { id: 4, client: "Sterling Capital Group", type: "Data Sharing", jurisdiction: "GDPR", granted: "2025-04-10", expires: "2026-04-10", status: "expiring" as const },
-  { id: 5, client: "Meridian Ventures", type: "Data Processing", jurisdiction: "CCPA", granted: "2025-08-20", expires: "2026-08-20", status: "active" as const },
-  { id: 6, client: "Pacific Trust", type: "Marketing Communications", jurisdiction: "GDPR", granted: "2025-03-01", expires: "2026-03-01", status: "expired" as const },
-  { id: 7, client: "Apex Family Office", type: "Data Processing", jurisdiction: "GDPR", granted: null, expires: null, status: "pending" as const },
-  { id: 8, client: "Crown Estate Partners", type: "Data Sharing", jurisdiction: "CCPA", granted: "2025-11-10", expires: "2026-11-10", status: "active" as const },
-];
+import api from "@/lib/api";
 
 type ConsentStatus = "active" | "expired" | "expiring" | "pending" | "revoked";
 
 interface ConsentRecord {
-  id: number;
+  id: string;
   client: string;
+  client_id: string;
   type: string;
   jurisdiction: string;
   granted: string | null;
@@ -31,15 +22,54 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function ConsentLedgerPage() {
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState<ConsentRecord[]>(initialRecords);
+  const [error, setError] = useState<string | null>(null);
+  const [records, setRecords] = useState<ConsentRecord[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    async function fetchConsents() {
+      try {
+        const res = await api.get("/api/v1/compliance/consent");
+        setRecords(res.data);
+      } catch (err: any) {
+        setError(err?.message || "Failed to load consent records");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchConsents();
   }, []);
 
-  const updateStatus = (id: number, status: ConsentStatus) => {
-    setRecords((prev) => prev.map((r) => r.id === id ? { ...r, status, granted: status === "active" ? "2026-04-03" : r.granted, expires: status === "active" ? "2027-04-03" : r.expires } : r));
+  const grantConsent = async (record: ConsentRecord) => {
+    setActionLoading(record.id);
+    try {
+      const res = await api.post("/api/v1/compliance/consent", {
+        client_id: record.client_id,
+        type: record.type,
+        jurisdiction: record.jurisdiction,
+      });
+      setRecords((prev) =>
+        prev.map((r) => (r.id === record.id ? { ...r, ...res.data, status: "active" as ConsentStatus } : r))
+      );
+    } catch (err: any) {
+      setError(err?.message || "Failed to grant consent");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const revokeConsent = async (id: string) => {
+    setActionLoading(id);
+    try {
+      await api.post(`/api/v1/compliance/consent/${id}/revoke`);
+      setRecords((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "revoked" as ConsentStatus } : r))
+      );
+    } catch (err: any) {
+      setError(err?.message || "Failed to revoke consent");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const statusBadge = (s: ConsentStatus) => {
@@ -69,6 +99,10 @@ export default function ConsentLedgerPage() {
       <h1 className="text-3xl font-display font-bold text-white mb-1">Consent Ledger</h1>
       <p className="text-chamber-400 mb-8">Track, grant, and revoke client data consent records</p>
 
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-4 text-red-400 mb-6">{error}</div>
+      )}
+
       <div className="bg-chamber-900 rounded-xl border border-chamber-800 overflow-hidden">
         <table className="w-full text-left">
           <thead>
@@ -83,21 +117,35 @@ export default function ConsentLedgerPage() {
             </tr>
           </thead>
           <tbody>
-            {records.map((r) => (
+            {records.length === 0 ? (
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-chamber-500">No consent records found.</td></tr>
+            ) : records.map((r) => (
               <tr key={r.id} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
                 <td className="px-5 py-4 text-white font-medium text-sm">{r.client}</td>
                 <td className="px-5 py-4 text-chamber-300 text-sm">{r.type}</td>
                 <td className="px-5 py-4"><span className="px-2 py-0.5 bg-chamber-800 text-chamber-300 text-xs rounded">{r.jurisdiction}</span></td>
-                <td className="px-5 py-4 text-chamber-400 text-sm">{r.granted || "—"}</td>
-                <td className="px-5 py-4 text-chamber-400 text-sm">{r.expires || "—"}</td>
+                <td className="px-5 py-4 text-chamber-400 text-sm">{r.granted || "\u2014"}</td>
+                <td className="px-5 py-4 text-chamber-400 text-sm">{r.expires || "\u2014"}</td>
                 <td className="px-5 py-4"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(r.status)}`}>{r.status}</span></td>
                 <td className="px-5 py-4">
                   <div className="flex gap-2">
                     {(r.status === "expired" || r.status === "pending" || r.status === "expiring") && (
-                      <button onClick={() => updateStatus(r.id, "active")} className="px-3 py-1 bg-green-400/20 text-green-400 text-xs rounded-lg hover:bg-green-400/30 transition">Grant</button>
+                      <button
+                        onClick={() => grantConsent(r)}
+                        disabled={actionLoading === r.id}
+                        className="px-3 py-1 bg-green-400/20 text-green-400 text-xs rounded-lg hover:bg-green-400/30 transition disabled:opacity-50"
+                      >
+                        {actionLoading === r.id ? "..." : "Grant"}
+                      </button>
                     )}
                     {r.status === "active" && (
-                      <button onClick={() => updateStatus(r.id, "revoked")} className="px-3 py-1 bg-red-400/20 text-red-400 text-xs rounded-lg hover:bg-red-400/30 transition">Revoke</button>
+                      <button
+                        onClick={() => revokeConsent(r.id)}
+                        disabled={actionLoading === r.id}
+                        className="px-3 py-1 bg-red-400/20 text-red-400 text-xs rounded-lg hover:bg-red-400/30 transition disabled:opacity-50"
+                      >
+                        {actionLoading === r.id ? "..." : "Revoke"}
+                      </button>
                     )}
                   </div>
                 </td>

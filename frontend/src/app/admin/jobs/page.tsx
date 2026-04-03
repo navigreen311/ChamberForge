@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { JobMonitor } from "@/components/modules/JobMonitor";
+import api from "@/lib/api";
 
 interface BeatEntry {
   name: string;
@@ -30,8 +30,6 @@ const TRIGGERABLE_TASKS = [
   "full_reindex",
 ];
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 export default function AdminJobsPage() {
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,13 +38,11 @@ export default function AdminJobsPage() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/jobs/status`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: JobStatus = await res.json();
-      setStatus(data);
+      const res = await api.get("/api/v1/jobs/status");
+      setStatus(res.data);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch job status");
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || err?.message || "Failed to fetch job status");
     } finally {
       setLoading(false);
     }
@@ -60,19 +56,16 @@ export default function AdminJobsPage() {
 
   const triggerTask = async (taskName: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/v1/jobs/trigger/${taskName}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ args: ["all"], kwargs: {} }),
+      const res = await api.post(`/api/v1/jobs/trigger/${taskName}`, {
+        args: ["all"],
+        kwargs: {},
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setTriggerResult(`Task "${taskName}" queued with ID: ${data.task_id}`);
+      setTriggerResult(`Task "${taskName}" queued with ID: ${res.data.task_id}`);
       setTimeout(() => setTriggerResult(null), 5000);
       fetchStatus();
-    } catch (err) {
+    } catch (err: any) {
       setTriggerResult(
-        `Failed to trigger "${taskName}": ${err instanceof Error ? err.message : "Unknown error"}`
+        `Failed to trigger "${taskName}": ${err?.response?.data?.detail || err?.message || "Unknown error"}`
       );
     }
   };
@@ -82,90 +75,89 @@ export default function AdminJobsPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-chamber-950 p-8">
       <div className="mx-auto max-w-6xl">
+        <a href="/admin" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Admin</a>
         <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-white">
             Background Jobs Dashboard
           </h1>
           <button
             onClick={fetchStatus}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="rounded-lg bg-gold-400 px-4 py-2 text-sm font-medium text-chamber-950 hover:bg-gold-300 transition"
           >
             Refresh
           </button>
         </div>
 
         {error && (
-          <div className="mb-6 rounded-md bg-red-50 p-4 text-red-800">
+          <div className="mb-6 rounded-xl bg-red-400/10 border border-red-400/30 p-4 text-red-400">
             {error}
           </div>
         )}
 
         {triggerResult && (
-          <div className="mb-6 rounded-md bg-blue-50 p-4 text-blue-800">
+          <div className={`mb-6 rounded-xl p-4 ${triggerResult.includes("Failed") ? "bg-red-400/10 border border-red-400/30 text-red-400" : "bg-blue-400/10 border border-blue-400/30 text-blue-400"}`}>
             {triggerResult}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center text-gray-500">Loading...</div>
+          <div className="text-center text-chamber-500">Loading...</div>
         ) : (
           <div className="space-y-8">
             {/* Active Tasks */}
             <section>
-              <h2 className="mb-4 text-xl font-semibold text-gray-800">
+              <h2 className="mb-4 text-xl font-semibold text-white">
                 Active Tasks ({activeTasks.length})
               </h2>
               {activeTasks.length === 0 ? (
-                <p className="text-gray-500">No active tasks.</p>
+                <p className="text-chamber-500">No active tasks.</p>
               ) : (
-                <JobMonitor tasks={activeTasks} />
+                <div className="space-y-2">
+                  {activeTasks.map((task, i) => (
+                    <div key={i} className="bg-chamber-900 rounded-lg p-4 border border-chamber-800 text-chamber-300 text-sm">
+                      {JSON.stringify(task)}
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 
             {/* Beat Schedule */}
             <section>
-              <h2 className="mb-4 text-xl font-semibold text-gray-800">
+              <h2 className="mb-4 text-xl font-semibold text-white">
                 Scheduled Tasks (Beat)
               </h2>
-              <div className="overflow-hidden rounded-lg bg-white shadow">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Task
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                        Schedule
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {status?.beat_schedule.map((entry) => (
-                      <tr key={entry.name}>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">
-                          {entry.name}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                          {entry.task}
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                          {entry.schedule}
-                        </td>
+              {status?.beat_schedule && status.beat_schedule.length > 0 ? (
+                <div className="overflow-hidden rounded-xl bg-chamber-900 border border-chamber-800">
+                  <table className="min-w-full text-left">
+                    <thead>
+                      <tr className="border-b border-chamber-800">
+                        <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-chamber-400">Name</th>
+                        <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-chamber-400">Task</th>
+                        <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider text-chamber-400">Schedule</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {status.beat_schedule.map((entry) => (
+                        <tr key={entry.name} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-white">{entry.name}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-chamber-400">{entry.task}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-chamber-400">{entry.schedule}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-chamber-500">No scheduled tasks.</p>
+              )}
             </section>
 
             {/* Manual Trigger */}
             <section>
-              <h2 className="mb-4 text-xl font-semibold text-gray-800">
+              <h2 className="mb-4 text-xl font-semibold text-white">
                 Manual Trigger
               </h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -173,7 +165,7 @@ export default function AdminJobsPage() {
                   <button
                     key={task}
                     onClick={() => triggerTask(task)}
-                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                    className="rounded-lg border border-chamber-700 bg-chamber-900 px-4 py-2 text-sm font-medium text-chamber-300 hover:bg-chamber-800 hover:text-white transition"
                   >
                     {task.replace(/_/g, " ")}
                   </button>
