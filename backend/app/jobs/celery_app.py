@@ -1,8 +1,12 @@
 """Celery application configuration for ChamberForge background jobs."""
+import logging
+
 from celery import Celery
 
 from app.core.config import settings
 from app.jobs.schedules import BEAT_SCHEDULE
+
+logger = logging.getLogger(__name__)
 
 celery_app = Celery(
     "chamberforge",
@@ -27,5 +31,11 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = BEAT_SCHEDULE
+
+# Enable eager mode for testing so tasks execute synchronously without a broker
+if settings.APP_ENV == "testing":
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+    logger.info("Celery running in eager mode (APP_ENV=testing)")
 
 celery_app.autodiscover_tasks(["app.jobs.tasks"])
