@@ -18,6 +18,7 @@ setup_logging()
 init_sentry(dsn=settings.SENTRY_DSN, environment=settings.APP_ENV)
 
 # --- Middleware ---
+from app.middleware.compression import GZipMiddleware  # noqa: E402
 from app.middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
 from app.middleware.rate_limiter import RateLimiterMiddleware  # noqa: E402
 from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
@@ -93,6 +94,8 @@ from app.api.v1.security import router as security_router  # noqa: E402
 from app.api.v1.profile import router as profile_router  # noqa: E402
 from app.api.v1.workspace_settings import router as workspace_settings_router  # noqa: E402
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router  # noqa: E402
+from app.api.v1.ontology import router as ontology_router  # noqa: E402
+from app.api.v1.community import router as community_router  # noqa: E402  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -127,6 +130,8 @@ app.include_router(security_router)
 app.include_router(profile_router)
 app.include_router(workspace_settings_router)
 app.include_router(stripe_webhook_router)
+app.include_router(ontology_router)
+app.include_router(community_router)
 
 
 @app.on_event("startup")
