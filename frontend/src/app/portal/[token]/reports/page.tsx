@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const portalApi = (path: string) => fetch(`${API_BASE}${path}`);
 
 interface Report {
   id: string;
@@ -35,7 +36,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/portal/${token}/reports`)
+    portalApi(`/api/v1/portal/${token}/reports`)
       .then((res) => res.json())
       .then((data) => setReports(data.reports))
       .catch(console.error)

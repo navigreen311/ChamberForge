@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface PortalClient {
   id: string;
@@ -25,12 +24,8 @@ export default function PortalAdminPage() {
   async function generateAccess(clientId: string) {
     setLoading(clientId);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/portal/access`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ client_id: clientId }),
-      });
-      const data = await res.json();
+      const res = await api.post(`/api/v1/portal/access`, { client_id: clientId });
+      const data = res.data;
       setClients((prev) =>
         prev.map((c) =>
           c.id === clientId
@@ -48,7 +43,7 @@ export default function PortalAdminPage() {
   async function revokeAccess(clientId: string, portalId: string) {
     setLoading(clientId);
     try {
-      await fetch(`${API_BASE}/api/v1/portal/access/${portalId}`, { method: "DELETE" });
+      await api.delete(`/api/v1/portal/access/${portalId}`);
       setClients((prev) =>
         prev.map((c) =>
           c.id === clientId ? { ...c, portalId: null, token: null, isActive: false } : c,

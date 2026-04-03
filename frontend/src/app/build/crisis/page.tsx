@@ -3,8 +3,7 @@
 import { useState } from "react";
 import EscalationTree from "@/components/modules/EscalationTree";
 import { useCrisisChannel, useEvent } from "@/hooks/useRealtime";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface Incident {
   id: string;
@@ -95,10 +94,8 @@ export default function CrisisPage() {
     if (!workspaceId) return;
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API}/api/v1/polish/crisis?workspace_id=${workspaceId}`
-      );
-      setIncidents(await res.json());
+      const res = await api.get(`/api/v1/polish/crisis`, { params: { workspace_id: workspaceId } });
+      setIncidents(res.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -108,8 +105,8 @@ export default function CrisisPage() {
 
   async function loadDetail(id: string) {
     try {
-      const res = await fetch(`${API}/api/v1/polish/crisis/${id}`);
-      setSelected(await res.json());
+      const res = await api.get(`/api/v1/polish/crisis/${id}`);
+      setSelected(res.data);
     } catch (err) {
       console.error(err);
     }
@@ -117,13 +114,9 @@ export default function CrisisPage() {
 
   async function addTimelineEvent() {
     if (!selected || !eventType || !eventDesc) return;
-    await fetch(`${API}/api/v1/polish/crisis/${selected.id}/timeline`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event_type: eventType,
-        description: eventDesc,
-      }),
+    await api.post(`/api/v1/polish/crisis/${selected.id}/timeline`, {
+      event_type: eventType,
+      description: eventDesc,
     });
     setEventType("");
     setEventDesc("");
@@ -136,22 +129,14 @@ export default function CrisisPage() {
       .split("\n")
       .map((a) => a.trim())
       .filter(Boolean);
-    await fetch(`${API}/api/v1/polish/crisis/${selected.id}/lockdown`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ actions }),
-    });
+    await api.post(`/api/v1/polish/crisis/${selected.id}/lockdown`, { actions });
     setLockdownActions("");
     loadDetail(selected.id);
   }
 
   async function resolveIncident() {
     if (!selected || !resolveNotes) return;
-    await fetch(`${API}/api/v1/polish/crisis/${selected.id}/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resolution_notes: resolveNotes }),
-    });
+    await api.post(`/api/v1/polish/crisis/${selected.id}/resolve`, { resolution_notes: resolveNotes });
     setResolveNotes("");
     loadDetail(selected.id);
     fetchIncidents();

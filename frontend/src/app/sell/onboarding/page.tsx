@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import api from "@/lib/api";
 
 interface Milestone {
   day: number;
@@ -38,17 +39,12 @@ export default function OnboardingPage() {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/sell/onboarding/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_name: clientName,
-          service_type: serviceType,
-          start_date: startDate || null,
-        }),
+      const res = await api.post("/api/v1/sell/onboarding/plan", {
+        client_name: clientName,
+        service_type: serviceType,
+        start_date: startDate || null,
       });
-      const data = await res.json();
-      setPlan(data);
+      setPlan(res.data);
     } catch (err) {
       console.error("Failed to create plan:", err);
     } finally {

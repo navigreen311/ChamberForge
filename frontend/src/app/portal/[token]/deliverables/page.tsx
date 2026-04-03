@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const portalApi = (path: string) => fetch(`${API_BASE}${path}`);
 
 interface Deliverable {
   id: string;
@@ -41,7 +42,7 @@ export default function DeliverablesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/portal/${token}/deliverables`)
+    portalApi(`/api/v1/portal/${token}/deliverables`)
       .then((res) => res.json())
       .then((data) => setDeliverables(data.deliverables))
       .catch(console.error)

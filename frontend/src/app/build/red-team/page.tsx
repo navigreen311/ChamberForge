@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import AuditScorecard from "@/components/modules/AuditScorecard";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface AuditResult {
   overall_status: "PASS" | "WARN" | "FAIL";
@@ -51,12 +50,8 @@ export default function RedTeamPage() {
     setLoading(true);
     try {
       const offerData = JSON.parse(offerJson);
-      const res = await fetch(`${API}/api/v1/polish/red-team`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ offer_data: offerData }),
-      });
-      setResult(await res.json());
+      const res = await api.post(`/api/v1/polish/red-team`, { offer_data: offerData });
+      setResult(res.data);
     } catch (err) {
       setError(
         err instanceof SyntaxError
