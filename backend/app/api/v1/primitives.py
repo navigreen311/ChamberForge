@@ -53,6 +53,11 @@ class RegressionRequest(BaseModel):
     test_cases: list[dict]
 
 
+class CreateSandboxRequest(BaseModel):
+    workspace_id: str
+    name: str = "Demo Sandbox"
+
+
 # ── Entitlements ─────────────────────────────────────────────────────────────
 
 
@@ -174,6 +179,20 @@ def trust_center_uptime(months: int = 12):
 
 
 # ── Sandbox ──────────────────────────────────────────────────────────────────
+
+
+@router.post("/sandbox")
+def create_sandbox(req: CreateSandboxRequest, db: Session = Depends(get_db)):
+    sandbox = SandboxService.create_sandbox(db, req.workspace_id, req.name)
+    return sandbox
+
+
+@router.post("/sandbox/{sandbox_id}/reset")
+def reset_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
+    try:
+        return SandboxService.reset_sandbox(db, sandbox_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
 
 
 @router.get("/sandbox/{workspace_id}")
