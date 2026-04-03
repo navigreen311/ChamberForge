@@ -1,8 +1,8 @@
 # ChamberForge
 
-The world's first complete premium-service operating system for entrepreneurs and boutique firms serving HNW/UHNW individuals and families. ChamberForge combines 109 purpose-built modules, 10 AI agents, and 10 vertical playbooks into a single platform that takes a premium service firm from problem discovery through client delivery and retention. Three integrated platforms -- ChamberForge Core, VoiceForge, and VisionAudioForge -- provide full-stack coverage across text, voice, and visual channels.
+The world's first complete premium-service operating system for entrepreneurs and boutique firms serving HNW/UHNW individuals and families. ChamberForge combines 112 purpose-built modules, 10 AI agents, and 10 vertical playbooks into a single platform that takes a premium service firm from problem discovery through client delivery and retention. Three integrated platforms -- ChamberForge Core, VoiceForge, and VisionAudioForge -- provide full-stack coverage across text, voice, and visual channels.
 
-**109 Modules | 10 AI Agents | 10 Vertical Playbooks | 3 Integrated Platforms | 200+ API Endpoints**
+**112 Modules | 10 AI Agents | 10 Vertical Playbooks | 3 Integrated Platforms | 200+ API Endpoints**
 
 ---
 
@@ -169,14 +169,14 @@ ChamberForge/
 
 ---
 
-## 10 Platform Layers (109 Modules)
+## 10 Platform Layers (112 Modules)
 
 | # | Layer | Modules | Description |
 |---|-------|---------|-------------|
-| 1 | **Discover** | 8 | Problem discovery, trend radar, evidence graph, AI scoring |
-| 2 | **Qualify** | 8 | Validation, buyer profiling, guardrails, feasibility, risk queue |
+| 1 | **Discover** | 9 | Problem discovery, trend radar, evidence graph, AI scoring, wealth event monitor |
+| 2 | **Qualify** | 9 | Validation, buyer profiling, guardrails, feasibility, risk queue, problem ontology engine |
 | 3 | **Build** | 11 | Offer architect, pricing, SOPs, deal desk, trust pack, household graph |
-| 4 | **Sell & Retain** | 13 | Copy, relationships, marketing, persona sim, retention, decision room |
+| 4 | **Sell & Retain** | 14 | Copy, relationships, marketing, persona sim, retention, decision room, community intel network |
 | 5 | **Trust & Compliance** | 5 | Consent ledger, AI explainability, QA, secure comms, benchmarks |
 | 6 | **Client Lifecycle** | 9 | Intel briefs, health scoring, alumni, moat tracker, scenario planner |
 | 7 | **Polish** | 4 | Template versioning, crisis console, cross-playbook composer, red-team |
@@ -277,7 +277,8 @@ See `docs/deploy.md` for full production deployment guide.
 |----------|-------------|
 | [Architecture](docs/architecture.md) | System architecture, data flows, integration diagrams |
 | [Security](docs/security.md) | Auth, encryption, RBAC, audit trail, GDPR compliance |
-| [SOC 2 Checklist](docs/soc2-checklist.md) | SOC 2 Type II readiness (74% complete) |
+| [SOC 2 Checklist](docs/soc2-checklist.md) | SOC 2 Type II readiness (87% complete) |
+| [Release Notes v0.4](docs/release-notes-v0.4.md) | Round 4 release summary |
 | [API Reference](docs/api-reference.md) | 33 routers, 200+ endpoints with examples |
 | [Local Setup](docs/local-setup.md) | Development environment setup |
 | [Deployment](docs/deploy.md) | Production deployment guide |

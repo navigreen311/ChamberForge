@@ -119,10 +119,10 @@ sequenceDiagram
 
 | # | Layer | Modules | Description |
 |---|-------|---------|-------------|
-| 1 | **Discover** | 8 | Problem discovery, trend radar, evidence graph, AI scoring |
-| 2 | **Qualify** | 8 | Validation, buyer profiling, guardrails, feasibility, risk queue |
+| 1 | **Discover** | 9 | Problem discovery, trend radar, evidence graph, AI scoring, wealth event monitor |
+| 2 | **Qualify** | 9 | Validation, buyer profiling, guardrails, feasibility, risk queue, problem ontology engine |
 | 3 | **Build** | 11 | Offer architect, pricing, SOPs, deal desk, trust pack, household graph |
-| 4 | **Sell & Retain** | 13 | Copy, relationships, marketing, persona sim, retention, decision room |
+| 4 | **Sell & Retain** | 14 | Copy, relationships, marketing, persona sim, retention, decision room, community intel network |
 | 5 | **Trust & Compliance** | 5 | Consent ledger, AI explainability, QA, secure comms, benchmarks |
 | 6 | **Client Lifecycle** | 9 | Intel briefs, health scoring, alumni, moat tracker, scenario planner |
 | 7 | **Polish** | 4 | Template versioning, crisis console, cross-playbook composer, red-team |
@@ -130,7 +130,7 @@ sequenceDiagram
 | 9 | **VoiceForge Integration** | 6 | Persona sim, audio briefs, crisis escalation, sentiment, training |
 | 10 | **VisionAudioForge Integration** | 8 | Delivery portal, proof visuals, brand studio, GTM assets, video training |
 
-**Total: 109 modules across 10 layers**
+**Total: 112 modules across 10 layers**
 
 ## Integration Architecture
 
