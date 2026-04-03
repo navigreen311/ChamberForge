@@ -338,3 +338,36 @@ def load_synthetic_data(sandbox_id: str, db: Session = Depends(get_db)):
         return SandboxService.load_synthetic_data(db, sandbox_id)
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+# ── Database Backups ────────────────────────────────────────────────────────
+
+
+@router.post("/backups/trigger")
+def trigger_backup():
+    """Manually trigger a database backup to S3 (admin only)."""
+    from app.jobs.tasks.backup_tasks import automated_db_backup
+
+    result = automated_db_backup.delay()
+    return {"task_id": result.id, "status": "queued"}
+
+
+@router.get("/backups")
+def list_backups(limit: int = 30):
+    """List recent database backups from S3."""
+    from app.jobs.tasks.backup_tasks import list_backups as _list_backups
+
+    try:
+        backups = _list_backups(limit=limit)
+        return {"backups": backups, "count": len(backups)}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to list backups: {e}")
+
+
+@router.post("/backups/verify/{s3_key:path}")
+def verify_backup(s3_key: str):
+    """Trigger integrity verification for a specific backup."""
+    from app.jobs.tasks.backup_tasks import verify_backup_integrity
+
+    result = verify_backup_integrity.delay(s3_key)
+    return {"task_id": result.id, "s3_key": s3_key, "status": "queued"}

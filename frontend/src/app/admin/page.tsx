@@ -157,6 +157,7 @@ export default function AdminPage() {
           ["Email Dashboard", "/admin/email"],
           ["Documents", "/admin/documents"],
           ["Records Retention", "/admin/records"],
+          ["Database Backups", "/admin/backups"],
         ].map(([name, href]) => (
           <a key={String(name)} href={String(href)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition text-center">
             <p className="text-white font-medium">{String(name)}</p>

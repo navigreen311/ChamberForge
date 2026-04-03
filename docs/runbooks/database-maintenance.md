@@ -53,6 +53,41 @@ aws rds restore-db-instance-to-point-in-time \
   --restore-time "2026-01-15T10:00:00Z"
 ```
 
+## Automated S3 Backups (Celery Beat)
+
+### Schedule
+- **Daily** at 2:00 AM UTC: `automated_db_backup` task creates a `pg_dump | gzip` and uploads to S3
+- **Weekly** Sunday 4:00 AM UTC: `verify_backup_integrity` task downloads the latest backup, decompresses, and checks for valid SQL content
+
+### S3 Storage
+Backups are stored at `s3://<AWS_S3_BUCKET>/backups/database/chamberforge_backup_YYYYMMDD_HHMMSS.sql.gz`.
+
+Rotation keeps the last **30 backups**; older files are automatically deleted.
+
+### Admin API
+```bash
+# Manually trigger a backup
+curl -X POST http://localhost:8000/api/v1/admin/backups/trigger
+
+# List recent backups
+curl http://localhost:8000/api/v1/admin/backups
+
+# Verify a specific backup
+curl -X POST http://localhost:8000/api/v1/admin/backups/verify/backups/database/chamberforge_backup_20260401_020000.sql.gz
+```
+
+### Restore from S3 Backup
+```bash
+# Download the backup
+aws s3 cp s3://<BUCKET>/backups/database/chamberforge_backup_YYYYMMDD_HHMMSS.sql.gz /tmp/
+
+# Restore (WARNING: overwrites current data)
+gunzip -c /tmp/chamberforge_backup_YYYYMMDD_HHMMSS.sql.gz | psql "$DATABASE_URL"
+```
+
+### Admin UI
+Navigate to `/admin/backups` to view recent backups, trigger manual backups, and verify integrity.
+
 ## Vacuum & Analyze
 
 ### When to Vacuum
