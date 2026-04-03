@@ -13,7 +13,7 @@
 | CC1.2 | RBAC roles defined | ✅ Implemented | Three roles enforced: `admin`, `operator`, `viewer` via `require_role()` dependency in `core/dependencies.py` |
 | CC1.3 | Code of conduct for AI agents | ✅ Implemented | Guardrails engine prevents licensed professional positioning, surveillance framing, discriminatory profiling |
 | CC1.4 | Organizational structure documented | ⬜ Not Started | Organizational chart and reporting lines need formal documentation |
-| CC1.5 | Employee handbook | ⬜ Not Started | HR policies, acceptable use, and security awareness training materials needed |
+| CC1.5 | Employee handbook | ✅ Implemented | `docs/security-handbook.md` — acceptable use policy, device security, data classification, onboarding/offboarding checklists, remote work guidelines |
 
 ---
 
@@ -25,8 +25,8 @@
 | CC2.2 | Operational runbooks | ✅ Implemented | `docs/deploy.md` — deployment procedures, `docs/local-setup.md` — development setup |
 | CC2.3 | Architecture documentation | ✅ Implemented | `docs/architecture.md` — system architecture, data flows, integration diagrams |
 | CC2.4 | Security documentation | ✅ Implemented | `docs/security.md` — auth, encryption, RBAC, audit trail, GDPR compliance |
-| CC2.5 | Incident communication plan | ⚠️ Partial | Crisis console exists (`/api/v1/polish/crisis`) with escalation and lockdown; formal external communication templates needed |
-| CC2.6 | Employee security awareness training | ⬜ Not Started | Security training program and annual refresher needed |
+| CC2.5 | Incident communication plan | ✅ Implemented | `docs/incident-response-plan.md` — severity levels, roles, response phases, communication templates for P1-P4 and data breach; crisis console at `/api/v1/polish/crisis` |
+| CC2.6 | Employee security awareness training | ✅ Implemented | `docs/security-handbook.md` — security awareness training schedule, phishing simulations, secure coding workshops, onboarding training with quiz |
 
 ---
 
@@ -101,7 +101,7 @@
 | CC7.4 | Background job processing | ✅ Implemented | Celery workers + Beat scheduler for async tasks (AI, evidence refresh, briefs, search sync) |
 | CC7.5 | Infrastructure as Code | ⚠️ Partial | `infra/` directory exists; full Terraform/CloudFormation coverage needed |
 | CC7.6 | Automated database backups | ⬜ Not Started | RDS automated backups + point-in-time recovery configuration needed |
-| CC7.7 | Disaster recovery plan | ⬜ Not Started | RTO/RPO targets, cross-region failover, and recovery procedures needed |
+| CC7.7 | Disaster recovery plan | ✅ Implemented | `docs/disaster-recovery.md` — RDS, Redis, ES, S3, ECS recovery procedures; `docs/business-continuity-plan.md` — RTO/RPO targets, cross-region failover |
 | CC7.8 | Capacity planning | ⬜ Not Started | Load testing results and auto-scaling configuration needed |
 
 ---
@@ -130,7 +130,7 @@
 | CC9.3 | Consent management | ✅ Implemented | Consent ledger with record, revoke, check, and deletion-candidate identification |
 | CC9.4 | Right to deletion | ✅ Implemented | Full deletion pipeline with legal hold verification and cascading data removal |
 | CC9.5 | Crisis management | ✅ Implemented | Crisis console with incident creation, timeline tracking, escalation, lockdown, and resolution |
-| CC9.6 | Business continuity plan | ⬜ Not Started | Formal BCP document with recovery procedures and communication chain needed |
+| CC9.6 | Business continuity plan | ✅ Implemented | `docs/business-continuity-plan.md` — RTO/RPO targets, disaster scenarios, communication plan, recovery procedures; `docs/disaster-recovery.md` — technical DR for RDS, Redis, ES, S3, ECS, secrets |
 | CC9.7 | Insurance coverage | ⬜ Not Started | Cyber liability insurance and E&O coverage documentation needed |
 
 ---
@@ -139,18 +139,18 @@
 
 | Category | Implemented | Partial | Not Started | Total |
 |----------|------------|---------|-------------|-------|
-| CC1 — Control Environment | 3 | 0 | 2 | 5 |
-| CC2 — Communication | 4 | 1 | 1 | 6 |
+| CC1 — Control Environment | 4 | 0 | 1 | 5 |
+| CC2 — Communication | 6 | 0 | 0 | 6 |
 | CC3 — Risk Assessment | 4 | 0 | 2 | 6 |
 | CC4 — Monitoring | 7 | 0 | 2 | 9 |
 | CC5 — Control Activities | 7 | 0 | 2 | 9 |
 | CC6 — Access Controls | 5 | 1 | 3 | 9 |
-| CC7 — System Operations | 4 | 1 | 3 | 8 |
+| CC7 — System Operations | 5 | 1 | 2 | 8 |
 | CC8 — Change Management | 8 | 0 | 0 | 8 |
-| CC9 — Risk Mitigation | 5 | 0 | 2 | 7 |
-| **Total** | **47** | **3** | **17** | **67** |
+| CC9 — Risk Mitigation | 6 | 0 | 1 | 7 |
+| **Total** | **52** | **2** | **13** | **67** |
 
-**Overall Readiness: 74% (50/67 items implemented or partial)**
+**Overall Readiness: 81% (54/67 items implemented or partial)**
 
 ### Priority Items for Full SOC 2 Readiness
 
