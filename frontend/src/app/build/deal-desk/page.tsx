@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface Proposal {
   title: string;
@@ -27,29 +26,26 @@ export default function DealDeskPage() {
   const [monthlyFee, setMonthlyFee] = useState(10000);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function generateProposal() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/build/deal-desk/proposal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          offer_data: {
-            name: offerName || "Premium Advisory",
-            delivery_model: "done_for_you",
-            pricing_model: { monthly_fee: monthlyFee },
-          },
-          client_data: {
-            name: clientName || "Client",
-            company: company,
-          },
-        }),
+      const res = await api.post("/api/v1/build/deal-desk/proposal", {
+        offer_data: {
+          name: offerName || "Premium Advisory",
+          delivery_model: "done_for_you",
+          pricing_model: { monthly_fee: monthlyFee },
+        },
+        client_data: {
+          name: clientName || "Client",
+          company: company,
+        },
       });
-      const data = await res.json();
-      setProposal(data);
-    } catch (err) {
-      console.error("Failed to generate proposal:", err);
+      setProposal(res.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to generate proposal");
     } finally {
       setLoading(false);
     }
@@ -61,6 +57,10 @@ export default function DealDeskPage() {
       <p className="text-chamber-300 mb-8">
         Generate proposals, SOWs, and NDAs for your premium engagements.
       </p>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+      )}
 
       {/* Input Form */}
       <div className="bg-chamber-900 border border-chamber-700 rounded-lg p-6 mb-8 max-w-2xl">

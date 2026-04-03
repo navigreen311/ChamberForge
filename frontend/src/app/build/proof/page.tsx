@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface KPI {
   kpi_name: string;
@@ -32,6 +31,7 @@ export default function ProofBuilderPage() {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [roi, setRoi] = useState<ROIFramework | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"kpi" | "roi">("kpi");
 
   const offerData = {
@@ -42,17 +42,13 @@ export default function ProofBuilderPage() {
 
   async function generateKPIs() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/build/proof/kpi-stack`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(offerData),
-      });
-      const data = await res.json();
-      setKpis(data);
+      const res = await api.post("/api/v1/build/proof/kpi-stack", offerData);
+      setKpis(res.data?.kpis ?? res.data ?? []);
       setActiveTab("kpi");
-    } catch (err) {
-      console.error("Failed to generate KPIs:", err);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to generate KPIs");
     } finally {
       setLoading(false);
     }
@@ -60,17 +56,13 @@ export default function ProofBuilderPage() {
 
   async function generateROI() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/build/proof/roi`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(offerData),
-      });
-      const data = await res.json();
-      setRoi(data);
+      const res = await api.post("/api/v1/build/proof/roi", offerData);
+      setRoi(res.data);
       setActiveTab("roi");
-    } catch (err) {
-      console.error("Failed to generate ROI:", err);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to generate ROI");
     } finally {
       setLoading(false);
     }
@@ -82,6 +74,10 @@ export default function ProofBuilderPage() {
       <p className="text-chamber-300 mb-8">
         Design KPI stacks and ROI frameworks to prove your value to HNW clients.
       </p>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+      )}
 
       {/* Offer Input Form */}
       <div className="bg-chamber-900 border border-chamber-700 rounded-lg p-6 mb-8 max-w-2xl">

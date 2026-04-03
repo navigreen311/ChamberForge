@@ -1,20 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const offers = [
-  { id: "off-001", name: "Private Aviation Concierge", status: "Active", mrr: "$12,500", clients: 3 },
-  { id: "off-002", name: "Estate Management Platform", status: "Draft", mrr: "$0", clients: 0 },
-  { id: "off-003", name: "Family Office Advisory", status: "Active", mrr: "$28,000", clients: 7 },
-];
+interface Offer {
+  id: string;
+  name: string;
+  status: string;
+  mrr: number;
+  clients: number;
+}
 
-const playbooks = [
-  { slug: "discovery-to-deal", name: "Discovery to Deal", uses: 14 },
-  { slug: "uhnw-onboarding", name: "UHNW Onboarding", uses: 9 },
-  { slug: "retention-playbook", name: "Client Retention", uses: 22 },
-];
+interface Playbook {
+  slug: string;
+  name: string;
+  uses: number;
+}
 
-const billingSnapshot = { mrr: "$142,500", activeSubs: 18, pendingInvoices: 3, churn: "2.1%" };
+interface BillingSnapshot {
+  mrr: number;
+  active_subscriptions: number;
+  pending_invoices: number;
+  churn_rate: number;
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -22,10 +30,30 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function BuildPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+  const [billing, setBilling] = useState<BillingSnapshot | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    async function fetchData() {
+      try {
+        const [offersRes, playbooksRes, billingRes] = await Promise.all([
+          api.get("/api/v1/offers"),
+          api.get("/api/v1/playbooks"),
+          api.get("/api/v1/billing/revenue"),
+        ]);
+        setOffers(offersRes.data?.offers ?? offersRes.data ?? []);
+        const pbData = playbooksRes.data?.playbooks ?? playbooksRes.data ?? [];
+        setPlaybooks(pbData.slice(0, 3));
+        setBilling(billingRes.data);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? err.message ?? "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   if (loading) {
@@ -40,6 +68,17 @@ export default function BuildPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <h1 className="text-3xl font-display font-bold text-white mb-4">Build Hub</h1>
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
+      </div>
+    );
+  }
+
+  const fmt = (n: number) => `$${n.toLocaleString()}`;
+
   return (
     <div className="min-h-screen bg-chamber-950 p-8">
       <div className="flex items-center justify-between mb-8">
@@ -51,19 +90,21 @@ export default function BuildPage() {
       </div>
 
       {/* Billing Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          ["MRR", billingSnapshot.mrr, "text-gold-400"],
-          ["Active Subscriptions", billingSnapshot.activeSubs, "text-green-400"],
-          ["Pending Invoices", billingSnapshot.pendingInvoices, "text-blue-400"],
-          ["Churn Rate", billingSnapshot.churn, "text-red-400"],
-        ].map(([label, value, color]) => (
-          <div key={String(label)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
-            <p className="text-chamber-400 text-sm mb-1">{String(label)}</p>
-            <p className={`text-2xl font-bold ${color}`}>{String(value)}</p>
-          </div>
-        ))}
-      </div>
+      {billing && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[
+            ["MRR", fmt(billing.mrr), "text-gold-400"],
+            ["Active Subscriptions", billing.active_subscriptions, "text-green-400"],
+            ["Pending Invoices", billing.pending_invoices, "text-blue-400"],
+            ["Churn Rate", `${billing.churn_rate}%`, "text-red-400"],
+          ].map(([label, value, color]) => (
+            <div key={String(label)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
+              <p className="text-chamber-400 text-sm mb-1">{String(label)}</p>
+              <p className={`text-2xl font-bold ${color}`}>{String(value)}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Offers */}
@@ -73,11 +114,12 @@ export default function BuildPage() {
             <a href="/build/offer/new" className="text-gold-400 text-sm hover:underline">Create new &rarr;</a>
           </div>
           <div className="space-y-3">
+            {offers.length === 0 && <p className="text-chamber-500 text-sm">No offers yet. Create your first offer to get started.</p>}
             {offers.map((o) => (
               <a key={o.id} href={`/build/offer/${o.id}`} className="flex items-center justify-between p-3 rounded-lg bg-chamber-800/50 hover:bg-chamber-800 transition">
                 <div>
                   <p className="text-white font-medium">{o.name}</p>
-                  <p className="text-xs text-chamber-500">{o.clients} clients &middot; {o.mrr}/mo</p>
+                  <p className="text-xs text-chamber-500">{o.clients} clients &middot; ${o.mrr?.toLocaleString() ?? "0"}/mo</p>
                 </div>
                 <span className={`px-2 py-0.5 rounded-full text-xs ${o.status === "Active" ? "bg-green-400/20 text-green-400" : "bg-chamber-700 text-chamber-400"}`}>{o.status}</span>
               </a>
@@ -92,6 +134,7 @@ export default function BuildPage() {
             <a href="/build/playbooks" className="text-gold-400 text-sm hover:underline">View all &rarr;</a>
           </div>
           <div className="space-y-3">
+            {playbooks.length === 0 && <p className="text-chamber-500 text-sm">No playbooks available.</p>}
             {playbooks.map((p) => (
               <a key={p.slug} href={`/build/playbooks/${p.slug}`} className="flex items-center justify-between p-3 rounded-lg bg-chamber-800/50 hover:bg-chamber-800 transition">
                 <p className="text-white font-medium">{p.name}</p>

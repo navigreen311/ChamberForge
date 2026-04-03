@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import api from "@/lib/api";
 import SOPViewer from "@/components/modules/SOPViewer";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface DeliveryRisk {
   risk: string;
@@ -31,20 +30,19 @@ export default function FulfillmentPage() {
   const [offerName, setOfferName] = useState("");
   const [bundle, setBundle] = useState<SOPBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"sops" | "risks" | "calendar">("sops");
 
   async function generateBundle() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/build/fulfillment/sop-bundle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: offerName || "Premium Service" }),
+      const res = await api.post("/api/v1/build/fulfillment/sop-bundle", {
+        name: offerName || "Premium Service",
       });
-      const data = await res.json();
-      setBundle(data);
-    } catch (err) {
-      console.error("Failed to generate SOP bundle:", err);
+      setBundle(res.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to generate SOP bundle");
     } finally {
       setLoading(false);
     }
@@ -65,6 +63,10 @@ export default function FulfillmentPage() {
       <p className="text-chamber-300 mb-8">
         Generate SOP bundles and delivery risk maps for your service offers.
       </p>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+      )}
 
       <div className="bg-chamber-900 border border-chamber-700 rounded-lg p-6 mb-8 max-w-xl">
         <div className="flex gap-3 items-end">

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface TrustPackData {
   credibility_sheet: {
@@ -23,22 +22,19 @@ export default function TrustPackPage() {
   const [offerName, setOfferName] = useState("");
   const [trustPack, setTrustPack] = useState<TrustPackData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function generateTrustPack() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/build/trust-pack`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspace_data: { name: firmName || "Our Firm" },
-          offer_data: { name: offerName || "Premium Service" },
-        }),
+      const res = await api.post("/api/v1/build/trust-pack", {
+        workspace_data: { name: firmName || "Our Firm" },
+        offer_data: { name: offerName || "Premium Service" },
       });
-      const data = await res.json();
-      setTrustPack(data);
-    } catch (err) {
-      console.error("Failed to generate trust pack:", err);
+      setTrustPack(res.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to generate trust pack");
     } finally {
       setLoading(false);
     }
@@ -50,6 +46,10 @@ export default function TrustPackPage() {
       <p className="text-chamber-300 mb-8">
         Build credibility packages, privacy statements, and due diligence materials.
       </p>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+      )}
 
       <div className="bg-chamber-900 border border-chamber-700 rounded-lg p-6 mb-8 max-w-xl">
         <div className="space-y-4">

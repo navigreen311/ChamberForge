@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import api from "@/lib/api";
 import PlaybookProgress from "@/components/modules/PlaybookProgress";
 
 interface Playbook {
@@ -23,8 +24,6 @@ interface Activation {
   total_sections: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
 const WIZARD_STEPS = [
   "Review Defaults",
   "Customize ICP",
@@ -41,6 +40,7 @@ export default function ActivatePlaybookPage() {
 
   const [playbook, setPlaybook] = useState<Playbook | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<WizardStep>("Review Defaults");
   const [activation, setActivation] = useState<Activation | null>(null);
   const [activating, setActivating] = useState(false);
@@ -52,18 +52,20 @@ export default function ActivatePlaybookPage() {
   useEffect(() => {
     async function fetchPlaybook() {
       try {
-        const res = await fetch(`${API_BASE}/api/v1/playbooks/${slug}`);
-        if (!res.ok) throw new Error("Not found");
-        const data = await res.json();
+        const res = await api.get(`/api/v1/playbooks/${slug}`);
+        const data = res.data?.playbook ?? res.data;
         setPlaybook(data);
         // Pre-populate overrides with current values
-        setIcpOverrides({ ...data.icp });
-        const pm: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data.pricing_model)) {
-          pm[k] = v === null ? "" : String(v);
+        if (data.icp) setIcpOverrides({ ...data.icp });
+        if (data.pricing_model) {
+          const pm: Record<string, string> = {};
+          for (const [k, v] of Object.entries(data.pricing_model)) {
+            pm[k] = v === null ? "" : String(v);
+          }
+          setPricingOverrides(pm);
         }
-        setPricingOverrides(pm);
-      } catch {
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? "Playbook not found");
         setPlaybook(null);
       } finally {
         setLoading(false);
@@ -89,21 +91,11 @@ export default function ActivatePlaybookPage() {
   async function handleActivate() {
     if (!playbook) return;
     setActivating(true);
+    setError(null);
     try {
-      // Generate a workspace ID (in production this comes from auth context)
-      const workspaceId = crypto.randomUUID();
-
       // 1. Activate
-      const activateRes = await fetch(
-        `${API_BASE}/api/v1/playbooks/${slug}/activate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspace_id: workspaceId }),
-        }
-      );
-      if (!activateRes.ok) throw new Error("Activation failed");
-      const { activation: act } = await activateRes.json();
+      const activateRes = await api.post(`/api/v1/playbooks/${slug}/activate`);
+      const act = activateRes.data?.activation ?? activateRes.data;
 
       // 2. Apply customizations
       const overrides: Record<string, unknown> = {};
@@ -114,20 +106,13 @@ export default function ActivatePlaybookPage() {
         overrides.pricing_model = pricingOverrides;
       }
 
-      if (Object.keys(overrides).length > 0) {
-        await fetch(
-          `${API_BASE}/api/v1/playbooks/activations/${act.id}/customize`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ overrides }),
-          }
-        );
+      if (Object.keys(overrides).length > 0 && act.id) {
+        await api.put(`/api/v1/playbooks/activations/${act.id}/customize`, { overrides });
       }
 
       setActivation(act);
-    } catch (err) {
-      console.error("Activation error:", err);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Activation failed");
     } finally {
       setActivating(false);
     }
@@ -144,7 +129,10 @@ export default function ActivatePlaybookPage() {
   if (!playbook) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-chamber-950">
-        <p className="text-chamber-400">Playbook not found.</p>
+        <div className="text-center">
+          <p className="text-chamber-400 mb-2">{error ?? "Playbook not found."}</p>
+          <a href="/build/playbooks" className="text-gold-400 text-sm hover:underline">Back to Playbooks</a>
+        </div>
       </div>
     );
   }
@@ -200,6 +188,10 @@ export default function ActivatePlaybookPage() {
         </h1>
         <p className="mb-8 text-chamber-300">{playbook.core_pain}</p>
 
+        {error && (
+          <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+        )}
+
         {/* Step Indicator */}
         <div className="mb-8 flex items-center gap-2">
           {WIZARD_STEPS.map((step, i) => (
@@ -229,7 +221,6 @@ export default function ActivatePlaybookPage() {
 
         {/* Step Content */}
         <div className="rounded-xl border border-chamber-700 bg-chamber-900 p-6">
-          {/* Step 1: Review Defaults */}
           {currentStep === "Review Defaults" && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-white">
@@ -247,8 +238,8 @@ export default function ActivatePlaybookPage() {
                     Price Range
                   </span>
                   <p className="mt-1 text-white">
-                    ${playbook.price_range_min.toLocaleString()} &ndash; $
-                    {playbook.price_range_max.toLocaleString()}
+                    ${playbook.price_range_min?.toLocaleString()} &ndash; $
+                    {playbook.price_range_max?.toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -261,7 +252,6 @@ export default function ActivatePlaybookPage() {
             </div>
           )}
 
-          {/* Step 2: Customize ICP */}
           {currentStep === "Customize ICP" && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">
@@ -293,7 +283,6 @@ export default function ActivatePlaybookPage() {
             </div>
           )}
 
-          {/* Step 3: Adjust Pricing */}
           {currentStep === "Adjust Pricing" && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">
@@ -325,7 +314,6 @@ export default function ActivatePlaybookPage() {
             </div>
           )}
 
-          {/* Step 4: Confirm */}
           {currentStep === "Confirm" && (
             <div className="space-y-6">
               <h2 className="text-lg font-semibold text-white">

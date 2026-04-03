@@ -1,41 +1,72 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import api from "@/lib/api";
 
-const playbook = {
-  slug: "discovery-to-deal",
-  name: "Discovery to Deal",
-  description: "A comprehensive 8-step framework that takes you from problem identification through to a signed engagement. Designed for premium service providers targeting HNW/UHNW clients.",
-  category: "Sales",
-  steps: 8,
-  uses: 14,
-  status: "Active",
-  estimatedTime: "4-6 weeks",
-  difficulty: "Intermediate",
-  phases: [
-    { name: "Problem Validation", desc: "Run the 4-point scorecard on the identified problem", duration: "3-5 days", tools: ["Validation Scorecard", "Evidence Browser"] },
-    { name: "Market Sizing", desc: "Quantify the addressable market and revenue potential", duration: "2-3 days", tools: ["Trend Radar", "Revenue Projector"] },
-    { name: "ICP Definition", desc: "Build detailed Ideal Client Profile using AI analysis", duration: "1-2 days", tools: ["ICP Builder", "Persona Simulator"] },
-    { name: "Offer Creation", desc: "Design the service offering with pricing tiers", duration: "3-5 days", tools: ["Offer Wizard", "Pricing Optimizer"] },
-    { name: "Guardrails Check", desc: "Run compliance and ethical review", duration: "1 day", tools: ["Guardrails Check", "Risk Queue"] },
-    { name: "Outreach Campaign", desc: "Generate personalized outreach using AI copywriter", duration: "3-5 days", tools: ["Marketing Copy Generator", "Persona Simulator"] },
-    { name: "Pipeline Management", desc: "Track and nurture leads through the sales funnel", duration: "Ongoing", tools: ["Pipeline View", "Client Health Monitor"] },
-    { name: "Deal Closure", desc: "Finalize terms and onboard the new client", duration: "3-7 days", tools: ["UHNW Onboarding Playbook", "Billing Dashboard"] },
-  ],
-};
+interface Phase {
+  name: string;
+  desc: string;
+  duration: string;
+  tools: string[];
+}
+
+interface PlaybookDetail {
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  steps: number;
+  uses: number;
+  status: string;
+  estimatedTime?: string;
+  estimated_time?: string;
+  difficulty?: string;
+  phases: Phase[];
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
 export default function PlaybookDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const slug = params.slug as string;
+
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playbook, setPlaybook] = useState<PlaybookDetail | null>(null);
+  const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
+    async function fetchPlaybook() {
+      try {
+        const res = await api.get(`/api/v1/playbooks/${slug}`);
+        setPlaybook(res.data?.playbook ?? res.data);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? "Failed to load playbook");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlaybook();
+  }, [slug]);
+
+  async function handleActivate() {
+    setActivating(true);
+    setError(null);
+    try {
+      await api.post(`/api/v1/playbooks/${slug}/activate`);
+      setActivated(true);
+      setTimeout(() => router.push(`/build/playbooks/${slug}/activate`), 500);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Activation failed");
+    } finally {
+      setActivating(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -47,9 +78,27 @@ export default function PlaybookDetailPage() {
     );
   }
 
+  if (error && !playbook) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <a href="/build/playbooks" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Playbooks</a>
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
+      </div>
+    );
+  }
+
+  if (!playbook) return null;
+
+  const estTime = playbook.estimatedTime ?? playbook.estimated_time ?? "N/A";
+
   return (
     <div className="min-h-screen bg-chamber-950 p-8">
       <a href="/build/playbooks" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Playbooks</a>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+      )}
+
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -59,18 +108,18 @@ export default function PlaybookDetailPage() {
           <p className="text-chamber-400 max-w-2xl">{playbook.description}</p>
         </div>
         <button
-          onClick={() => setActivated(true)}
-          disabled={activated}
-          className={`px-5 py-2.5 font-semibold rounded-lg transition ${activated ? "bg-green-400/20 text-green-400 cursor-default" : "bg-gold-400 text-chamber-950 hover:bg-gold-300"}`}
-        >{activated ? "Activated" : "Activate Playbook"}</button>
+          onClick={handleActivate}
+          disabled={activated || activating}
+          className={`px-5 py-2.5 font-semibold rounded-lg transition ${activated ? "bg-green-400/20 text-green-400 cursor-default" : "bg-gold-400 text-chamber-950 hover:bg-gold-300"} disabled:opacity-50`}
+        >{activating ? "Activating..." : activated ? "Activated" : "Activate Playbook"}</button>
       </div>
 
       {/* Meta */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           ["Steps", playbook.steps],
-          ["Est. Duration", playbook.estimatedTime],
-          ["Difficulty", playbook.difficulty],
+          ["Est. Duration", estTime],
+          ["Difficulty", playbook.difficulty ?? "N/A"],
           ["Times Used", playbook.uses],
         ].map(([l, v]) => (
           <div key={String(l)} className="bg-chamber-900 rounded-xl p-4 border border-chamber-800">
@@ -81,28 +130,32 @@ export default function PlaybookDetailPage() {
       </div>
 
       {/* Phases */}
-      <h3 className="text-lg font-semibold text-white mb-4">Playbook Phases</h3>
-      <div className="space-y-3">
-        {playbook.phases.map((phase, idx) => (
-          <div key={idx} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
-            <div className="flex items-start gap-4">
-              <div className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center text-sm font-bold flex-shrink-0">{idx + 1}</div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-white font-semibold">{phase.name}</h4>
-                  <span className="text-xs text-chamber-500">{phase.duration}</span>
-                </div>
-                <p className="text-sm text-chamber-400 mb-2">{phase.desc}</p>
-                <div className="flex flex-wrap gap-2">
-                  {phase.tools.map((t) => (
-                    <span key={t} className="px-2 py-0.5 bg-chamber-800 text-chamber-400 text-xs rounded">{t}</span>
-                  ))}
+      {playbook.phases && playbook.phases.length > 0 && (
+        <>
+          <h3 className="text-lg font-semibold text-white mb-4">Playbook Phases</h3>
+          <div className="space-y-3">
+            {playbook.phases.map((phase, idx) => (
+              <div key={idx} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center text-sm font-bold flex-shrink-0">{idx + 1}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-white font-semibold">{phase.name}</h4>
+                      <span className="text-xs text-chamber-500">{phase.duration}</span>
+                    </div>
+                    <p className="text-sm text-chamber-400 mb-2">{phase.desc}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(phase.tools ?? []).map((t) => (
+                        <span key={t} className="px-2 py-0.5 bg-chamber-800 text-chamber-400 text-xs rounded">{t}</span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }
