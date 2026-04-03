@@ -1,0 +1,27 @@
+[
+  {
+    "id": "v1",
+    "input": {"problem": {"title": "Cross-Border Estate Tax Complexity", "pain_category": "estate_planning", "urgency_score": 9}},
+    "expected": {"required_fields": ["is_real", "real_score", "is_payable", "overall_score"]}
+  },
+  {
+    "id": "v2",
+    "input": {"problem": {"title": "Digital Privacy for Public-Profile Families", "pain_category": "privacy_security", "urgency_score": 8}},
+    "expected": {"required_fields": ["is_real", "is_payable", "is_deliverable", "is_ethical"]}
+  },
+  {
+    "id": "v3",
+    "input": {"problem": {"title": "Low-value commodity service", "pain_category": "general", "urgency_score": 2}},
+    "expected": {"required_fields": ["overall_score"], "overall_score_max": 10.0}
+  },
+  {
+    "id": "v4",
+    "input": {"problem": {"title": "Next-Gen Wealth Transfer Readiness", "pain_category": "family_governance", "urgency_score": 7}},
+    "expected": {"required_fields": ["is_deliverable", "deliverable_score", "is_ethical", "ethical_score"]}
+  },
+  {
+    "id": "v5",
+    "input": {"problem": {"title": "Concierge Medical Coordination", "pain_category": "medical", "urgency_score": 8}},
+    "expected": {"required_fields": ["is_real", "real_score", "overall_score"], "real_score_min": 0, "real_score_max": 10}
+  }
+]

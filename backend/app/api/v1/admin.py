@@ -6,6 +6,10 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services.backbone.ai_eval_lab import AIEvalLab
 from app.services.backbone.entitlements import EntitlementEngine
+from app.services.backbone.golden_test_runner import (
+    load_test_cases as _load_golden,
+    run_suite as _run_golden_suite,
+)
 from app.services.backbone.records_governance import RecordsGovernance
 from app.services.backbone.rules_engine import RulesEngine
 from app.services.backbone.sandbox import SandboxService
@@ -109,6 +113,28 @@ def save_test_results(req: SaveTestResultsRequest, db: Session = Depends(get_db)
         AIEvalLab.save_test_results(db, req.prompt_version_id, req.results)
         return {"saved": True}
     except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
+# ── Golden Tests (AI Eval Lab) ───────────────────────────────────────────────
+
+
+@router.post("/eval-lab/run/{agent_name}")
+def run_golden_tests(agent_name: str, db: Session = Depends(get_db)):
+    """Run the golden test suite for a specific agent."""
+    try:
+        result = _run_golden_suite(agent_name)
+        return result
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@router.get("/eval-lab/golden-tests/{agent_name}")
+def get_golden_tests(agent_name: str):
+    """Return the golden test cases for a specific agent."""
+    try:
+        return _load_golden(agent_name)
+    except FileNotFoundError as e:
         raise HTTPException(404, str(e))
 
 
