@@ -28,4 +28,13 @@ BEAT_SCHEDULE = {
         "task": "app.jobs.tasks.retention_tasks.run_retention_cleanup",
         "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),
     },
+    "daily_backup": {
+        "task": "app.jobs.tasks.backup_tasks.automated_db_backup",
+        "schedule": crontab(hour=2, minute=0),
+    },
+    "weekly_backup_verify": {
+        "task": "app.jobs.tasks.backup_tasks.verify_backup_integrity",
+        "schedule": crontab(hour=4, minute=0, day_of_week="sunday"),
+        "args": ("backups/database/latest",),
+    },
 }

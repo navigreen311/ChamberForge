@@ -354,84 +354,34 @@ def load_synthetic_data(sandbox_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, str(e))
 
 
-# ── White-Label Configuration ───────────────────────────────────────────────
+# ── Database Backups ────────────────────────────────────────────────────────
 
 
-@router.get("/white-label")
-def get_white_label_config(
-    workspace_id: str = Query(...),
-    db: Session = Depends(get_db),
-):
-    """Get white-label configuration for a workspace."""
-    config = WhiteLabelService.get_config(db, workspace_id)
-    if config is None:
-        return {
-            "workspace_id": workspace_id,
-            "brand_name": "ChamberForge",
-            "logo_url": None,
-            "primary_color": "#fbbf24",
-            "secondary_color": "#102a43",
-            "favicon_url": None,
-            "custom_domain": None,
-            "email_from_name": None,
-            "email_from_address": None,
-            "portal_footer_text": None,
-            "is_active": True,
-        }
-    return {
-        "id": str(config.id),
-        "workspace_id": str(config.workspace_id),
-        "brand_name": config.brand_name,
-        "logo_url": config.logo_url,
-        "primary_color": config.primary_color,
-        "secondary_color": config.secondary_color,
-        "favicon_url": config.favicon_url,
-        "custom_domain": config.custom_domain,
-        "email_from_name": config.email_from_name,
-        "email_from_address": config.email_from_address,
-        "portal_footer_text": config.portal_footer_text,
-        "is_active": config.is_active,
-    }
+@router.post("/backups/trigger")
+def trigger_backup():
+    """Manually trigger a database backup to S3 (admin only)."""
+    from app.jobs.tasks.backup_tasks import automated_db_backup
+
+    result = automated_db_backup.delay()
+    return {"task_id": result.id, "status": "queued"}
 
 
-@router.put("/white-label")
-def update_white_label_config(
-    req: WhiteLabelUpdateRequest,
-    workspace_id: str = Query(...),
-    db: Session = Depends(get_db),
-):
-    """Update white-label configuration for a workspace (admin only)."""
-    data = req.model_dump(exclude_none=True)
+@router.get("/backups")
+def list_backups(limit: int = 30):
+    """List recent database backups from S3."""
+    from app.jobs.tasks.backup_tasks import list_backups as _list_backups
+
     try:
-        config = WhiteLabelService.update_config(db, workspace_id, data)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    return {
-        "id": str(config.id),
-        "workspace_id": str(config.workspace_id),
-        "brand_name": config.brand_name,
-        "logo_url": config.logo_url,
-        "primary_color": config.primary_color,
-        "secondary_color": config.secondary_color,
-        "favicon_url": config.favicon_url,
-        "custom_domain": config.custom_domain,
-        "email_from_name": config.email_from_name,
-        "email_from_address": config.email_from_address,
-        "portal_footer_text": config.portal_footer_text,
-        "is_active": config.is_active,
-    }
+        backups = _list_backups(limit=limit)
+        return {"backups": backups, "count": len(backups)}
+    except Exception as e:
+        raise HTTPException(500, f"Failed to list backups: {e}")
 
 
-@router.get("/white-label/portal-branding")
-def get_portal_branding(
-    workspace_id: str = Query(...),
-    db: Session = Depends(get_db),
-):
-    """Public endpoint — return portal branding for a workspace."""
-    return WhiteLabelService.get_portal_branding(db, workspace_id)
+@router.post("/backups/verify/{s3_key:path}")
+def verify_backup(s3_key: str):
+    """Trigger integrity verification for a specific backup."""
+    from app.jobs.tasks.backup_tasks import verify_backup_integrity
 
-
-@router.get("/white-label/validate-domain")
-def validate_custom_domain(domain: str = Query(...)):
-    """Validate a custom domain and return required DNS records."""
-    return WhiteLabelService.validate_custom_domain(domain)
+    result = verify_backup_integrity.delay(s3_key)
+    return {"task_id": result.id, "s3_key": s3_key, "status": "queued"}
