@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import AppShell from '@/components/layout/AppShell';
+import OnboardingBanner from '@/components/modules/OnboardingBanner';
 
 export default function AuthenticatedLayout({
   children,
@@ -31,5 +32,10 @@ export default function AuthenticatedLayout({
     return null;
   }
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      <OnboardingBanner />
+      {children}
+    </AppShell>
+  );
 }
