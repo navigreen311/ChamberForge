@@ -21,6 +21,12 @@ app.add_middleware(
 )
 
 
+# ---- Routers ----
+from app.api.v1.email import router as email_router  # noqa: E402
+
+app.include_router(email_router)
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "version": "0.1.0"}
