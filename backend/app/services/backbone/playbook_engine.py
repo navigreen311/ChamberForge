@@ -193,6 +193,108 @@ class PlaybookEngine:
         db.refresh(activation)
         return activation
 
+    # ── Activation-to-Offer ─────────────────────────────────────────────
+
+    @staticmethod
+    def activate_to_offer(
+        db: Session, workspace_id: uuid.UUID, activation_id: uuid.UUID
+    ) -> Optional["Offer"]:
+        """Convert an activated playbook into a draft Offer.
+
+        Copies name, pricing model, SOP skeleton, and KPI stack from the
+        playbook (with any customization overrides applied) into a new Offer
+        record with status='draft'.
+        """
+        from app.models.offer import Offer
+
+        activation = (
+            db.query(PlaybookActivation)
+            .filter(PlaybookActivation.id == activation_id)
+            .first()
+        )
+        if not activation or not activation.playbook:
+            return None
+
+        # Verify workspace ownership
+        if str(activation.workspace_id) != str(workspace_id):
+            return None
+
+        playbook = activation.playbook
+        customizations = activation.customizations or {}
+
+        # Build offer fields from playbook data, applying customizations
+        offer_name = customizations.get("name", playbook.name)
+        pricing_model = customizations.get("pricing_model", playbook.pricing_model or {})
+        sop_skeleton = customizations.get("sop_skeleton", playbook.sop_skeleton or [])
+        kpi_stack = customizations.get("kpi_stack", playbook.kpi_stack or [])
+        icp = customizations.get("icp", playbook.icp or {})
+
+        offer = Offer(
+            workspace_id=workspace_id,
+            name=f"{offer_name} — Offer",
+            description=f"Draft offer created from playbook: {playbook.name}. "
+                        f"Target buyer: {playbook.target_buyer}. "
+                        f"Core pain: {playbook.core_pain}",
+            pricing_model=pricing_model,
+            sop_bundle={"sop_skeleton": sop_skeleton, "source_playbook": playbook.slug},
+            value_stack=kpi_stack,
+            journey_map={
+                "icp": icp,
+                "pain_triggers": playbook.pain_triggers or [],
+                "trust_concerns": playbook.trust_concerns or [],
+                "objection_handling": playbook.objection_handling or [],
+            },
+            status="draft",
+        )
+        db.add(offer)
+        db.commit()
+        db.refresh(offer)
+        return offer
+
+    # ── List Activations ──────────────────────────────────────────────
+
+    @staticmethod
+    def get_activated_playbooks(
+        db: Session, workspace_id: uuid.UUID
+    ) -> list[dict]:
+        """List all playbook activations for a workspace with progress info."""
+        activations = (
+            db.query(PlaybookActivation)
+            .filter(PlaybookActivation.workspace_id == str(workspace_id))
+            .order_by(PlaybookActivation.activated_at.desc())
+            .all()
+        )
+
+        results = []
+        for act in activations:
+            progress = act.progress or {}
+            completed = sum(1 for v in progress.values() if v == "complete")
+            total = act.total_sections or len(DEFAULT_SECTIONS)
+            completion_pct = round((completed / total) * 100, 1) if total > 0 else 0.0
+
+            # Determine next step
+            next_step = None
+            for section in DEFAULT_SECTIONS:
+                if progress.get(section, "not_started") in ("not_started", "in_progress"):
+                    next_step = section
+                    break
+
+            results.append({
+                "activation_id": str(act.id),
+                "workspace_id": str(act.workspace_id),
+                "playbook_id": str(act.playbook_id),
+                "playbook_name": act.playbook.name if act.playbook else "",
+                "playbook_slug": act.playbook.slug if act.playbook else "",
+                "status": act.status,
+                "completion_pct": completion_pct,
+                "completed_sections": completed,
+                "total_sections": total,
+                "next_step": next_step,
+                "activated_at": act.activated_at.isoformat() if act.activated_at else None,
+            })
+
+        return results
+
     # ── Export ─────────────────────────────────────────────────────────
 
     @staticmethod

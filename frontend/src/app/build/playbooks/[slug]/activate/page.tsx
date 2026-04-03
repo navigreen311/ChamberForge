@@ -137,6 +137,27 @@ export default function ActivatePlaybookPage() {
     );
   }
 
+  const [creatingOffer, setCreatingOffer] = useState(false);
+
+  async function handleCreateOffer() {
+    if (!activation || !playbook) return;
+    setCreatingOffer(true);
+    setError(null);
+    try {
+      const res = await api.post(
+        `/api/v1/playbooks/activations/${activation.id}/create-offer`,
+        { workspace_id: localStorage.getItem("workspace_id") ?? "" }
+      );
+      const offerId = res.data?.offer?.id;
+      if (offerId) {
+        router.push(`/build/offer/${offerId}`);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? "Failed to create offer");
+      setCreatingOffer(false);
+    }
+  }
+
   // Post-activation view
   if (activation) {
     return (
@@ -153,6 +174,11 @@ export default function ActivatePlaybookPage() {
               {playbook.name} is now active. Begin working through each section.
             </p>
           </div>
+
+          {error && (
+            <div className="bg-red-400/10 border border-red-400/30 rounded-lg p-4 mb-6 text-red-400 text-sm">{error}</div>
+          )}
+
           <PlaybookProgress
             playbookName={playbook.name}
             completionPct={0}
@@ -168,9 +194,18 @@ export default function ActivatePlaybookPage() {
             ]}
             nextStep="ICP Definition"
           />
+
+          <button
+            onClick={handleCreateOffer}
+            disabled={creatingOffer}
+            className="mt-6 w-full rounded-lg bg-gold-500 px-4 py-3 text-sm font-semibold text-chamber-950 hover:bg-gold-400 disabled:opacity-50"
+          >
+            {creatingOffer ? "Creating Offer..." : "Create Offer from Playbook"}
+          </button>
+
           <button
             onClick={() => router.push("/build/playbooks")}
-            className="mt-6 w-full rounded-lg border border-chamber-700 px-4 py-3 text-sm text-chamber-300 hover:border-chamber-500 hover:text-white"
+            className="mt-3 w-full rounded-lg border border-chamber-700 px-4 py-3 text-sm text-chamber-300 hover:border-chamber-500 hover:text-white"
           >
             Back to Gallery
           </button>

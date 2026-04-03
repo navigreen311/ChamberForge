@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.backbone.playbook_engine import PlaybookEngine
+from app.services.backbone.cross_playbook import CrossPlaybookComposer
 
 router = APIRouter(prefix="/api/v1/playbooks", tags=["playbooks"])
 
@@ -28,6 +29,15 @@ class SectionUpdateRequest(BaseModel):
     status: str = Field(..., pattern="^(complete|in_progress|not_started)$")
 
 
+class CreateOfferRequest(BaseModel):
+    workspace_id: uuid.UUID
+
+
+class ComposeRequest(BaseModel):
+    workspace_id: uuid.UUID
+    slugs: list[str] = Field(..., min_length=2, max_length=3)
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────
 
 @router.get("/")
@@ -39,6 +49,67 @@ def list_playbooks(db: Session = Depends(get_db)):
         "playbooks": [p.to_dict() for p in playbooks],
     }
 
+
+# ── List Activations (must be before /{slug} to avoid route conflict) ─
+
+@router.get("/activations")
+def list_activations(
+    workspace_id: uuid.UUID = Query(...),
+    db: Session = Depends(get_db),
+):
+    """List all playbook activations for a workspace with progress."""
+    activations = PlaybookEngine.get_activated_playbooks(db, workspace_id)
+    return {
+        "count": len(activations),
+        "activations": activations,
+    }
+
+
+# ── Cross-Playbook Compose (must be before /{slug}) ──────────────────
+
+@router.post("/compose")
+def compose_playbooks(body: ComposeRequest, db: Session = Depends(get_db)):
+    """Compose 2-3 playbooks into a bundled offer draft."""
+    # Fetch playbook data for each slug
+    playbooks = []
+    for slug in body.slugs:
+        pb = PlaybookEngine.get_playbook(db, slug)
+        if not pb:
+            raise HTTPException(
+                status_code=404, detail=f"Playbook '{slug}' not found"
+            )
+        pb_dict = pb.to_dict()
+        # Map playbook fields to composer's expected shape
+        playbooks.append({
+            "name": pb_dict["name"],
+            "icp": pb_dict.get("icp", {}),
+            "sops": pb_dict.get("sop_skeleton", []),
+            "pricing": {
+                "min": pb_dict.get("price_range_min", 0),
+                "max": pb_dict.get("price_range_max", 0),
+                "pricing_model": (pb_dict.get("pricing_model") or {}).get("type", ""),
+            },
+            "journey": [{"name": s["name"]} for s in pb_dict.get("sop_skeleton", [])],
+            "kpis": pb_dict.get("kpi_stack", []),
+        })
+
+    try:
+        composed = CrossPlaybookComposer.compose(playbooks)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Estimate bundle pricing with 10% discount
+    prices = [(p["pricing"]["min"], p["pricing"]["max"]) for p in playbooks]
+    pricing = CrossPlaybookComposer.estimate_bundle_pricing(prices)
+
+    composed["bundle_pricing"] = pricing
+    composed["workspace_id"] = str(body.workspace_id)
+    composed["source_slugs"] = body.slugs
+
+    return composed
+
+
+# ── Parameterized slug routes ─────────────────────────────────────────
 
 @router.get("/{slug}")
 def get_playbook(slug: str, db: Session = Depends(get_db)):
@@ -119,3 +190,29 @@ def export_playbook(
     if not result:
         raise HTTPException(status_code=404, detail="Activation not found")
     return result
+
+
+# ── Activation-to-Offer ──────────────────────────────────────────────
+
+@router.post("/activations/{activation_id}/create-offer")
+def create_offer_from_activation(
+    activation_id: uuid.UUID,
+    body: CreateOfferRequest,
+    db: Session = Depends(get_db),
+):
+    """Convert an activated playbook into a draft Offer."""
+    offer = PlaybookEngine.activate_to_offer(db, body.workspace_id, activation_id)
+    if not offer:
+        raise HTTPException(
+            status_code=404,
+            detail="Activation not found or workspace mismatch",
+        )
+    return {
+        "message": "Offer created from playbook activation",
+        "offer": {
+            "id": str(offer.id),
+            "name": offer.name,
+            "status": offer.status,
+            "workspace_id": str(offer.workspace_id),
+        },
+    }
