@@ -38,6 +38,7 @@ from app.models.legal_hold import LegalHold as _LH  # noqa: F401
 from app.models.message import SecureMessage as _Msg  # noqa: F401
 from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
 from app.models.template_version import TemplateVersion as _TV  # noqa: F401
+from app.models.drip_status import DripStatus as _DS  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
