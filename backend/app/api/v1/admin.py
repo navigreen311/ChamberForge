@@ -1,5 +1,5 @@
 """Admin API — Management endpoints for platform primitives."""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from app.services.backbone.golden_test_runner import (
 from app.services.backbone.records_governance import RecordsGovernance
 from app.services.backbone.rules_engine import RulesEngine
 from app.services.backbone.sandbox import SandboxService
+from app.services.backbone.white_label import WhiteLabelService
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
@@ -82,6 +83,19 @@ class CreateRetentionPolicyRequest(BaseModel):
 class CreateSandboxRequest(BaseModel):
     workspace_id: str
     name: str
+
+
+class WhiteLabelUpdateRequest(BaseModel):
+    brand_name: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    secondary_color: str | None = None
+    favicon_url: str | None = None
+    custom_domain: str | None = None
+    email_from_name: str | None = None
+    email_from_address: str | None = None
+    portal_footer_text: str | None = None
+    is_active: bool | None = None
 
 
 # ── Prompts (AI Eval Lab) ───────────────────────────────────────────────────
@@ -338,3 +352,86 @@ def load_synthetic_data(sandbox_id: str, db: Session = Depends(get_db)):
         return SandboxService.load_synthetic_data(db, sandbox_id)
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+# ── White-Label Configuration ───────────────────────────────────────────────
+
+
+@router.get("/white-label")
+def get_white_label_config(
+    workspace_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Get white-label configuration for a workspace."""
+    config = WhiteLabelService.get_config(db, workspace_id)
+    if config is None:
+        return {
+            "workspace_id": workspace_id,
+            "brand_name": "ChamberForge",
+            "logo_url": None,
+            "primary_color": "#fbbf24",
+            "secondary_color": "#102a43",
+            "favicon_url": None,
+            "custom_domain": None,
+            "email_from_name": None,
+            "email_from_address": None,
+            "portal_footer_text": None,
+            "is_active": True,
+        }
+    return {
+        "id": str(config.id),
+        "workspace_id": str(config.workspace_id),
+        "brand_name": config.brand_name,
+        "logo_url": config.logo_url,
+        "primary_color": config.primary_color,
+        "secondary_color": config.secondary_color,
+        "favicon_url": config.favicon_url,
+        "custom_domain": config.custom_domain,
+        "email_from_name": config.email_from_name,
+        "email_from_address": config.email_from_address,
+        "portal_footer_text": config.portal_footer_text,
+        "is_active": config.is_active,
+    }
+
+
+@router.put("/white-label")
+def update_white_label_config(
+    req: WhiteLabelUpdateRequest,
+    workspace_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Update white-label configuration for a workspace (admin only)."""
+    data = req.model_dump(exclude_none=True)
+    try:
+        config = WhiteLabelService.update_config(db, workspace_id, data)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {
+        "id": str(config.id),
+        "workspace_id": str(config.workspace_id),
+        "brand_name": config.brand_name,
+        "logo_url": config.logo_url,
+        "primary_color": config.primary_color,
+        "secondary_color": config.secondary_color,
+        "favicon_url": config.favicon_url,
+        "custom_domain": config.custom_domain,
+        "email_from_name": config.email_from_name,
+        "email_from_address": config.email_from_address,
+        "portal_footer_text": config.portal_footer_text,
+        "is_active": config.is_active,
+    }
+
+
+@router.get("/white-label/portal-branding")
+def get_portal_branding(
+    workspace_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Public endpoint — return portal branding for a workspace."""
+    return WhiteLabelService.get_portal_branding(db, workspace_id)
+
+
+@router.get("/white-label/validate-domain")
+def validate_custom_domain(domain: str = Query(...)):
+    """Validate a custom domain and return required DNS records."""
+    return WhiteLabelService.validate_custom_domain(domain)

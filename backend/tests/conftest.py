@@ -40,6 +40,7 @@ from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
 from app.models.retention_policy import RetentionPolicy as _RP  # noqa: F401
 from app.models.template_version import TemplateVersion as _TV  # noqa: F401
 from app.models.drip_status import DripStatus as _DS  # noqa: F401
+from app.models.white_label import WhiteLabelConfig as _WL  # noqa: F401
 
 
 # ---------------------------------------------------------------------------
