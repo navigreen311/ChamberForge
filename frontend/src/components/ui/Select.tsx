@@ -26,7 +26,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="mb-1.5 block text-sm font-medium text-chamber-200"
+            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-chamber-200"
           >
             {label}
           </label>
@@ -37,11 +37,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           className={clsx(
-            'w-full rounded-lg border bg-chamber-800 px-3.5 py-2.5 text-sm text-white',
-            'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-chamber-950',
+            'w-full rounded-lg border bg-white dark:bg-chamber-800 px-3.5 py-2.5 text-sm text-gray-900 dark:text-white',
+            'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-white dark:focus:ring-offset-chamber-950',
             error
               ? 'border-red-500 focus:ring-red-500'
-              : 'border-chamber-700 focus:ring-gold-400',
+              : 'border-gray-300 dark:border-chamber-700 focus:ring-gold-400',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className,
           )}

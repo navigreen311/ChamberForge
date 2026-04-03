@@ -21,18 +21,18 @@ export default function Card({
   return (
     <div
       className={clsx(
-        'rounded-lg bg-chamber-900 shadow-sm',
+        'rounded-lg bg-white dark:bg-chamber-900 text-gray-900 dark:text-white border border-gray-200 dark:border-chamber-700 shadow-sm',
         className,
       )}
     >
       {(title || actions) && (
-        <div className="flex items-start justify-between border-b border-chamber-800 px-6 py-4">
+        <div className="flex items-start justify-between border-b border-gray-200 dark:border-chamber-800 px-6 py-4">
           <div>
             {title && (
-              <h3 className="text-lg font-semibold text-white">{title}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
             )}
             {subtitle && (
-              <p className="mt-0.5 text-sm text-chamber-400">{subtitle}</p>
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-chamber-400">{subtitle}</p>
             )}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
@@ -42,7 +42,7 @@ export default function Card({
       <div className="p-6">{children}</div>
 
       {footer && (
-        <div className="border-t border-chamber-800 px-6 py-4">{footer}</div>
+        <div className="border-t border-gray-200 dark:border-chamber-800 px-6 py-4">{footer}</div>
       )}
     </div>
   );

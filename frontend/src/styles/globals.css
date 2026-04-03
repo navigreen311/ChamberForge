@@ -2,9 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+}
+
+.dark {
+  --bg-primary: #0a1929;
+  --bg-secondary: #102a43;
+  --text-primary: #ffffff;
+  --text-secondary: #9fb3c8;
+  --border-color: #243b53;
+}
+
 html,
 body {
-  @apply bg-chamber-950 text-white;
+  @apply bg-white text-gray-900 dark:bg-chamber-950 dark:text-white;
 }
 
 @layer utilities {
