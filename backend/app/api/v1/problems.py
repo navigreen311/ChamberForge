@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.db.session import get_db
 from app.models.enums import LifecycleStage, PainCategory, WealthTier
 from app.schemas.problem import ProblemCreate, ProblemList, ProblemRead, ProblemUpdate
@@ -23,7 +24,13 @@ def trending_problems(
     limit: int = 10,
     db: Session = Depends(get_db),
 ):
-    return library.get_trending(db, workspace_id, limit=limit)
+    key = cache.make_key("problems:trending", workspace_id=workspace_id, limit=limit)
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    result = library.get_trending(db, workspace_id, limit=limit)
+    cache.set(key, result, ttl_seconds=120)
+    return result
 
 
 @router.get("/", response_model=ProblemList)
@@ -62,19 +69,7 @@ def create_problem(
 ):
     data = payload.model_dump(exclude={"workspace_id"})
     problem = library.create_problem(db, payload.workspace_id, data)
-    background_tasks.add_task(
-        sync_problem,
-        str(problem.id),
-        {
-            "title": problem.title,
-            "description": problem.description,
-            "pain_category": getattr(problem.pain_category, "value", None),
-            "wealth_tier": getattr(problem.wealth_tier, "value", None),
-            "lifecycle_stage": getattr(problem.lifecycle_stage, "value", None),
-            "urgency_score": problem.urgency_score,
-            "workspace_id": str(problem.workspace_id),
-        },
-    )
+    cache.invalidate_pattern("problems:*")
     return problem
 
 
@@ -97,19 +92,7 @@ def update_problem(
     problem = library.update_problem(db, problem_id, data)
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
-    background_tasks.add_task(
-        sync_problem,
-        str(problem.id),
-        {
-            "title": problem.title,
-            "description": problem.description,
-            "pain_category": getattr(problem.pain_category, "value", None),
-            "wealth_tier": getattr(problem.wealth_tier, "value", None),
-            "lifecycle_stage": getattr(problem.lifecycle_stage, "value", None),
-            "urgency_score": problem.urgency_score,
-            "workspace_id": str(problem.workspace_id),
-        },
-    )
+    cache.invalidate_pattern("problems:*")
     return problem
 
 
@@ -122,5 +105,5 @@ def delete_problem(
     deleted = library.delete_problem(db, problem_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Problem not found")
-    background_tasks.add_task(remove_from_index, PROBLEM_INDEX, problem_id)
+    cache.invalidate_pattern("problems:*")
     return None

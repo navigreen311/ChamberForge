@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.db.session import get_db
 from app.services.backbone.playbook_engine import PlaybookEngine
 from app.services.backbone.cross_playbook import CrossPlaybookComposer
@@ -42,12 +43,18 @@ class ComposeRequest(BaseModel):
 
 @router.get("/")
 def list_playbooks(db: Session = Depends(get_db)):
-    """List all available playbook templates."""
+    """List all available playbook templates (cached 600s)."""
+    key = cache.make_key("playbooks:list")
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
     playbooks = PlaybookEngine.get_all_playbooks(db)
-    return {
+    result = {
         "count": len(playbooks),
         "playbooks": [p.to_dict() for p in playbooks],
     }
+    cache.set(key, result, ttl_seconds=600)
+    return result
 
 
 # ── List Activations (must be before /{slug} to avoid route conflict) ─
@@ -126,6 +133,7 @@ def activate_playbook(slug: str, body: ActivateRequest, db: Session = Depends(ge
     activation = PlaybookEngine.activate_playbook(db, body.workspace_id, slug)
     if not activation:
         raise HTTPException(status_code=404, detail=f"Playbook '{slug}' not found")
+    cache.invalidate_pattern("playbooks:*")
     return {
         "message": "Playbook activated",
         "activation": activation.to_dict(),
@@ -142,6 +150,7 @@ def customize_playbook(
     activation = PlaybookEngine.customize_playbook(db, activation_id, body.overrides)
     if not activation:
         raise HTTPException(status_code=404, detail="Activation not found")
+    cache.invalidate_pattern("playbooks:*")
     return {
         "message": "Customizations applied",
         "activation": activation.to_dict(),
@@ -173,6 +182,7 @@ def update_section(
             status_code=404,
             detail="Activation or section not found, or invalid status",
         )
+    cache.invalidate_pattern("playbooks:*")
     return {
         "message": f"Section '{section_name}' updated to '{body.status}'",
         "activation": activation.to_dict(),
