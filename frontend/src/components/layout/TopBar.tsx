@@ -14,12 +14,12 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
   const isDisabled = wsStatus === 'disabled';
 
   return (
-    <header className="flex h-16 shrink-0 items-center border-b border-chamber-800 bg-chamber-950 px-4">
+    <header className="flex h-16 shrink-0 items-center border-b border-gray-200 dark:border-chamber-800 bg-white dark:bg-chamber-950 px-4">
       {/* Left: hamburger (mobile) + logo */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuToggle}
-          className="rounded-md p-1.5 text-chamber-400 hover:bg-chamber-800 hover:text-white lg:hidden"
+          className="rounded-md p-1.5 text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800 hover:text-gray-900 dark:hover:text-white lg:hidden"
           aria-label="Toggle menu"
         >
           <Menu className="h-5 w-5" />
@@ -32,11 +32,11 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
       {/* Center: search bar */}
       <div className="mx-auto hidden w-full max-w-md md:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-chamber-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-chamber-500" />
           <input
             type="search"
             placeholder="Search problems, offers, clients..."
-            className="w-full rounded-lg border border-chamber-700 bg-chamber-800 py-2 pl-10 pr-4 text-sm text-white placeholder:text-chamber-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
+            className="w-full rounded-lg border border-gray-300 dark:border-chamber-700 bg-white dark:bg-chamber-800 py-2 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-chamber-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400"
           />
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
       <div className="ml-auto flex items-center gap-1 sm:gap-2">
         {/* Mobile search icon */}
         <button
-          className="rounded-md p-2 text-chamber-400 hover:bg-chamber-800 hover:text-white md:hidden"
+          className="rounded-md p-2 text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800 hover:text-gray-900 dark:hover:text-white md:hidden"
           aria-label="Search"
         >
           <Search className="h-5 w-5" />
@@ -62,7 +62,7 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
         )}
 
         <button
-          className="relative rounded-md p-2 text-chamber-400 hover:bg-chamber-800 hover:text-white"
+          className="relative rounded-md p-2 text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800 hover:text-gray-900 dark:hover:text-white"
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4 sm:h-5 sm:w-5" />

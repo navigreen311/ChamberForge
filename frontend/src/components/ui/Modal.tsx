@@ -59,7 +59,7 @@ export default function Modal({
       {/* Panel — full screen on mobile, centered modal on sm+ */}
       <div
         className={clsx(
-          'relative w-full bg-chamber-900 shadow-2xl',
+          'relative w-full bg-white dark:bg-chamber-900 shadow-2xl',
           'h-[95vh] rounded-t-2xl sm:h-auto sm:rounded-xl',
           sizeStyles[size],
           'sm:mx-4 sm:max-h-[90vh] overflow-y-auto',
@@ -68,11 +68,11 @@ export default function Modal({
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between border-b border-chamber-800 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+          <div className="flex items-center justify-between border-b border-gray-200 dark:border-chamber-800 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
             <button
               onClick={onClose}
-              className="rounded-md p-1 text-chamber-400 hover:bg-chamber-800 hover:text-white"
+              className="rounded-md p-1 text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800 hover:text-gray-900 dark:hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>

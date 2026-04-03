@@ -26,6 +26,18 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const token = params.token as string;
   const [branding, setBranding] = useState<PortalBranding>(DEFAULT_BRANDING);
 
+  // Portal always uses light theme for clients
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    return () => {
+      // Restore dark class on unmount if user had it set
+      const saved = localStorage.getItem('theme');
+      if (!saved || saved === 'dark') {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, []);
+
   useEffect(() => {
     async function fetchBranding() {
       try {

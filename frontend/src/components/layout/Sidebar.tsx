@@ -167,7 +167,7 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
       )}
       <aside
         className={clsx(
-          'flex h-screen flex-col border-r border-chamber-800 bg-chamber-950 transition-all duration-200',
+          'flex h-screen flex-col border-r border-gray-200 dark:border-chamber-800 bg-white dark:bg-chamber-950 transition-all duration-200',
           collapsed ? 'w-16' : 'w-[260px]',
           // Mobile: fixed overlay
           'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-[280px]',
@@ -176,7 +176,7 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
         )}
       >
         {/* Logo area */}
-        <div className="flex h-16 items-center justify-between border-b border-chamber-800 px-4">
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 dark:border-chamber-800 px-4">
           <div>
             {!collapsed && (
               <span className="font-display text-lg font-bold text-gold-400">
@@ -192,7 +192,7 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
           {/* Close button on mobile */}
           <button
             onClick={onMobileClose}
-            className="rounded-md p-1.5 text-chamber-400 hover:bg-chamber-800 hover:text-white md:hidden"
+            className="rounded-md p-1.5 text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800 hover:text-gray-900 dark:hover:text-white md:hidden"
             aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
@@ -217,8 +217,8 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
                     className={clsx(
                       'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                       active
-                        ? 'border-l-2 border-gold-400 bg-chamber-900 text-white'
-                        : 'text-chamber-300 hover:bg-chamber-900 hover:text-white',
+                        ? 'border-l-2 border-gold-400 bg-gray-100 dark:bg-chamber-900 text-gray-900 dark:text-white'
+                        : 'text-gray-600 dark:text-chamber-300 hover:bg-gray-100 dark:hover:bg-chamber-900 hover:text-gray-900 dark:hover:text-white',
                     )}
                     title={collapsed ? item.label : undefined}
                   >
@@ -227,9 +227,9 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
                       <>
                         <span className="flex-1 text-left">{item.label}</span>
                         {isOpen ? (
-                          <ChevronDown className="h-4 w-4 text-chamber-500" />
+                          <ChevronDown className="h-4 w-4 text-gray-400 dark:text-chamber-500" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-chamber-500" />
+                          <ChevronRight className="h-4 w-4 text-gray-400 dark:text-chamber-500" />
                         )}
                       </>
                     )}
@@ -240,8 +240,8 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
                     className={clsx(
                       'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                       active
-                        ? 'border-l-2 border-gold-400 bg-chamber-900 text-white'
-                        : 'text-chamber-300 hover:bg-chamber-900 hover:text-white',
+                        ? 'border-l-2 border-gold-400 bg-gray-100 dark:bg-chamber-900 text-gray-900 dark:text-white'
+                        : 'text-gray-600 dark:text-chamber-300 hover:bg-gray-100 dark:hover:bg-chamber-900 hover:text-gray-900 dark:hover:text-white',
                     )}
                     title={collapsed ? item.label : undefined}
                   >
@@ -262,8 +262,8 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
                             className={clsx(
                               'block rounded-md px-3 py-1.5 text-sm transition-colors',
                               childActive
-                                ? 'border-l-2 border-gold-400 bg-chamber-800/60 text-gold-400'
-                                : 'text-chamber-400 hover:bg-chamber-800/40 hover:text-white',
+                                ? 'border-l-2 border-gold-400 bg-gray-100 dark:bg-chamber-800/60 text-gold-500 dark:text-gold-400'
+                                : 'text-gray-500 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-800/40 hover:text-gray-900 dark:hover:text-white',
                             )}
                           >
                             {child.label}
@@ -280,10 +280,10 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOp
       </nav>
 
       {/* Collapse toggle — hidden on mobile */}
-      <div className="hidden border-t border-chamber-800 p-2 md:block">
+      <div className="hidden border-t border-gray-200 dark:border-chamber-800 p-2 md:block">
         <button
           onClick={onToggle}
-          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-chamber-400 hover:bg-chamber-900 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 dark:text-chamber-400 hover:bg-gray-100 dark:hover:bg-chamber-900 hover:text-gray-900 dark:hover:text-white"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? (
