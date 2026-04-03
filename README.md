@@ -1,3 +1,5 @@
+![Build](https://github.com/navigreen311/ChamberForge/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/badge/license-proprietary-red) ![Version](https://img.shields.io/badge/version-1.0.0-blue)
+
 # ChamberForge
 
 The world's first complete premium-service operating system for entrepreneurs and boutique firms serving HNW/UHNW individuals and families. ChamberForge combines 112 purpose-built modules, 10 AI agents, and 10 vertical playbooks into a single platform that takes a premium service firm from problem discovery through client delivery and retention. Three integrated platforms -- ChamberForge Core, VoiceForge, and VisionAudioForge -- provide full-stack coverage across text, voice, and visual channels.
@@ -24,7 +26,7 @@ graph TB
     end
 
     subgraph Application Layer
-        ROUTERS[33 API Routers]
+        ROUTERS[34 API Routers]
         AGENTS[10 AI Agents]
         SERVICES[60+ Backbone Services]
     end
@@ -70,6 +72,14 @@ docker compose up -d
 cp .env.example .env
 # Fill in: DATABASE_URL, REDIS_URL, JWT_SECRET, ANTHROPIC_API_KEY, STRIPE_SECRET_KEY, RESEND_API_KEY
 ```
+
+### One Command Start
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+This starts all infrastructure services, the backend API, and the frontend dev server in a single command.
 
 ### Backend (FastAPI)
 
@@ -122,9 +132,9 @@ ChamberForge/
 │       └── types/               # TypeScript type definitions
 ├── backend/                     # FastAPI (Python)
 │   └── app/
-│       ├── api/v1/              # 33 REST routers (200+ endpoints)
+│       ├── api/v1/              # 34 REST routers (200+ endpoints)
 │       ├── core/                # Config, security, encryption, dependencies
-│       ├── models/              # SQLAlchemy models (29 tables)
+│       ├── models/              # SQLAlchemy models (31 tables)
 │       ├── schemas/             # Pydantic request/response schemas
 │       ├── services/
 │       │   ├── agents/          # 10 AI agents (Claude-powered)
@@ -152,7 +162,7 @@ ChamberForge/
 |-----------|-----------|---------|
 | Frontend | Next.js 14 + TypeScript + Tailwind CSS | App Router SPA with SSR |
 | Backend | FastAPI (Python) | Async REST API |
-| Database | PostgreSQL 16 | Primary data store (29 tables) |
+| Database | PostgreSQL 16 | Primary data store (31 tables) |
 | Cache / Queue | Redis 7 | Caching, rate limiting, Celery broker |
 | Search | Elasticsearch 8.17 | Full-text search across entities |
 | AI Engine | Anthropic Claude API | 10 specialized AI agents |
@@ -278,8 +288,9 @@ See `docs/deploy.md` for full production deployment guide.
 | [Architecture](docs/architecture.md) | System architecture, data flows, integration diagrams |
 | [Security](docs/security.md) | Auth, encryption, RBAC, audit trail, GDPR compliance |
 | [SOC 2 Checklist](docs/soc2-checklist.md) | SOC 2 Type II readiness (87% complete) |
+| [Release Notes v1.0](docs/release-notes-v1.0.md) | Production release summary |
 | [Release Notes v0.4](docs/release-notes-v0.4.md) | Round 4 release summary |
-| [API Reference](docs/api-reference.md) | 33 routers, 200+ endpoints with examples |
+| [API Reference](docs/api-reference.md) | 34 routers, 200+ endpoints with examples |
 | [Local Setup](docs/local-setup.md) | Development environment setup |
 | [Deployment](docs/deploy.md) | Production deployment guide |
 
@@ -294,6 +305,12 @@ See `docs/deploy.md` for full production deployment guide.
 5. Submit a pull request with a clear description
 
 See `CLAUDE.md` for AI-assisted development governance and quality gates.
+
+---
+
+## Built With
+
+ChamberForge was built across **5 build rounds** using **90+ parallel AI agents** powered by [Claude Code](https://claude.ai). Each round deployed 10-18 simultaneous agents working on isolated git worktrees, with automated testing gates ensuring quality at every merge. The entire platform -- 80,000+ lines of production code, 1,200+ tests, 112 modules, and 34 API routers -- was architected, implemented, and integrated through AI-assisted development.
 
 ---
 
