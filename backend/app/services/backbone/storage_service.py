@@ -3,9 +3,12 @@ from __future__ import annotations
 
 import io
 import logging
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import unquote
 
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
@@ -91,6 +94,27 @@ class StorageService:
     # Public API
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def sanitize_filename(file_name: str) -> str:
+        """Sanitize a filename to prevent path traversal and other attacks.
+
+        - URL-decodes the name
+        - Strips directory components (keeps only the basename)
+        - Removes path traversal sequences (../ ..\\ etc.)
+        - Falls back to 'untitled' if the result is empty
+        """
+        # URL-decode first (handles %2F etc.)
+        name = unquote(file_name)
+        # Extract only the filename component (strip any directory parts)
+        name = os.path.basename(name)
+        # Remove any remaining traversal sequences
+        name = name.replace("..", "").replace("/", "").replace("\\", "")
+        # Remove null bytes
+        name = name.replace("\x00", "")
+        # Strip leading/trailing whitespace and dots
+        name = name.strip(". ")
+        return name or "untitled"
+
     def upload_file(
         self,
         workspace_id: str,
@@ -99,8 +123,9 @@ class StorageService:
         content_type: str,
     ) -> dict:
         """Upload bytes to S3, return {s3_key, url}."""
+        safe_name = self.sanitize_filename(file_name)
         unique_id = uuid.uuid4().hex[:12]
-        s3_key = f"{workspace_id}/{unique_id}/{file_name}"
+        s3_key = f"{workspace_id}/{unique_id}/{safe_name}"
 
         self.client.put_object(
             Bucket=self.bucket,

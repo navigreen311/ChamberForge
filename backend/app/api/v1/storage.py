@@ -43,16 +43,18 @@ async def upload_file(
     if len(file_bytes) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 50 MB limit")
 
+    safe_name = storage_service.sanitize_filename(file.filename or "untitled")
+
     result = storage_service.upload_file(
         workspace_id=workspace_id,
         file_bytes=file_bytes,
-        file_name=file.filename or "untitled",
+        file_name=safe_name,
         content_type=file.content_type or "application/octet-stream",
     )
 
     doc = Document(
         workspace_id=uuid.UUID(workspace_id),
-        file_name=file.filename or "untitled",
+        file_name=safe_name,
         file_type=file.content_type or "application/octet-stream",
         s3_key=result["s3_key"],
         size_bytes=len(file_bytes),
