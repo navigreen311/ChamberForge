@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.evidence import router as evidence_router
 from app.core.config import settings
 from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
@@ -31,6 +32,9 @@ app.include_router(users_router)
 app.include_router(workspaces_router)
 app.include_router(problems_router)
 app.include_router(discovery_router)
+
+
+app.include_router(evidence_router)
 
 
 @app.get("/api/health")

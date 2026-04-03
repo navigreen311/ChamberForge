@@ -1,31 +1,32 @@
-"""Evidence model."""
+"""Evidence model for the Evidence Graph."""
 import uuid
+from datetime import date, datetime
 
-import sqlalchemy as sa
-import sqlalchemy.dialects.postgresql as pg
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Date, DateTime, Float, Index, JSON, String, func
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.session import Base
 
 
 class Evidence(Base):
-    __tablename__ = "evidences"
+    __tablename__ = "evidence"
 
-    id = sa.Column(pg.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    problem_id = sa.Column(
-        pg.UUID(as_uuid=True), sa.ForeignKey("problems.id"), nullable=True
-    )
-    workspace_id = sa.Column(pg.UUID(as_uuid=True), nullable=False)
-    source_url = sa.Column(sa.String, nullable=True)
-    source_type = sa.Column(sa.String, nullable=True)
-    publication_date = sa.Column(sa.Date, nullable=True)
-    credibility_score = sa.Column(sa.Float, nullable=True)
-    extracted_claims = sa.Column(pg.JSON, default=list)
-    contradiction_flags = sa.Column(pg.JSON, default=list)
-    recency_decay_score = sa.Column(sa.Float, default=0)
-    created_at = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
-    updated_at = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    problem_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    source_url = Column(String, nullable=False, index=True)
+    source_type = Column(String, nullable=False)
+    publication_date = Column(Date, nullable=False)
+    credibility_score = Column(Float, nullable=False, default=5.0)
+    extracted_claims = Column(JSON, default=list)
+    contradiction_flags = Column(JSON, default=list)
+    recency_decay_score = Column(Float, default=0.0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_evidence_workspace_credibility", "workspace_id", "credibility_score"),
     )
 
-    problem = relationship("Problem", back_populates="evidences")
+    def __repr__(self) -> str:
+        return f"<Evidence {self.id} type={self.source_type} credibility={self.credibility_score}>"
