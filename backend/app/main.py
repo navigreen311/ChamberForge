@@ -25,16 +25,35 @@ from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
 
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimiterMiddleware, default_limit=100, window_seconds=60)
+app.add_middleware(
+    RateLimiterMiddleware,
+    default_limit=settings.RATE_LIMIT_DEFAULT,
+    window_seconds=60,
+    workspace_limit=settings.RATE_LIMIT_WORKSPACE,
+    endpoint_overrides={
+        "/api/v1/discover/scan": (settings.RATE_LIMIT_AI, 60),
+        "/api/v1/offers/generate": (settings.RATE_LIMIT_AI, 60),
+        "/api/v1/qualify/validate": (settings.RATE_LIMIT_AI, 60),
+        "/api/v1/exports": (settings.RATE_LIMIT_EXPORT, 60),
+        "/api/v1/auth": (settings.RATE_LIMIT_AUTH, 60),
+    },
+    jwt_secret=settings.JWT_SECRET,
+    jwt_algorithm=settings.JWT_ALGORITHM,
+)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(PerformanceMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=[
+        settings.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
 )
 
 # --- All 31 Routers ---

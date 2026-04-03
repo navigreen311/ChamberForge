@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     # Resend
     RESEND_API_KEY: str = ""
 
+    # Rate Limiting
+    RATE_LIMIT_DEFAULT: int = 100  # per minute per IP
+    RATE_LIMIT_WORKSPACE: int = 1000  # per minute per workspace
+    RATE_LIMIT_AI: int = 20  # per minute for AI endpoints
+    RATE_LIMIT_EXPORT: int = 10  # per minute for export endpoints
+    RATE_LIMIT_AUTH: int = 30  # per minute for auth endpoints
+
     # Pusher
     PUSHER_APP_ID: str = ""
     PUSHER_KEY: str = ""
