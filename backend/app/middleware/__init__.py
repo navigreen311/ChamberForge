@@ -1,1 +1,1 @@
-"""ChamberForge middleware."""
+"""Security middleware for ChamberForge."""
