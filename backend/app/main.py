@@ -21,6 +21,11 @@ app.add_middleware(
 )
 
 
+from app.api.v1.notifications import router as notifications_router
+
+app.include_router(notifications_router)
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "version": "0.1.0"}
