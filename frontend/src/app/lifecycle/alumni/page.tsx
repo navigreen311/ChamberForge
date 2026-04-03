@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import api from "@/lib/api";
 
 interface Alumni {
   client_id: string;
@@ -15,12 +14,13 @@ interface Alumni {
 export default function AlumniPage() {
   const [alumni, setAlumni] = useState<Alumni[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/lifecycle/alumni`)
-      .then((r) => r.json())
-      .then(setAlumni)
-      .catch(() => setAlumni([]))
+    api
+      .get("/api/v1/lifecycle/alumni")
+      .then((res) => setAlumni(res.data))
+      .catch((err) => setError(err?.response?.data?.detail || err?.message || "Failed to load alumni"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -34,6 +34,10 @@ export default function AlumniPage() {
     <main className="min-h-screen p-8 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold text-gold-400 mb-2">Alumni Network</h1>
       <p className="text-chamber-400 mb-8">Post-engagement relationships and referral candidates</p>
+
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400 mb-6">{error}</div>
+      )}
 
       {loading ? (
         <p className="text-chamber-400 animate-pulse">Loading alumni...</p>

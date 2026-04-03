@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import api from "@/lib/api";
 
 interface Module {
   title: string;
@@ -24,16 +23,21 @@ export default function TrainerPage() {
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`${API}/api/v1/lifecycle/trainer/curriculum/${selectedRole}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setCurriculum(data);
+    setError(null);
+    api
+      .get(`/api/v1/lifecycle/trainer/curriculum/${selectedRole}`)
+      .then((res) => {
+        setCurriculum(res.data);
         setCompleted(new Set());
       })
-      .catch(() => setCurriculum(null))
+      .catch((err) => {
+        setCurriculum(null);
+        setError(err?.response?.data?.detail || err?.message || "Failed to load curriculum");
+      })
       .finally(() => setLoading(false));
   }, [selectedRole]);
 
@@ -73,6 +77,8 @@ export default function TrainerPage() {
 
       {loading ? (
         <p className="text-chamber-400 animate-pulse">Loading curriculum...</p>
+      ) : error ? (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
       ) : curriculum ? (
         <>
           {/* Overall progress */}
@@ -113,7 +119,7 @@ export default function TrainerPage() {
                           done ? "border-green-400 bg-green-400 text-chamber-950" : "border-chamber-600"
                         }`}
                       >
-                        {done && "✓"}
+                        {done && "\u2713"}
                       </div>
                       <h3 className={`font-semibold ${done ? "text-green-400" : "text-white"}`}>
                         {mod.title}

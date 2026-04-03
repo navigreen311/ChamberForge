@@ -1,21 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const initialFlags = [
-  { key: "ai_scout_agent", name: "AI Scout Agent", description: "Automated market scanning and problem discovery", enabled: true, tier: "Pro" },
-  { key: "ai_analyst_agent", name: "AI Analyst Agent", description: "Evidence validation and scoring", enabled: true, tier: "Pro" },
-  { key: "ai_copywriter_agent", name: "AI Copywriter Agent", description: "Marketing copy and outreach generation", enabled: true, tier: "Pro" },
-  { key: "persona_simulator", name: "Persona Simulator", description: "AI-simulated buyer conversations for pitch practice", enabled: true, tier: "Enterprise" },
-  { key: "scenario_planner", name: "Scenario Planner", description: "Interactive business modeling with live projections", enabled: false, tier: "Enterprise" },
-  { key: "household_graph", name: "Household Graph", description: "Visual client relationship mapping", enabled: true, tier: "Pro" },
-  { key: "advanced_compliance", name: "Advanced Compliance Suite", description: "Multi-jurisdiction consent and AML screening", enabled: false, tier: "Enterprise" },
-  { key: "custom_playbooks", name: "Custom Playbooks", description: "Create and edit custom operational playbooks", enabled: true, tier: "Pro" },
-  { key: "api_access", name: "API Access", description: "REST API access for integrations", enabled: false, tier: "Enterprise" },
-  { key: "white_label", name: "White Label Mode", description: "Remove ChamberForge branding for client-facing views", enabled: false, tier: "Enterprise" },
-  { key: "multi_seat", name: "Multi-Seat Access", description: "Team collaboration with role-based permissions", enabled: true, tier: "Pro" },
-  { key: "export_reports", name: "Report Export", description: "Export intel briefs, health reports, and analytics as PDF", enabled: true, tier: "Starter" },
-];
+interface FeatureFlag {
+  name: string;
+  description: string;
+  enabled: boolean;
+  tier?: string;
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -23,15 +16,34 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function EntitlementsPage() {
   const [loading, setLoading] = useState(true);
-  const [flags, setFlags] = useState(initialFlags);
+  const [error, setError] = useState<string | null>(null);
+  const [flags, setFlags] = useState<FeatureFlag[]>([]);
+  const [toggleLoading, setToggleLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    async function fetchFlags() {
+      try {
+        const res = await api.get("/api/v1/admin/flags");
+        setFlags(res.data);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail || err?.message || "Failed to load feature flags");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFlags();
   }, []);
 
-  const toggleFlag = (key: string) => {
-    setFlags((prev) => prev.map((f) => f.key === key ? { ...f, enabled: !f.enabled } : f));
+  const toggleFlag = async (name: string, currentEnabled: boolean) => {
+    setToggleLoading(name);
+    try {
+      await api.put(`/api/v1/admin/flags/${name}`, { enabled: !currentEnabled });
+      setFlags((prev) => prev.map((f) => f.name === name ? { ...f, enabled: !currentEnabled } : f));
+    } catch (err: any) {
+      setError(`Failed to toggle ${name}: ${err?.response?.data?.detail || err?.message}`);
+    } finally {
+      setToggleLoading(null);
+    }
   };
 
   if (loading) {
@@ -50,6 +62,10 @@ export default function EntitlementsPage() {
       <h1 className="text-3xl font-display font-bold text-white mb-1">Feature Entitlements</h1>
       <p className="text-chamber-400 mb-8">Enable or disable platform features and manage tier access</p>
 
+      {error && (
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-4 text-red-400 mb-6">{error}</div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
@@ -67,26 +83,36 @@ export default function EntitlementsPage() {
       </div>
 
       {/* Feature Flags */}
-      <div className="space-y-3">
-        {flags.map((f) => (
-          <div key={f.key} className={`bg-chamber-900 rounded-xl p-5 border ${f.enabled ? "border-chamber-800" : "border-chamber-800 opacity-60"} flex items-center justify-between`}>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <h3 className="text-white font-semibold">{f.name}</h3>
-                <span className={`px-2 py-0.5 rounded text-xs ${
-                  f.tier === "Starter" ? "bg-chamber-700 text-chamber-300" :
-                  f.tier === "Pro" ? "bg-blue-400/20 text-blue-400" :
-                  "bg-gold-400/20 text-gold-400"
-                }`}>{f.tier}</span>
+      {flags.length === 0 ? (
+        <div className="bg-chamber-900 rounded-xl p-8 border border-chamber-800 text-center text-chamber-500">No feature flags found.</div>
+      ) : (
+        <div className="space-y-3">
+          {flags.map((f) => (
+            <div key={f.name} className={`bg-chamber-900 rounded-xl p-5 border ${f.enabled ? "border-chamber-800" : "border-chamber-800 opacity-60"} flex items-center justify-between`}>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-white font-semibold">{f.name}</h3>
+                  {f.tier && (
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      f.tier === "Starter" ? "bg-chamber-700 text-chamber-300" :
+                      f.tier === "Pro" ? "bg-blue-400/20 text-blue-400" :
+                      "bg-gold-400/20 text-gold-400"
+                    }`}>{f.tier}</span>
+                  )}
+                </div>
+                <p className="text-sm text-chamber-400">{f.description}</p>
               </div>
-              <p className="text-sm text-chamber-400">{f.description}</p>
+              <button
+                onClick={() => toggleFlag(f.name, f.enabled)}
+                disabled={toggleLoading === f.name}
+                className={`relative w-12 h-6 rounded-full transition ${f.enabled ? "bg-gold-400" : "bg-chamber-700"} ${toggleLoading === f.name ? "opacity-50" : ""}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${f.enabled ? "translate-x-6" : "translate-x-0.5"}`} />
+              </button>
             </div>
-            <button onClick={() => toggleFlag(f.key)} className={`relative w-12 h-6 rounded-full transition ${f.enabled ? "bg-gold-400" : "bg-chamber-700"}`}>
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${f.enabled ? "translate-x-6" : "translate-x-0.5"}`} />
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

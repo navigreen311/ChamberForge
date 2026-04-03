@@ -1,23 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const systemHealth = [
-  { service: "API Gateway", status: "healthy", uptime: "99.98%", latency: "42ms" },
-  { service: "Database Cluster", status: "healthy", uptime: "99.99%", latency: "8ms" },
-  { service: "AI Agent Runtime", status: "healthy", uptime: "99.95%", latency: "320ms" },
-  { service: "Background Jobs", status: "degraded", uptime: "99.80%", latency: "150ms" },
-  { service: "Search Index", status: "healthy", uptime: "99.97%", latency: "25ms" },
-  { service: "File Storage", status: "healthy", uptime: "100%", latency: "65ms" },
-];
-
-const recentJobs = [
-  { name: "Evidence Scan — Aviation Market", status: "completed", duration: "3m 42s", time: "8 min ago" },
-  { name: "Client Health Recalculation", status: "completed", duration: "1m 15s", time: "22 min ago" },
-  { name: "Consent Expiry Check", status: "completed", duration: "0m 28s", time: "1 hour ago" },
-  { name: "Revenue Projection Update", status: "running", duration: "2m 10s", time: "In progress" },
-  { name: "Compliance Audit Digest", status: "queued", duration: "—", time: "Scheduled 10:00 AM" },
-];
+interface ServiceStatus {
+  service: string;
+  status: string;
+  uptime?: string;
+  latency?: string;
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -25,10 +16,46 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [systemHealth, setSystemHealth] = useState<ServiceStatus[]>([]);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [jobs, setJobs] = useState<any>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    async function fetchData() {
+      try {
+        const [healthRes, metricsRes, jobsRes] = await Promise.allSettled([
+          api.get("/api/v1/health/ready"),
+          api.get("/api/v1/metrics"),
+          api.get("/api/v1/jobs/status"),
+        ]);
+
+        if (healthRes.status === "fulfilled") {
+          const h = healthRes.value.data;
+          const services: ServiceStatus[] = [];
+          if (h.checks) {
+            Object.entries(h.checks).forEach(([name, ok]) => {
+              services.push({ service: name, status: ok ? "healthy" : "down" });
+            });
+          }
+          services.push({ service: "API", status: h.status === "ready" ? "healthy" : "degraded" });
+          setSystemHealth(services);
+        }
+
+        if (metricsRes.status === "fulfilled") {
+          setMetrics(metricsRes.value.data);
+        }
+
+        if (jobsRes.status === "fulfilled") {
+          setJobs(jobsRes.value.data);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to load admin data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   if (loading) {
@@ -42,6 +69,21 @@ export default function AdminPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <h1 className="text-3xl font-display font-bold text-white mb-4">Admin Dashboard</h1>
+        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
+      </div>
+    );
+  }
+
+  const healthyCount = systemHealth.filter((s) => s.status === "healthy").length;
+  const totalServices = systemHealth.length;
+  const aiCost = metrics?.ai_cost_total != null ? `$${Number(metrics.ai_cost_total).toFixed(2)}` : "--";
+  const totalRequests = metrics?.requests_total?.toLocaleString() ?? "--";
+  const activeJobs = jobs?.active ? Object.values(jobs.active).flat().length : 0;
+
   return (
     <div className="min-h-screen bg-chamber-950 p-8">
       <h1 className="text-3xl font-display font-bold text-white mb-1">Admin Dashboard</h1>
@@ -50,10 +92,10 @@ export default function AdminPage() {
       {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          ["System Health", "5/6 Healthy", "text-green-400"],
-          ["Active Users", "12", "text-blue-400"],
-          ["AI Cost (MTD)", "$2,847", "text-gold-400"],
-          ["Jobs (24h)", "147 completed", "text-white"],
+          ["System Health", `${healthyCount}/${totalServices} Healthy`, healthyCount === totalServices ? "text-green-400" : "text-gold-400"],
+          ["Total Requests", totalRequests, "text-blue-400"],
+          ["AI Cost (Total)", aiCost, "text-gold-400"],
+          ["Active Jobs", activeJobs.toString(), "text-white"],
         ].map(([l, v, c]) => (
           <div key={String(l)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
             <p className="text-chamber-400 text-sm">{String(l)}</p>
@@ -70,36 +112,36 @@ export default function AdminPage() {
             {systemHealth.map((s) => (
               <div key={s.service} className="flex items-center justify-between p-3 bg-chamber-800/50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${s.status === "healthy" ? "bg-green-400" : "bg-gold-400 animate-pulse"}`} />
-                  <span className="text-white text-sm">{s.service}</span>
+                  <div className={`w-2.5 h-2.5 rounded-full ${s.status === "healthy" ? "bg-green-400" : s.status === "degraded" ? "bg-gold-400 animate-pulse" : "bg-red-400"}`} />
+                  <span className="text-white text-sm capitalize">{s.service}</span>
                 </div>
-                <div className="flex items-center gap-4 text-xs text-chamber-400">
-                  <span>{s.uptime}</span>
-                  <span>{s.latency}</span>
-                </div>
+                <span className={`text-xs ${s.status === "healthy" ? "text-green-400" : s.status === "degraded" ? "text-gold-400" : "text-red-400"}`}>{s.status}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Recent Jobs */}
+        {/* Metrics Summary */}
         <div className="bg-chamber-900 rounded-xl p-6 border border-chamber-800">
-          <h3 className="text-lg font-semibold text-white mb-4">Recent Jobs</h3>
-          <div className="space-y-3">
-            {recentJobs.map((j) => (
-              <div key={j.name} className="flex items-center justify-between p-3 bg-chamber-800/50 rounded-lg">
-                <div>
-                  <p className="text-white text-sm">{j.name}</p>
-                  <p className="text-xs text-chamber-500">{j.duration} &middot; {j.time}</p>
+          <h3 className="text-lg font-semibold text-white mb-4">Metrics Overview</h3>
+          {metrics ? (
+            <div className="space-y-3">
+              {[
+                ["Total Requests", metrics.requests_total?.toLocaleString() ?? "--"],
+                ["Avg Latency", metrics.avg_latency_ms != null ? `${metrics.avg_latency_ms} ms` : "--"],
+                ["Error Count", metrics.error_count?.toLocaleString() ?? "--"],
+                ["AI Calls", metrics.ai_calls_total?.toLocaleString() ?? "--"],
+                ["AI Cost", metrics.ai_cost_total != null ? `$${Number(metrics.ai_cost_total).toFixed(4)}` : "--"],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="flex items-center justify-between p-3 bg-chamber-800/50 rounded-lg">
+                  <span className="text-chamber-300 text-sm">{String(label)}</span>
+                  <span className="text-white font-medium text-sm">{String(value)}</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  j.status === "completed" ? "bg-green-400/20 text-green-400" :
-                  j.status === "running" ? "bg-blue-400/20 text-blue-400" :
-                  "bg-chamber-700 text-chamber-400"
-                }`}>{j.status}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-chamber-500 text-sm">Metrics unavailable.</p>
+          )}
         </div>
       </div>
 
@@ -110,6 +152,10 @@ export default function AdminPage() {
           ["Entitlements", "/admin/entitlements"],
           ["Rules Builder", "/admin/rules"],
           ["AI Runtime", "/admin/runtime"],
+          ["Monitoring", "/admin/monitoring"],
+          ["Background Jobs", "/admin/jobs"],
+          ["Email Dashboard", "/admin/email"],
+          ["Documents", "/admin/documents"],
         ].map(([name, href]) => (
           <a key={String(name)} href={String(href)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition text-center">
             <p className="text-white font-medium">{String(name)}</p>
