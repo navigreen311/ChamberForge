@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.api.v1.storage import router as storage_router
+from app.api.v1.exports import router as exports_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -19,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Routers
+app.include_router(storage_router)
+app.include_router(exports_router)
 
 
 @app.get("/api/health")
