@@ -40,6 +40,7 @@ from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E40
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
 from app.middleware.tenant import TenantMiddleware  # noqa: E402
+from app.middleware.datadog_metrics import DatadogMetricsMiddleware  # noqa: E402
 from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -113,7 +114,9 @@ from app.api.v1.workspace_settings import router as workspace_settings_router  #
 from app.api.v1.mfa import router as mfa_router  # noqa: E402
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router  # noqa: E402
 from app.api.v1.ontology import router as ontology_router  # noqa: E402
-from app.api.v1.community import router as community_router  # noqa: E402  # noqa: E402
+from app.api.v1.community import router as community_router  # noqa: E402
+from app.api.v1.onboarding import router as onboarding_router  # noqa: E402
+from app.api.v1.portal import router as portal_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -151,6 +154,8 @@ app.include_router(mfa_router)
 app.include_router(stripe_webhook_router)
 app.include_router(ontology_router)
 app.include_router(community_router)
+app.include_router(onboarding_router)
+app.include_router(portal_router)
 
 
 @app.on_event("startup")
