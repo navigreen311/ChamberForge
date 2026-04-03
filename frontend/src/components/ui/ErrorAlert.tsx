@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw, X } from 'lucide-react';
 
 interface ErrorAlertProps {
   message: string;
+  requestId?: string | null;
   onRetry?: () => void;
   onDismiss?: () => void;
   className?: string;
@@ -12,6 +13,7 @@ interface ErrorAlertProps {
 
 export default function ErrorAlert({
   message,
+  requestId,
   onRetry,
   onDismiss,
   className,
@@ -26,7 +28,10 @@ export default function ErrorAlert({
     >
       <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" />
 
-      <p className="flex-1 text-sm text-red-300">{message}</p>
+      <div className="flex-1">
+        <p className="text-sm text-red-300">{message}</p>
+        {requestId && <p className="text-xs mt-1 text-gray-400">Request ID: {requestId}</p>}
+      </div>
 
       <div className="flex items-center gap-1">
         {onRetry && (
