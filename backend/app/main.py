@@ -172,17 +172,11 @@ app.include_router(portal_router)
 
 @app.on_event("startup")
 async def startup():
-    try:
-        from app.core.search_init import init_search
-        await init_search()
-    except Exception as e:
-        logger.warning(f"Search init failed (non-fatal): {e}")
+    from app.core.env_validator import validate_environment
+    from app.core.search_init import init_search
 
-    try:
-        from app.core.datadog_config import init_datadog
-        init_datadog()
-    except Exception as e:
-        logger.warning(f"Datadog startup init failed (non-fatal): {e}")
+    validate_environment()
+    await init_search()
 
 
 @app.get("/api/health")
