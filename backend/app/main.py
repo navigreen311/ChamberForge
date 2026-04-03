@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.command import router as command_router
 from app.core.config import settings
-from app.api.v1.lifecycle import router as lifecycle_router
+from app.api.v1.search import router as search_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -37,6 +37,9 @@ app.include_router(voiceforge_router)
 from app.api.v1.visionaudio import router as visionaudio_router
 
 app.include_router(visionaudio_router)
+
+
+app.include_router(search_router)
 
 
 @app.get("/api/health")
