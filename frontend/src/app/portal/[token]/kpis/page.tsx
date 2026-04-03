@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const portalApi = (path: string) => fetch(`${API_BASE}${path}`);
 
 interface KPI {
   name: string;
@@ -39,7 +40,7 @@ export default function KPIsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/portal/${token}/kpis`)
+    portalApi(`/api/v1/portal/${token}/kpis`)
       .then((res) => res.json())
       .then((data) => setKpis(data.kpis))
       .catch(console.error)

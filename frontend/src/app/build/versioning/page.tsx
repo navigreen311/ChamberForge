@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import api from "@/lib/api";
 
 interface Version {
   id: string;
@@ -31,9 +30,8 @@ export default function VersioningPage() {
     if (!templateId) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/v1/polish/versions/${templateId}`);
-      const data = await res.json();
-      setVersions(data);
+      const res = await api.get(`/api/v1/polish/versions/${templateId}`);
+      setVersions(res.data);
     } catch (err) {
       console.error("Failed to fetch history:", err);
     } finally {
@@ -44,10 +42,7 @@ export default function VersioningPage() {
   async function rollback(version: number) {
     if (!confirm(`Rollback to version ${version}?`)) return;
     try {
-      await fetch(
-        `${API}/api/v1/polish/versions/${templateId}/rollback/${version}`,
-        { method: "POST" }
-      );
+      await api.post(`/api/v1/polish/versions/${templateId}/rollback/${version}`);
       fetchHistory();
     } catch (err) {
       console.error("Rollback failed:", err);
@@ -56,15 +51,11 @@ export default function VersioningPage() {
 
   async function compareDiff() {
     try {
-      const res = await fetch(`${API}/api/v1/polish/versions/diff`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          v1_content: JSON.parse(diffV1),
-          v2_content: JSON.parse(diffV2),
-        }),
+      const res = await api.post(`/api/v1/polish/versions/diff`, {
+        v1_content: JSON.parse(diffV1),
+        v2_content: JSON.parse(diffV2),
       });
-      setDiff(await res.json());
+      setDiff(res.data);
     } catch (err) {
       console.error("Diff failed:", err);
     }

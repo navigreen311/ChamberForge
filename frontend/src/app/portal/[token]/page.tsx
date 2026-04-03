@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const portalApi = (path: string) => fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${path}`);
 
 interface PortalData {
   client_id: string;
@@ -25,9 +25,9 @@ export default function PortalLandingPage() {
     async function loadPortal() {
       try {
         const [delRes, kpiRes, repRes] = await Promise.all([
-          fetch(`${API_BASE}/api/v1/portal/${token}/deliverables`),
-          fetch(`${API_BASE}/api/v1/portal/${token}/kpis`),
-          fetch(`${API_BASE}/api/v1/portal/${token}/reports`),
+          portalApi(`/api/v1/portal/${token}/deliverables`),
+          portalApi(`/api/v1/portal/${token}/kpis`),
+          portalApi(`/api/v1/portal/${token}/reports`),
         ]);
 
         if (!delRes.ok) {
