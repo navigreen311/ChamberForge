@@ -2,12 +2,17 @@
 
 import { Menu, Search, Bell } from 'lucide-react';
 import UserMenu from './UserMenu';
+import { useConnectionStatus } from '@/hooks/useRealtime';
 
 interface TopBarProps {
   onMenuToggle?: () => void;
 }
 
 export default function TopBar({ onMenuToggle }: TopBarProps) {
+  const wsStatus = useConnectionStatus();
+  const isConnected = wsStatus === 'connected';
+  const isDisabled = wsStatus === 'disabled';
+
   return (
     <header className="flex h-16 shrink-0 items-center border-b border-chamber-800 bg-chamber-950 px-4">
       {/* Left: hamburger (mobile) + logo */}
@@ -36,8 +41,18 @@ export default function TopBar({ onMenuToggle }: TopBarProps) {
         </div>
       </div>
 
-      {/* Right: notifications + user menu */}
+      {/* Right: connection dot + notifications + user menu */}
       <div className="ml-auto flex items-center gap-2">
+        {/* WebSocket connection status indicator */}
+        {!isDisabled && (
+          <span
+            className={`h-2 w-2 rounded-full ${
+              isConnected ? 'bg-green-400' : 'bg-red-400'
+            }`}
+            title={`WebSocket: ${wsStatus}`}
+          />
+        )}
+
         <button
           className="relative rounded-md p-2 text-chamber-400 hover:bg-chamber-800 hover:text-white"
           aria-label="Notifications"

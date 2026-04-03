@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import EscalationTree from "@/components/modules/EscalationTree";
+import { useCrisisChannel, useEvent } from "@/hooks/useRealtime";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -44,6 +45,43 @@ export default function CrisisPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selected, setSelected] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lockdownBanner, setLockdownBanner] = useState<string | null>(null);
+
+  /* ---- Realtime: crisis channel ---- */
+  const crisisChannel = useCrisisChannel(workspaceId || null);
+
+  useEvent<Incident>(crisisChannel, "new-incident", (data) => {
+    setIncidents((prev) => [data, ...prev]);
+  });
+
+  useEvent<{ id: string; timeline_event: Incident["timeline"][0] }>(
+    crisisChannel,
+    "incident-update",
+    (data) => {
+      // Update timeline of matching incident in list
+      setIncidents((prev) =>
+        prev.map((inc) =>
+          inc.id === data.id
+            ? { ...inc, timeline: [...inc.timeline, data.timeline_event] }
+            : inc
+        )
+      );
+      // Also update selected detail if it matches
+      if (selected?.id === data.id) {
+        setSelected((prev) =>
+          prev
+            ? { ...prev, timeline: [...prev.timeline, data.timeline_event] }
+            : prev
+        );
+      }
+    }
+  );
+
+  useEvent<{ message: string }>(crisisChannel, "lockdown", (data) => {
+    setLockdownBanner(data.message || "LOCKDOWN ACTIVATED");
+    // Auto-dismiss after 30 seconds
+    setTimeout(() => setLockdownBanner(null), 30_000);
+  });
 
   // Lockdown form
   const [lockdownActions, setLockdownActions] = useState("");
@@ -124,6 +162,24 @@ export default function CrisisPage() {
       <h1 className="text-3xl font-bold text-white mb-8">
         Crisis Mode Console
       </h1>
+
+      {/* Lockdown alert banner (realtime) */}
+      {lockdownBanner && (
+        <div className="mb-6 flex items-center justify-between rounded-lg border-2 border-red-500 bg-red-950/60 px-6 py-4 animate-pulse">
+          <div className="flex items-center gap-3">
+            <span className="text-red-400 text-2xl font-bold">&#9888;</span>
+            <span className="text-red-300 font-semibold text-lg">
+              {lockdownBanner}
+            </span>
+          </div>
+          <button
+            onClick={() => setLockdownBanner(null)}
+            className="text-red-400 hover:text-white text-sm"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Workspace input */}
       <div className="flex gap-4 mb-8">

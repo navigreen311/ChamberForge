@@ -1,10 +1,11 @@
 /**
- * Hook for fetching and managing notifications via the API.
+ * Hook for notifications — fetches from API on mount, then stays live via Pusher.
  */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
+import { useUserEvents, useEvent } from "@/hooks/useRealtime";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -36,6 +37,8 @@ export function useNotifications({
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  /* ---------- API fetchers ---------- */
+
   const fetchNotifications = useCallback(async () => {
     try {
       const params: Record<string, string> = {
@@ -66,24 +69,23 @@ export function useNotifications({
     }
   }, [userId]);
 
-  const markRead = useCallback(
-    async (notificationId: string) => {
-      try {
-        await axios.put(
-          `${API_BASE}/api/v1/notifications/${notificationId}/read`
-        );
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n.id === notificationId ? { ...n, is_read: true } : n
-          )
-        );
-        setUnreadCount((c) => Math.max(0, c - 1));
-      } catch (err) {
-        console.error("Failed to mark notification as read:", err);
-      }
-    },
-    []
-  );
+  /* ---------- Mutations ---------- */
+
+  const markRead = useCallback(async (notificationId: string) => {
+    try {
+      await axios.put(
+        `${API_BASE}/api/v1/notifications/${notificationId}/read`
+      );
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  }, []);
 
   const markAllRead = useCallback(async () => {
     try {
@@ -97,10 +99,38 @@ export function useNotifications({
     }
   }, [userId]);
 
+  /* ---------- Initial fetch ---------- */
+
   useEffect(() => {
     fetchNotifications();
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
+
+  /* ---------- Realtime: subscribe to user channel ---------- */
+
+  const userChannel = useUserEvents(userId || null);
+
+  // new-notification event — prepend to list, bump unread count
+  useEvent<Notification>(userChannel, "new-notification", (data) => {
+    setNotifications((prev) => [data, ...prev].slice(0, limit));
+    if (!data.is_read) {
+      setUnreadCount((c) => c + 1);
+    }
+  });
+
+  // notification-read event — mark single notification as read
+  useEvent<{ id: string }>(userChannel, "notification-read", (data) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === data.id ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+  });
+
+  /* ---------- Public incrementUnread for external callers ---------- */
+
+  const incrementUnread = useCallback(() => {
+    setUnreadCount((c) => c + 1);
+  }, []);
 
   return {
     notifications,
@@ -108,6 +138,7 @@ export function useNotifications({
     loading,
     markRead,
     markAllRead,
+    incrementUnread,
     refresh: () => {
       fetchNotifications();
       fetchUnreadCount();

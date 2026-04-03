@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useWorkspaceEvents, useEvent } from "@/hooks/useRealtime";
+
+const WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID || null;
 
 const metrics = [
   { label: "Active Problems", value: "47", change: "+12%", up: true },
@@ -32,11 +35,34 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [liveMetrics, setLiveMetrics] = useState(metrics);
+  const [liveAgents, setLiveAgents] = useState(agents);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
   }, []);
+
+  /* ---- Realtime: workspace events ---- */
+  const wsChannel = useWorkspaceEvents(WORKSPACE_ID);
+
+  useEvent<typeof metrics>(wsChannel, "dashboard-update", (data) => {
+    if (Array.isArray(data)) {
+      setLiveMetrics(data);
+    }
+  });
+
+  useEvent<{ name: string; status: string; task: string }>(
+    wsChannel,
+    "agent-status-change",
+    (data) => {
+      setLiveAgents((prev) =>
+        prev.map((a) =>
+          a.name === data.name ? { ...a, status: data.status, task: data.task } : a
+        )
+      );
+    }
+  );
 
   if (loading) {
     return (
@@ -74,7 +100,7 @@ export default function DashboardPage() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {metrics.map((m) => (
+        {liveMetrics.map((m) => (
           <div key={m.label} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
             <p className="text-chamber-400 text-sm mb-1">{m.label}</p>
             <div className="flex items-end gap-2">
@@ -90,7 +116,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <h3 className="text-lg font-semibold text-white mb-4">AI Agent Status</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {agents.map((a) => (
+            {liveAgents.map((a) => (
               <div key={a.name} className="bg-chamber-900 rounded-lg p-4 border border-chamber-800 flex items-start gap-3">
                 <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${a.status === "active" ? "bg-green-400 animate-pulse" : "bg-chamber-500"}`} />
                 <div>
