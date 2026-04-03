@@ -2,6 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from starlette.middleware.gzip import GZipMiddleware
+
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.core.sentry_config import init_sentry
@@ -92,6 +94,7 @@ from app.api.v1.metrics import router as metrics_router  # noqa: E402
 from app.api.v1.security import router as security_router  # noqa: E402
 from app.api.v1.profile import router as profile_router  # noqa: E402
 from app.api.v1.workspace_settings import router as workspace_settings_router  # noqa: E402
+from app.api.v1.mfa import router as mfa_router  # noqa: E402
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router  # noqa: E402
 
 app.include_router(auth_router)
@@ -126,6 +129,7 @@ app.include_router(metrics_router)
 app.include_router(security_router)
 app.include_router(profile_router)
 app.include_router(workspace_settings_router)
+app.include_router(mfa_router)
 app.include_router(stripe_webhook_router)
 
 

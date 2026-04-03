@@ -23,3 +23,5 @@ pytest==8.4.0
 pytest-asyncio==1.0.0
 pytest-cov==6.1.1
 cryptography==44.0.2
+pyotp==2.9.0
+qrcode[pil]==8.0
