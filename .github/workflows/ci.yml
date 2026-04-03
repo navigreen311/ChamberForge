@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: postgresql://test:test@localhost:5432/test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Cache pip packages
@@ -68,7 +68,7 @@ jobs:
             curl -sf http://localhost:9201/_cluster/health > /dev/null && break
             sleep 3
           done
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Cache pip packages
