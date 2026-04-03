@@ -2,6 +2,27 @@
 
 All notable changes to ChamberForge will be documented in this file.
 
+## [0.4.0] - 2026-04-03 — Round 4: Production Hardening & Compliance
+
+### Added
+- MFA (TOTP) authentication with QR setup and backup codes
+- 3 missing modules: Wealth Event Monitor, Problem Ontology Engine, Community Intel Network
+- White-label Platform Admin OS with custom branding
+- PWA support: manifest, service worker, install prompt, offline page
+- Comprehensive security testing: SQL injection, XSS, auth bypass, CSRF, file upload
+- Datadog APM integration with custom dashboards and alert monitors
+- Standardized API error responses with custom exception classes
+- Keyboard shortcuts and theme persistence
+- CDN configuration with CloudFront and domain setup
+- Business Continuity Plan, Disaster Recovery, Incident Response Plan
+- API versioning with consolidated v1 router
+- Automated database backup cron with S3 storage
+- Docker test environment with real Postgres/Redis/ES
+- 120+ new frontend tests, 7 E2E flow tests
+- Contributing guidelines, CODE_OF_CONDUCT, LICENSE, SECURITY policy
+
+---
+
 ## [0.3.0] - 2026-04-03 — Round 3: Documentation, Security Hardening & Polish
 
 ### Added
