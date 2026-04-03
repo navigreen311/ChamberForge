@@ -24,4 +24,8 @@ BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=0),
         "args": ("all",),
     },
+    "retention_cleanup": {
+        "task": "app.jobs.tasks.retention_tasks.run_retention_cleanup",
+        "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),
+    },
 }

@@ -68,6 +68,13 @@ class ReleaseLegalHoldRequest(BaseModel):
     released_by: str
 
 
+class CreateRetentionPolicyRequest(BaseModel):
+    workspace_id: str
+    document_class: str
+    retention_days: int
+    auto_delete: bool = False
+
+
 class CreateSandboxRequest(BaseModel):
     workspace_id: str
     name: str
@@ -189,6 +196,98 @@ def release_legal_hold(req: ReleaseLegalHoldRequest, db: Session = Depends(get_d
         return hold
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+# ── Records Retention Enforcement ───────────────────────────────────────
+
+
+@router.post("/records/policies")
+def create_retention_policy(
+    req: CreateRetentionPolicyRequest, db: Session = Depends(get_db)
+):
+    """Create or update a retention policy for a document class."""
+    from app.models.retention_policy import RetentionPolicy
+    from app.services.backbone.records_governance import VALID_DOCUMENT_CLASSES
+
+    if req.document_class not in VALID_DOCUMENT_CLASSES:
+        raise HTTPException(
+            400,
+            f"Invalid document_class. Must be one of: {sorted(VALID_DOCUMENT_CLASSES)}",
+        )
+
+    # Upsert: replace existing policy for same workspace + class
+    existing = (
+        db.query(RetentionPolicy)
+        .filter(
+            RetentionPolicy.workspace_id == req.workspace_id,
+            RetentionPolicy.document_class == req.document_class,
+        )
+        .first()
+    )
+    if existing:
+        existing.retention_days = req.retention_days
+        existing.auto_delete = req.auto_delete
+        db.commit()
+        db.refresh(existing)
+        policy = existing
+    else:
+        policy = RetentionPolicy(
+            workspace_id=req.workspace_id,
+            document_class=req.document_class,
+            retention_days=req.retention_days,
+            auto_delete=req.auto_delete,
+        )
+        db.add(policy)
+        db.commit()
+        db.refresh(policy)
+
+    return {
+        "id": str(policy.id),
+        "workspace_id": str(policy.workspace_id),
+        "document_class": policy.document_class,
+        "retention_days": policy.retention_days,
+        "auto_delete": policy.auto_delete,
+    }
+
+
+@router.get("/records/policies")
+def list_retention_policies(workspace_id: str, db: Session = Depends(get_db)):
+    """List all retention policies for a workspace."""
+    from app.models.retention_policy import RetentionPolicy
+
+    policies = (
+        db.query(RetentionPolicy)
+        .filter(RetentionPolicy.workspace_id == workspace_id)
+        .all()
+    )
+    return [
+        {
+            "id": str(p.id),
+            "workspace_id": str(p.workspace_id),
+            "document_class": p.document_class,
+            "retention_days": p.retention_days,
+            "auto_delete": p.auto_delete,
+        }
+        for p in policies
+    ]
+
+
+@router.get("/records/expired")
+def preview_expired_records(workspace_id: str, db: Session = Depends(get_db)):
+    """Preview expired records (dry run — no deletion)."""
+    return RecordsGovernance.get_expired_records(db, workspace_id)
+
+
+@router.post("/records/cleanup")
+def manual_retention_cleanup(workspace_id: str, db: Session = Depends(get_db)):
+    """Manually trigger retention cleanup for a workspace."""
+    return RecordsGovernance.execute_retention(db, workspace_id)
+
+
+@router.get("/records/report")
+def retention_report(workspace_id: str, db: Session = Depends(get_db)):
+    """Get a retention report for a workspace."""
+    return RecordsGovernance.get_retention_report(db, workspace_id)
 
 
 # ── Sandbox ──────────────────────────────────────────────────────────────────
