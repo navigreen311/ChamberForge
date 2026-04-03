@@ -1,0 +1,86 @@
+name: AI Feature Branch CI
+
+on:
+  push:
+    branches:
+      - "ai-feature/**"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: cd backend && pip install -r requirements.txt
+      - name: Run linter
+        run: cd backend && pip install ruff && ruff check .
+      - name: Run tests
+        id: tests
+        run: |
+          cd backend
+          python -m pytest tests/ -v --tb=short --junitxml=test-results.xml 2>&1 | tee test-output.txt
+      - name: Post test results summary
+        if: always()
+        run: |
+          echo "## Backend Test Results" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -20 backend/test-output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/test-results.xml
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: cd frontend && npm ci
+      - name: Lint
+        run: cd frontend && npx next lint
+      - name: Build
+        id: build
+        run: cd frontend && npm run build
+      - name: Post build summary
+        if: always()
+        run: |
+          echo "## Frontend Build" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.build.outcome }}" = "success" ]; then
+            echo "Build succeeded" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Build FAILED" >> "$GITHUB_STEP_SUMMARY"
+          fi
