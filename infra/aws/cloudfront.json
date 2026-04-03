@@ -1,0 +1,120 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "CloudFront distribution for ChamberForge static assets",
+  "Parameters": {
+    "S3BucketName": {
+      "Type": "String",
+      "Default": "chamberforge-static-assets",
+      "Description": "S3 bucket for static asset origin"
+    },
+    "AcmCertificateArn": {
+      "Type": "String",
+      "Default": "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERTIFICATE_ID",
+      "Description": "ACM certificate ARN for custom domain (must be in us-east-1)"
+    },
+    "CustomDomainName": {
+      "Type": "String",
+      "Default": "cdn.chamberforge.com",
+      "Description": "Custom domain for CloudFront distribution"
+    }
+  },
+  "Resources": {
+    "OriginAccessIdentity": {
+      "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+      "Properties": {
+        "CloudFrontOriginAccessIdentityConfig": {
+          "Comment": "OAI for ChamberForge static assets bucket"
+        }
+      }
+    },
+    "CloudFrontDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Enabled": true,
+          "Comment": "ChamberForge CDN — static assets and Next.js bundles",
+          "Aliases": [
+            { "Ref": "CustomDomainName" }
+          ],
+          "DefaultRootObject": "index.html",
+          "HttpVersion": "http2and3",
+          "PriceClass": "PriceClass_100",
+          "ViewerCertificate": {
+            "AcmCertificateArn": { "Ref": "AcmCertificateArn" },
+            "SslSupportMethod": "sni-only",
+            "MinimumProtocolVersion": "TLSv1.2_2021"
+          },
+          "Origins": [
+            {
+              "Id": "S3StaticOrigin",
+              "DomainName": {
+                "Fn::Sub": "${S3BucketName}.s3.amazonaws.com"
+              },
+              "S3OriginConfig": {
+                "OriginAccessIdentity": {
+                  "Fn::Sub": "origin-access-identity/cloudfront/${OriginAccessIdentity}"
+                }
+              }
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "TargetOriginId": "S3StaticOrigin",
+            "ViewerProtocolPolicy": "redirect-to-https",
+            "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+            "CachedMethods": ["GET", "HEAD"],
+            "Compress": true,
+            "ForwardedValues": {
+              "QueryString": false,
+              "Cookies": { "Forward": "none" }
+            },
+            "DefaultTTL": 86400,
+            "MaxTTL": 31536000,
+            "MinTTL": 0
+          },
+          "CacheBehaviors": [
+            {
+              "PathPattern": "/static/*",
+              "TargetOriginId": "S3StaticOrigin",
+              "ViewerProtocolPolicy": "redirect-to-https",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "CachedMethods": ["GET", "HEAD"],
+              "Compress": true,
+              "ForwardedValues": {
+                "QueryString": false,
+                "Cookies": { "Forward": "none" }
+              },
+              "DefaultTTL": 2592000,
+              "MaxTTL": 31536000,
+              "MinTTL": 86400
+            },
+            {
+              "PathPattern": "/_next/*",
+              "TargetOriginId": "S3StaticOrigin",
+              "ViewerProtocolPolicy": "redirect-to-https",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "CachedMethods": ["GET", "HEAD"],
+              "Compress": true,
+              "ForwardedValues": {
+                "QueryString": false,
+                "Cookies": { "Forward": "none" }
+              },
+              "DefaultTTL": 2592000,
+              "MaxTTL": 31536000,
+              "MinTTL": 86400
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "DistributionId": {
+      "Value": { "Ref": "CloudFrontDistribution" },
+      "Description": "CloudFront distribution ID"
+    },
+    "DistributionDomainName": {
+      "Value": { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
+      "Description": "CloudFront distribution domain name"
+    }
+  }
+}

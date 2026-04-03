@@ -1,0 +1,50 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "ACM certificate request for *.chamberforge.com",
+  "Parameters": {
+    "DomainName": {
+      "Type": "String",
+      "Default": "chamberforge.com",
+      "Description": "Root domain name"
+    },
+    "HostedZoneId": {
+      "Type": "String",
+      "Description": "Route53 hosted zone ID for DNS validation"
+    }
+  },
+  "Resources": {
+    "WildcardCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": { "Ref": "DomainName" },
+        "SubjectAlternativeNames": [
+          { "Fn::Sub": "*.${DomainName}" }
+        ],
+        "ValidationMethod": "DNS",
+        "DomainValidationOptions": [
+          {
+            "DomainName": { "Ref": "DomainName" },
+            "HostedZoneId": { "Ref": "HostedZoneId" }
+          },
+          {
+            "DomainName": { "Fn::Sub": "*.${DomainName}" },
+            "HostedZoneId": { "Ref": "HostedZoneId" }
+          }
+        ],
+        "Tags": [
+          { "Key": "Project", "Value": "ChamberForge" },
+          { "Key": "Environment", "Value": "production" }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "CertificateArn": {
+      "Value": { "Ref": "WildcardCertificate" },
+      "Description": "ARN of the issued wildcard certificate",
+      "Export": {
+        "Name": "ChamberForge-ACM-CertificateArn"
+      }
+    }
+  }
+}
