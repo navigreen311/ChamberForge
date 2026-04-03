@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import api from "@/lib/api";
+import ExportButton from "@/components/modules/ExportButton";
 
 interface Offer {
   id: string;
@@ -116,7 +117,10 @@ export default function OfferDetailPage() {
             <button onClick={() => setEditing(false)} className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition">Cancel</button>
           </div>
         ) : (
-          <button onClick={() => setEditing(true)} className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition">Edit Offer</button>
+          <div className="flex gap-2">
+            <ExportButton entityType="offer" entityId={id} userId="current-user" data={offer as unknown as Record<string, unknown>} />
+            <button onClick={() => setEditing(true)} className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition">Edit Offer</button>
+          </div>
         )}
       </div>
 
