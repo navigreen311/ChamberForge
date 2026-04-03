@@ -93,5 +93,15 @@ class Problem(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
-    evidences = relationship("Evidence", back_populates="problem", lazy="select")
-    offers = relationship("Offer", back_populates="problem", lazy="select")
+    evidences = relationship(
+        "Evidence",
+        primaryjoin="foreign(Evidence.problem_id) == cast(Problem.id, UUID)",
+        lazy="select",
+        viewonly=True,
+    )
+    offers = relationship(
+        "Offer",
+        primaryjoin="foreign(Offer.problem_id) == cast(Problem.id, UUID)",
+        lazy="select",
+        viewonly=True,
+    )
