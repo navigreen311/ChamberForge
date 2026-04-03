@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { User, Settings, Moon, Sun, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function UserMenu() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -60,8 +62,8 @@ export default function UserMenu() {
           </div>
 
           <div className="py-1">
-            <MenuButton icon={User} label="Profile" onClick={() => setOpen(false)} />
-            <MenuButton icon={Settings} label="Workspace Settings" onClick={() => setOpen(false)} />
+            <MenuButton icon={User} label="Profile" onClick={() => { setOpen(false); router.push('/settings/profile'); }} />
+            <MenuButton icon={Settings} label="Settings" onClick={() => { setOpen(false); router.push('/settings'); }} />
             <MenuButton
               icon={darkMode ? Sun : Moon}
               label={darkMode ? 'Light Mode' : 'Dark Mode'}
