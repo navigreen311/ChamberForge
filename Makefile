@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help
+.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help security-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -54,6 +54,9 @@ restore: ## Restore database from backup (usage: make restore BACKUP=<file>)
 
 health-check: ## Check system health via API
 	@curl -sf http://localhost:8000/api/v1/metrics/detailed | python -m json.tool || echo "Health check failed - is the server running?"
+
+security-test: ## Run security test suite
+	cd backend && python -m pytest tests/security/ -v
 
 clean: ## Remove all generated files, containers, and volumes
 	docker compose down -v 2>/dev/null || true

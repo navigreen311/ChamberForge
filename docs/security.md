@@ -256,3 +256,54 @@ All HTTP responses include the following headers via `SecurityHeadersMiddleware`
 - **Structured logging**: JSON-formatted logs with request IDs for correlation.
 - **Health endpoints**: `/api/v1/health/ready` (readiness), `/api/v1/health/live` (liveness).
 - **Prometheus metrics**: `/api/v1/metrics` for scraping.
+
+---
+
+## 13. Security Testing
+
+### Automated Test Suite
+
+ChamberForge includes a comprehensive automated security test suite located in `backend/tests/security/`. The suite covers the following areas:
+
+| Test Module | Description | Tests |
+|---|---|---|
+| `test_sql_injection.py` | Verifies parameterized queries prevent SQL injection on all text-input endpoints (problems, evidence, search) using payloads like `' OR 1=1--`, `'; DROP TABLE users;--`, and `UNION SELECT` attacks | 8 |
+| `test_xss.py` | Verifies HTML/script input is not rendered in responses, checks Content-Type headers, and validates CSP headers prevent script execution | 6 |
+| `test_auth_bypass.py` | Tests access without token (401/403), expired tokens, malformed tokens, cross-workspace access isolation, and role escalation (operator/viewer accessing admin endpoints) | 10 |
+| `test_csrf.py` | Verifies CORS middleware rejects cross-origin state-changing requests from untrusted origins and that credentials are not combined with wildcard origins | 4 |
+| `test_sensitive_data.py` | Ensures passwords never appear in responses, API keys are not leaked, internal IDs/stack traces are hidden in errors, and /api/docs is disabled in production | 6 |
+| `test_file_upload_security.py` | Tests oversized file rejection (>50MB), dangerous extension blocking (.exe, .sh, .php), content-type validation, and path traversal prevention in filenames | 5 |
+| `test_security_headers.py` | Validates all 7 security headers (CSP, X-Frame-Options, HSTS, etc.) are present on every response | 2 |
+| `test_rate_limiting.py` | Verifies rate limiter enforces request limits per IP/endpoint | Existing |
+| `test_encryption.py` | Tests AES-256 field-level encryption for PII data | Existing |
+| `test_data_minimization.py` | Tests PII redaction in API responses based on user role | Existing |
+| `test_guardrails.py` | Tests AI guardrails enforcement | Existing |
+| `test_deletion.py` | Tests right-to-deletion workflow | Existing |
+
+### How to Run
+
+```bash
+# Run all security tests
+make security-test
+
+# Run with verbose output
+cd backend && python -m pytest tests/security/ -v --tb=short
+
+# Run a specific security test module
+cd backend && python -m pytest tests/security/test_auth_bypass.py -v
+
+# Full security scan (tests + dependency audit + secrets check)
+bash scripts/security-scan.sh
+```
+
+### What the Security Scan Covers
+
+The `scripts/security-scan.sh` script performs three checks:
+
+1. **Automated security tests** — Runs the full `tests/security/` pytest suite.
+2. **Dependency vulnerability audit** — Uses `pip-audit` to check for known CVEs in Python dependencies.
+3. **Hardcoded secrets scan** — Greps the codebase for common secret patterns (`sk_live_`, `AKIA`, hardcoded passwords).
+
+### CI Integration
+
+Security tests run as part of the standard test suite (`make test`). For dedicated security gates, use `make security-test` in your CI pipeline to fail the build on any security regression.
