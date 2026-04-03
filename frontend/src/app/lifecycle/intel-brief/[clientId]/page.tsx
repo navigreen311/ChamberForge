@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import api from "@/lib/api";
+import ExportButton from "@/components/modules/ExportButton";
 
 interface BriefSection {
   title: string;
@@ -85,6 +86,12 @@ export default function IntelBriefPage() {
             <span className={`text-3xl font-bold ${brief.healthScore >= 80 ? "text-green-400" : brief.healthScore >= 60 ? "text-gold-400" : "text-red-400"}`}>{brief.healthScore}</span>
             <p className="text-xs text-chamber-500">Health Score</p>
           </div>
+          <ExportButton
+            entityType="intel-brief"
+            entityId={clientId}
+            userId="current-user"
+            data={brief as unknown as Record<string, unknown>}
+          />
           <button
             onClick={generateBrief}
             disabled={loading}

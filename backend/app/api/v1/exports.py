@@ -1,12 +1,24 @@
-"""Export API — generate watermarked PDF exports."""
+"""Export API — generate watermarked PDF exports, upload to S3, return download URL."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from app.services.backbone.pdf_export import pdf_export_service
+from app.services.backbone.storage_service import storage_service
 
 router = APIRouter(prefix="/api/v1/exports", tags=["exports"])
+
+
+def _upload_pdf_to_s3(pdf_bytes: bytes, workspace_id: str, filename: str) -> str:
+    """Upload generated PDF to S3 and return the presigned download URL."""
+    result = storage_service.upload_file(
+        workspace_id=workspace_id,
+        file_bytes=pdf_bytes,
+        file_name=filename,
+        content_type="application/pdf",
+    )
+    return result["url"]
 
 
 @router.post("/offer/{offer_id}")
@@ -35,10 +47,16 @@ async def export_offer(
     }
 
     pdf_bytes = pdf_export_service.export_offer(offer_data, user_id)
+    filename = f"offer-{offer_id}.pdf"
+    download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="offer-{offer_id}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Download-URL": download_url,
+        },
     )
 
 
@@ -63,11 +81,15 @@ async def export_trust_pack(
     }
 
     pdf_bytes = pdf_export_service.export_trust_pack(trust_data, user_id)
+    filename = f"trust-pack-{trust_pack_id}.pdf"
+    download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="trust-pack-{trust_pack_id}.pdf"'
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Download-URL": download_url,
         },
     )
 
@@ -102,10 +124,14 @@ async def export_intel_brief(
     }
 
     pdf_bytes = pdf_export_service.export_intel_brief(brief_data, user_id)
+    filename = f"intel-brief-{brief_id}.pdf"
+    download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="intel-brief-{brief_id}.pdf"'
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Download-URL": download_url,
         },
     )

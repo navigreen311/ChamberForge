@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import api from "@/lib/api";
+import ExportButton from "@/components/modules/ExportButton";
 
 interface TrustPackData {
   credibility_sheet: {
@@ -85,6 +86,15 @@ export default function TrustPackPage() {
 
       {trustPack && (
         <div className="space-y-6 max-w-3xl">
+          <div className="flex justify-end">
+            <ExportButton
+              entityType="trust-pack"
+              entityId="current"
+              userId="current-user"
+              data={trustPack as unknown as Record<string, unknown>}
+            />
+          </div>
+
           {/* Credibility Sheet */}
           <div className="bg-chamber-900 border border-chamber-700 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gold-400 mb-4">Credibility Sheet</h2>
