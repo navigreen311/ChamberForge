@@ -1,6 +1,6 @@
 """SQLAlchemy models for ChamberForge."""
-from app.models.user import User
-from app.models.workspace import Workspace
+from app.models.user import User  # noqa: F401
+from app.models.workspace import Workspace  # noqa: F401
 from app.models.problem import Problem
 from app.models.evidence import Evidence
 from app.models.offer import Offer
