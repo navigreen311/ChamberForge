@@ -4,9 +4,8 @@ from datetime import datetime
 
 from sqlalchemy import Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
-from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from app.db.session import Base
 
 
 class EmailLog(Base):
