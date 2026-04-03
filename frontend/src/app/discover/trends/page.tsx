@@ -1,24 +1,32 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const lifecycleData = [
-  { stage: "Emerging", count: 12, color: "bg-green-400", pct: 28 },
-  { stage: "Growing", count: 18, color: "bg-gold-400", pct: 42 },
-  { stage: "Mature", count: 9, color: "bg-blue-400", pct: 21 },
-  { stage: "Declining", count: 4, color: "bg-red-400", pct: 9 },
-];
+interface LifecycleItem {
+  stage: string;
+  count: number;
+  color?: string;
+  pct: number;
+}
 
-const emergingOpportunities = [
-  { id: 1, name: "AI-Powered Estate Management", lifecycle: "Emerging", momentum: 94, signals: 8, category: "Technology", firstSeen: "2026-03-20" },
-  { id: 2, name: "Sustainable Yacht Services", lifecycle: "Emerging", momentum: 87, signals: 6, category: "Marine", firstSeen: "2026-03-15" },
-  { id: 3, name: "Digital Family Office Platform", lifecycle: "Growing", momentum: 82, signals: 12, category: "Finance", firstSeen: "2026-02-28" },
-  { id: 4, name: "Private Health Concierge", lifecycle: "Emerging", momentum: 79, signals: 5, category: "Healthcare", firstSeen: "2026-03-25" },
-  { id: 5, name: "Luxury EV Fleet Management", lifecycle: "Emerging", momentum: 76, signals: 4, category: "Automotive", firstSeen: "2026-03-28" },
-  { id: 6, name: "Art Advisory Tokenization", lifecycle: "Growing", momentum: 71, signals: 7, category: "Finance", firstSeen: "2026-03-01" },
-  { id: 7, name: "Estate Cybersecurity Services", lifecycle: "Growing", momentum: 68, signals: 9, category: "Technology", firstSeen: "2026-02-10" },
-  { id: 8, name: "Philanthropic Impact Measurement", lifecycle: "Emerging", momentum: 65, signals: 3, category: "Advisory", firstSeen: "2026-03-30" },
-];
+interface Opportunity {
+  id: number | string;
+  name: string;
+  lifecycle: string;
+  momentum: number;
+  signals: number;
+  category: string;
+  first_seen?: string;
+  firstSeen?: string;
+}
+
+const stageColors: Record<string, string> = {
+  Emerging: "bg-green-400",
+  Growing: "bg-gold-400",
+  Mature: "bg-blue-400",
+  Declining: "bg-red-400",
+};
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -26,11 +34,39 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function TrendRadarPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lifecycleData, setLifecycleData] = useState<LifecycleItem[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [lcRes, oppRes] = await Promise.all([
+          api.get("/api/v1/discovery/lifecycle-distribution"),
+          api.get("/api/v1/discovery/opportunities"),
+        ]);
+        const lcData = Array.isArray(lcRes.data) ? lcRes.data : lcRes.data.items ?? lcRes.data.distribution ?? [];
+        setLifecycleData(lcData.map((d: any) => ({
+          stage: d.stage ?? d.lifecycle ?? d.name,
+          count: d.count ?? d.total ?? 0,
+          pct: d.pct ?? d.percentage ?? d.percent ?? 0,
+        })));
+        const oppData = Array.isArray(oppRes.data) ? oppRes.data : oppRes.data.items ?? oppRes.data.opportunities ?? [];
+        setOpportunities(oppData);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? err.message ?? "Failed to load trends");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
+
+  const totalCount = lifecycleData.reduce((sum, d) => sum + d.count, 0);
+  const growthPct = lifecycleData
+    .filter((d) => d.stage === "Emerging" || d.stage === "Growing")
+    .reduce((sum, d) => sum + d.pct, 0);
 
   if (loading) {
     return (
@@ -41,6 +77,15 @@ export default function TrendRadarPage() {
           <Skeleton className="h-72" />
           <Skeleton className="h-72" />
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <a href="/discover" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Discovery</a>
+        <div className="p-6 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400">{error}</div>
       </div>
     );
   }
@@ -63,30 +108,27 @@ export default function TrendRadarPage() {
                   <span className="text-white font-medium">{d.count} problems ({d.pct}%)</span>
                 </div>
                 <div className="w-full h-4 bg-chamber-800 rounded-full overflow-hidden">
-                  <div className={`h-full ${d.color} rounded-full transition-all duration-1000`} style={{ width: `${d.pct}%` }} />
+                  <div className={`h-full ${stageColors[d.stage] ?? "bg-chamber-600"} rounded-full transition-all duration-1000`} style={{ width: `${d.pct}%` }} />
                 </div>
               </div>
             ))}
           </div>
           <div className="mt-6 pt-4 border-t border-chamber-800 flex items-center justify-between">
-            <span className="text-sm text-chamber-500">Total: 43 tracked problems</span>
-            <span className="text-sm text-gold-400">70% in growth phases</span>
+            <span className="text-sm text-chamber-500">Total: {totalCount} tracked problems</span>
+            <span className="text-sm text-gold-400">{growthPct}% in growth phases</span>
           </div>
         </div>
 
-        {/* Radar Visualization (simplified) */}
+        {/* Radar Visualization */}
         <div className="bg-chamber-900 rounded-xl p-6 border border-chamber-800">
           <h3 className="text-lg font-semibold text-white mb-6">Momentum Radar</h3>
           <div className="relative w-full aspect-square max-w-xs mx-auto">
-            {/* Concentric circles */}
             {[100, 75, 50, 25].map((size) => (
               <div key={size} className="absolute border border-chamber-700 rounded-full" style={{ width: `${size}%`, height: `${size}%`, top: `${(100 - size) / 2}%`, left: `${(100 - size) / 2}%` }} />
             ))}
-            {/* Crosshairs */}
             <div className="absolute top-0 bottom-0 left-1/2 w-px bg-chamber-700" />
             <div className="absolute left-0 right-0 top-1/2 h-px bg-chamber-700" />
-            {/* Data points */}
-            {emergingOpportunities.slice(0, 6).map((o, i) => {
+            {opportunities.slice(0, 6).map((o, i) => {
               const angle = (i / 6) * Math.PI * 2;
               const radius = (o.momentum / 100) * 42;
               const x = 50 + radius * Math.cos(angle);
@@ -124,7 +166,7 @@ export default function TrendRadarPage() {
             </tr>
           </thead>
           <tbody>
-            {emergingOpportunities.map((o) => (
+            {opportunities.map((o) => (
               <tr key={o.id} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
                 <td className="px-5 py-4 text-white font-medium">{o.name}</td>
                 <td className="px-5 py-4 text-chamber-300 text-sm">{o.category}</td>
@@ -140,9 +182,12 @@ export default function TrendRadarPage() {
                   </div>
                 </td>
                 <td className="px-5 py-4 text-chamber-300 text-sm">{o.signals}</td>
-                <td className="px-5 py-4 text-chamber-400 text-sm">{o.firstSeen}</td>
+                <td className="px-5 py-4 text-chamber-400 text-sm">{o.first_seen ?? o.firstSeen ?? "—"}</td>
               </tr>
             ))}
+            {opportunities.length === 0 && (
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-chamber-500">No opportunities found.</td></tr>
+            )}
           </tbody>
         </table>
       </div>

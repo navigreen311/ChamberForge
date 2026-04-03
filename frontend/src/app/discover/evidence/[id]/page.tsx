@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import api from "@/lib/api";
 
 interface Claim {
   claim_text: string;
@@ -28,24 +29,31 @@ interface Evidence {
   updated_at: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
+}
 
 export default function EvidenceDetailPage() {
   const params = useParams();
   const id = params?.id as string;
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    fetch(`${API_BASE}/api/v1/evidence/${id}`)
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error("Not found");
-      })
-      .then(setEvidence)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get(`/api/v1/evidence/${id}`);
+        setEvidence(res.data);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? err.message ?? "Failed to load evidence");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
 
   function credibilityColor(score: number) {
@@ -62,14 +70,25 @@ export default function EvidenceDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6 text-gray-500">Loading...</div>
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-8 w-64 mb-4" />
+        <Skeleton className="h-5 w-48 mb-8" />
+        <div className="space-y-6">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
     );
   }
 
-  if (!evidence) {
+  if (error || !evidence) {
     return (
-      <div className="max-w-4xl mx-auto p-6 text-red-500">
-        Evidence not found.
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <a href="/discover/evidence" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to list</a>
+        <div className="p-6 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400">
+          {error ?? "Evidence not found."}
+        </div>
       </div>
     );
   }
@@ -223,9 +242,9 @@ export default function EvidenceDetailPage() {
           <h2 className="text-lg font-semibold text-gray-800 mb-2">
             Linked Problem
           </h2>
-          <p className="text-sm text-gray-600 font-mono">
+          <a href={`/discover/${evidence.problem_id}`} className="text-sm text-blue-600 hover:underline font-mono">
             {evidence.problem_id}
-          </p>
+          </a>
         </div>
       )}
     </div>

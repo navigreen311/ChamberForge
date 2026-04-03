@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import api from "@/lib/api";
 
-const filters = [
-  { label: "Category", options: ["All", "Concierge", "Estate", "Aviation", "Marine", "Finance", "Staffing"] },
-  { label: "Lifecycle", options: ["All", "Emerging", "Growing", "Mature", "Declining"] },
-  { label: "Urgency", options: ["All", "Critical", "High", "Medium", "Low"] },
+const filterConfig = [
+  { label: "Category", key: "category", options: ["All", "Concierge", "Estate", "Aviation", "Marine", "Finance", "Staffing"] },
+  { label: "Lifecycle", key: "lifecycle", options: ["All", "Emerging", "Growing", "Mature", "Declining"] },
+  { label: "Urgency", key: "urgency", options: ["All", "Critical", "High", "Medium", "Low"] },
 ];
 
-const problems = [
-  { id: "prob-001", title: "Private Aviation Charter Gaps", category: "Aviation", lifecycle: "Growing", urgency: "High", score: 91, evidence: 14, desc: "HNW clients report 3-5 day booking delays for last-minute charter flights." },
-  { id: "prob-002", title: "Estate Staff Retention Crisis", category: "Staffing", lifecycle: "Emerging", urgency: "Critical", score: 87, evidence: 22, desc: "Annual turnover for estate managers exceeds 40% in top metro areas." },
-  { id: "prob-003", title: "Family Office Tax Complexity", category: "Finance", lifecycle: "Mature", urgency: "Medium", score: 78, evidence: 9, desc: "Multi-jurisdictional tax reporting errors cost families $50K+ annually." },
-  { id: "prob-004", title: "Yacht Crew Credentialing", category: "Marine", lifecycle: "Growing", urgency: "High", score: 84, evidence: 11, desc: "No centralized system for STCW certification tracking across fleet crews." },
-  { id: "prob-005", title: "Concierge Service Fragmentation", category: "Concierge", lifecycle: "Emerging", urgency: "High", score: 89, evidence: 17, desc: "Average UHNW household uses 7+ disconnected concierge providers." },
-  { id: "prob-006", title: "Art Collection Insurance Gaps", category: "Finance", lifecycle: "Growing", urgency: "Medium", score: 72, evidence: 6, desc: "30% of private collections are underinsured due to outdated appraisals." },
-];
+interface Problem {
+  id: string;
+  title: string;
+  category: string;
+  lifecycle: string;
+  urgency: string;
+  score: number;
+  evidence_count?: number;
+  evidence?: number;
+  description?: string;
+  desc?: string;
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -23,29 +28,62 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [scanning, setScanning] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+  const fetchProblems = useCallback(async (query: string, filters: Record<string, string>) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params: Record<string, string> = {};
+      if (query) params.search = query;
+      for (const f of filterConfig) {
+        const val = filters[f.label];
+        if (val && val !== "All") params[f.key] = val;
+      }
+      const res = await api.get("/api/v1/problems", { params });
+      const data = res.data;
+      setProblems(Array.isArray(data) ? data : data.items ?? data.results ?? []);
+      setTotalCount(Array.isArray(data) ? data.length : data.total ?? data.count ?? (data.items ?? data.results ?? []).length);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? err.message ?? "Failed to fetch problems");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filtered = problems.filter((p) => {
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (activeFilters.Category && activeFilters.Category !== "All" && p.category !== activeFilters.Category) return false;
-    if (activeFilters.Lifecycle && activeFilters.Lifecycle !== "All" && p.lifecycle !== activeFilters.Lifecycle) return false;
-    if (activeFilters.Urgency && activeFilters.Urgency !== "All" && p.urgency !== activeFilters.Urgency) return false;
-    return true;
-  });
+  useEffect(() => {
+    fetchProblems(search, activeFilters);
+  }, [activeFilters, fetchProblems]);
 
-  const handleScan = () => {
-    setScanning(true);
-    setTimeout(() => setScanning(false), 2000);
+  // Debounced search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchProblems(search, activeFilters);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
+
+  const handleScan = async () => {
+    try {
+      setScanning(true);
+      await api.post("/api/v1/discovery/scan", { sources: ["market_reports", "forums", "news"] });
+      // Refresh the list after scan
+      await fetchProblems(search, activeFilters);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? err.message ?? "Scan failed");
+    } finally {
+      setScanning(false);
+    }
   };
 
-  if (loading) {
+  if (loading && problems.length === 0) {
     return (
       <div className="min-h-screen bg-chamber-950 p-8">
         <Skeleton className="h-10 w-64 mb-2" />
@@ -77,6 +115,10 @@ export default function DiscoverPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-6 p-4 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400 text-sm">{error}</div>
+      )}
+
       {/* Search */}
       <div className="mb-6">
         <input
@@ -92,7 +134,7 @@ export default function DiscoverPage() {
         {/* Filter Sidebar */}
         <div className="space-y-6">
           <h3 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider">Filters</h3>
-          {filters.map((f) => (
+          {filterConfig.map((f) => (
             <div key={f.label}>
               <label className="text-sm text-chamber-300 mb-2 block">{f.label}</label>
               <select
@@ -105,13 +147,18 @@ export default function DiscoverPage() {
             </div>
           ))}
           <div className="pt-4 border-t border-chamber-800">
-            <p className="text-xs text-chamber-500">Showing {filtered.length} of {problems.length} problems</p>
+            <p className="text-xs text-chamber-500">Showing {problems.length} of {totalCount} problems</p>
           </div>
         </div>
 
         {/* Problem Card Grid */}
         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map((p) => (
+          {loading && (
+            <>
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-44" />)}
+            </>
+          )}
+          {!loading && problems.map((p) => (
             <a key={p.id} href={`/discover/${p.id}`} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition group">
               <div className="flex items-center justify-between mb-2">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -126,10 +173,10 @@ export default function DiscoverPage() {
                 }`}>{p.lifecycle}</span>
               </div>
               <h3 className="text-white font-semibold mb-1 group-hover:text-gold-400 transition">{p.title}</h3>
-              <p className="text-sm text-chamber-400 mb-3">{p.desc}</p>
+              <p className="text-sm text-chamber-400 mb-3">{p.description ?? p.desc}</p>
               <div className="flex items-center justify-between text-xs text-chamber-500">
                 <span>{p.category}</span>
-                <span>{p.evidence} evidence points</span>
+                <span>{p.evidence_count ?? p.evidence ?? 0} evidence points</span>
                 <div className="flex items-center gap-1">
                   <span>Score:</span>
                   <span className="text-gold-400 font-semibold">{p.score}</span>
@@ -137,7 +184,7 @@ export default function DiscoverPage() {
               </div>
             </a>
           ))}
-          {filtered.length === 0 && (
+          {!loading && problems.length === 0 && (
             <div className="col-span-2 text-center py-16 text-chamber-500">
               No problems match your filters. Try adjusting your criteria.
             </div>

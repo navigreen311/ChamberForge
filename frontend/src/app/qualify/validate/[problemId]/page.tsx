@@ -1,51 +1,52 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import api from "@/lib/api";
 
-const scorecardItems = [
-  {
-    title: "Market Demand Validation",
-    description: "Is there proven demand from HNW/UHNW individuals for a solution to this problem?",
-    score: 92,
-    evidence: ["78% of UHNW travelers report booking friction (Survey)", "Charter demand up 22% among $30M+ net worth (Knight Frank)"],
-    verdict: "Strong",
-  },
-  {
-    title: "Willingness to Pay",
-    description: "Will the target market pay a premium for a superior solution?",
-    score: 88,
-    evidence: ["Average UHNW spend on travel services: $180K/yr", "Competitor pricing analysis shows 40% premium tolerance"],
-    verdict: "Strong",
-  },
-  {
-    title: "Competitive Moat Potential",
-    description: "Can you build defensible advantages in this space?",
-    score: 75,
-    evidence: ["Fragmented market — no dominant platform", "Relationship-based business creates switching costs"],
-    verdict: "Moderate",
-  },
-  {
-    title: "Operational Feasibility",
-    description: "Can you deliver a solution with current resources and capabilities?",
-    score: 82,
-    evidence: ["Existing aviation industry contacts", "Technology platform can be adapted from concierge module"],
-    verdict: "Strong",
-  },
-];
+interface ScorecardItem {
+  title: string;
+  description: string;
+  score: number;
+  evidence: string[];
+  verdict: string;
+}
+
+interface ValidationResult {
+  problem_title?: string;
+  problem_name?: string;
+  overall_score?: number;
+  scorecard?: ScorecardItem[];
+  items?: ScorecardItem[];
+  scores?: ScorecardItem[];
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
 export default function ValidationScorecardPage() {
+  const params = useParams();
+  const problemId = params?.problemId as string;
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<ValidationResult | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, []);
-
-  const overallScore = Math.round(scorecardItems.reduce((acc, s) => acc + s.score, 0) / scorecardItems.length);
+    if (!problemId) return;
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.post(`/api/v1/qualify/validate/${problemId}`);
+        setData(res.data);
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? err.message ?? "Validation failed");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [problemId]);
 
   if (loading) {
     return (
@@ -59,11 +60,28 @@ export default function ValidationScorecardPage() {
     );
   }
 
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <a href="/qualify" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Qualify</a>
+        <div className="p-6 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400">
+          {error ?? "No validation data returned"}
+        </div>
+      </div>
+    );
+  }
+
+  const scorecardItems = data.scorecard ?? data.items ?? data.scores ?? [];
+  const overallScore = data.overall_score ?? (scorecardItems.length > 0
+    ? Math.round(scorecardItems.reduce((acc, s) => acc + s.score, 0) / scorecardItems.length)
+    : 0);
+  const problemTitle = data.problem_title ?? data.problem_name ?? problemId;
+
   return (
     <div className="min-h-screen bg-chamber-950 p-8">
       <a href="/qualify" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Qualify</a>
       <h1 className="text-3xl font-display font-bold text-white mb-1">4-Point Validation Scorecard</h1>
-      <p className="text-chamber-400 mb-8">Private Aviation Charter Gaps</p>
+      <p className="text-chamber-400 mb-8">{problemTitle}</p>
 
       {/* Overall Score */}
       <div className="bg-chamber-900 rounded-xl p-6 border border-chamber-800 mb-8 flex items-center gap-6">
@@ -78,10 +96,21 @@ export default function ValidationScorecardPage() {
         </div>
         <div>
           <h2 className="text-xl font-bold text-white">Overall: {overallScore >= 80 ? "Qualified" : overallScore >= 60 ? "Needs Review" : "Not Qualified"}</h2>
-          <p className="text-chamber-400">This problem passes validation with strong market signals and feasibility.</p>
+          <p className="text-chamber-400">
+            {overallScore >= 80
+              ? "This problem passes validation with strong market signals and feasibility."
+              : overallScore >= 60
+                ? "This problem shows potential but requires further review."
+                : "This problem does not currently meet qualification thresholds."}
+          </p>
           <div className="flex gap-3 mt-3">
             <button className="px-4 py-2 bg-gold-400 text-chamber-950 font-semibold rounded-lg hover:bg-gold-300 transition">Proceed to Build</button>
-            <button className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition">Re-evaluate</button>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition"
+            >
+              Re-evaluate
+            </button>
           </div>
         </div>
       </div>
@@ -100,7 +129,7 @@ export default function ValidationScorecardPage() {
               </div>
               <div className="text-right">
                 <span className={`text-2xl font-bold ${item.score >= 80 ? "text-green-400" : item.score >= 60 ? "text-gold-400" : "text-red-400"}`}>{item.score}</span>
-                <p className={`text-xs font-medium ${item.verdict === "Strong" ? "text-green-400" : "text-gold-400"}`}>{item.verdict}</p>
+                <p className={`text-xs font-medium ${item.verdict === "Strong" ? "text-green-400" : item.verdict === "Moderate" ? "text-gold-400" : "text-red-400"}`}>{item.verdict}</p>
               </div>
             </div>
             <div className="w-full h-2 bg-chamber-800 rounded-full overflow-hidden mb-4">
@@ -108,12 +137,15 @@ export default function ValidationScorecardPage() {
             </div>
             <div className="space-y-1.5">
               <p className="text-xs text-chamber-500 uppercase tracking-wider">Supporting Evidence</p>
-              {item.evidence.map((e, i) => (
+              {(item.evidence ?? []).map((e, i) => (
                 <p key={i} className="text-sm text-chamber-300 pl-3 border-l-2 border-chamber-700">{e}</p>
               ))}
             </div>
           </div>
         ))}
+        {scorecardItems.length === 0 && (
+          <div className="text-center py-8 text-chamber-500">No scorecard items returned.</div>
+        )}
       </div>
     </div>
   );
