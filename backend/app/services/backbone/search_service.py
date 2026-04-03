@@ -20,9 +20,9 @@ class SearchService:
         try:
             self.client = AsyncElasticsearch(
                 hosts=[es_url],
-                request_timeout=5,
+                request_timeout=3,
                 retry_on_timeout=False,
-                max_retries=1,
+                max_retries=0,
             )
             self.available = True
         except Exception:
