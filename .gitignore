@@ -15,7 +15,7 @@ env/
 .next/
 out/
 dist/
-build/
+/build/
 *.egg-info/
 
 # IDE
@@ -33,6 +33,7 @@ coverage/
 htmlcov/
 .pytest_cache/
 .coverage
+*.db
 
 # Docker
 docker-compose.override.yml
