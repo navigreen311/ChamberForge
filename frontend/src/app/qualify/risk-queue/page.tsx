@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const initialItems = [
-  { id: 1, type: "Problem", item: "Cryptocurrency Custody for Family Offices", risk: "High", reason: "Regulatory uncertainty in 3 target jurisdictions", flaggedBy: "Compliance Agent", date: "2026-04-02", status: "pending" as const },
-  { id: 2, type: "Evidence", item: "Anonymous forum post on yacht insurance fraud", risk: "Medium", reason: "Low credibility source — requires manual verification", flaggedBy: "Scout Agent", date: "2026-04-01", status: "pending" as const },
-  { id: 3, type: "Offer", item: "Estate Staff Placement — Accelerated Package", risk: "High", reason: "Pricing below cost-of-delivery threshold", flaggedBy: "Strategist Agent", date: "2026-03-31", status: "pending" as const },
-  { id: 4, type: "Client", item: "Meridian Holdings LLC", risk: "Critical", reason: "AML screening returned partial match — manual review required", flaggedBy: "Compliance Agent", date: "2026-03-30", status: "pending" as const },
-  { id: 5, type: "Marketing", item: "Outreach template: Private Aviation Intro", risk: "Low", reason: "Tone flagged as potentially too aggressive for UHNW audience", flaggedBy: "Copywriter Agent", date: "2026-03-29", status: "pending" as const },
-  { id: 6, type: "Problem", item: "Pet Care Concierge for Estate Owners", risk: "Low", reason: "Market size below minimum threshold ($500K TAM)", flaggedBy: "Analyst Agent", date: "2026-03-28", status: "pending" as const },
-];
-
-type ItemStatus = "pending" | "approved" | "rejected";
+interface RiskItem {
+  id: number | string;
+  type: string;
+  item: string;
+  item_name?: string;
+  risk: string;
+  risk_level?: string;
+  reason: string;
+  flagged_by?: string;
+  flaggedBy?: string;
+  date: string;
+  created_at?: string;
+  status: string;
+}
 
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
@@ -19,15 +24,43 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function RiskQueuePage() {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState(initialItems);
+  const [error, setError] = useState<string | null>(null);
+  const [items, setItems] = useState<RiskItem[]>([]);
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+
+  const fetchQueue = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get("/api/v1/qualify/risk-queue");
+      const data = res.data;
+      setItems(Array.isArray(data) ? data : data.items ?? data.results ?? []);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? err.message ?? "Failed to load risk queue");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    fetchQueue();
   }, []);
 
-  const updateStatus = (id: number, status: ItemStatus) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)));
+  const handleAction = async (id: number | string, action: "approve" | "reject") => {
+    try {
+      setActionLoading((prev) => ({ ...prev, [id]: true }));
+      await api.post(`/api/v1/qualify/risk-queue/${id}/${action}`);
+      // Update local state
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: action === "approve" ? "approved" : "rejected" } : item
+        )
+      );
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? err.message ?? `Failed to ${action} item`);
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [id]: false }));
+    }
   };
 
   const pending = items.filter((i) => i.status === "pending");
@@ -49,6 +82,10 @@ export default function RiskQueuePage() {
       <p className="text-chamber-400 mb-2">Items flagged by AI agents requiring human review</p>
       <p className="text-sm text-chamber-500 mb-8">{pending.length} items pending review</p>
 
+      {error && (
+        <div className="mb-6 p-4 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400 text-sm">{error}</div>
+      )}
+
       <div className="bg-chamber-900 rounded-xl border border-chamber-800 overflow-hidden">
         <table className="w-full text-left">
           <thead>
@@ -63,35 +100,59 @@ export default function RiskQueuePage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id} className={`border-b border-chamber-800/50 transition ${item.status !== "pending" ? "opacity-50" : "hover:bg-chamber-800/30"}`}>
-                <td className="px-5 py-4">
-                  <span className="px-2 py-0.5 rounded text-xs bg-chamber-800 text-chamber-300">{item.type}</span>
-                </td>
-                <td className="px-5 py-4 text-white font-medium text-sm">{item.item}</td>
-                <td className="px-5 py-4">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    item.risk === "Critical" ? "bg-red-500/20 text-red-400" :
-                    item.risk === "High" ? "bg-orange-400/20 text-orange-400" :
-                    item.risk === "Medium" ? "bg-gold-400/20 text-gold-400" :
-                    "bg-blue-400/20 text-blue-400"
-                  }`}>{item.risk}</span>
-                </td>
-                <td className="px-5 py-4 text-sm text-chamber-400 max-w-xs">{item.reason}</td>
-                <td className="px-5 py-4 text-sm text-chamber-400">{item.flaggedBy}</td>
-                <td className="px-5 py-4 text-sm text-chamber-500">{item.date}</td>
-                <td className="px-5 py-4">
-                  {item.status === "pending" ? (
-                    <div className="flex gap-2">
-                      <button onClick={() => updateStatus(item.id, "approved")} className="px-3 py-1 bg-green-400/20 text-green-400 text-xs rounded-lg hover:bg-green-400/30 transition">Approve</button>
-                      <button onClick={() => updateStatus(item.id, "rejected")} className="px-3 py-1 bg-red-400/20 text-red-400 text-xs rounded-lg hover:bg-red-400/30 transition">Reject</button>
-                    </div>
-                  ) : (
-                    <span className={`text-xs font-medium ${item.status === "approved" ? "text-green-400" : "text-red-400"}`}>{item.status === "approved" ? "Approved" : "Rejected"}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {items.map((item) => {
+              const riskLevel = item.risk ?? item.risk_level ?? "Unknown";
+              const itemName = item.item ?? item.item_name ?? "—";
+              const flaggedBy = item.flagged_by ?? item.flaggedBy ?? "—";
+              const itemDate = item.date ?? item.created_at ?? "—";
+              const isActioning = actionLoading[item.id] ?? false;
+              return (
+                <tr key={item.id} className={`border-b border-chamber-800/50 transition ${item.status !== "pending" ? "opacity-50" : "hover:bg-chamber-800/30"}`}>
+                  <td className="px-5 py-4">
+                    <span className="px-2 py-0.5 rounded text-xs bg-chamber-800 text-chamber-300">{item.type}</span>
+                  </td>
+                  <td className="px-5 py-4 text-white font-medium text-sm">{itemName}</td>
+                  <td className="px-5 py-4">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      riskLevel === "Critical" ? "bg-red-500/20 text-red-400" :
+                      riskLevel === "High" ? "bg-orange-400/20 text-orange-400" :
+                      riskLevel === "Medium" ? "bg-gold-400/20 text-gold-400" :
+                      "bg-blue-400/20 text-blue-400"
+                    }`}>{riskLevel}</span>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-chamber-400 max-w-xs">{item.reason}</td>
+                  <td className="px-5 py-4 text-sm text-chamber-400">{flaggedBy}</td>
+                  <td className="px-5 py-4 text-sm text-chamber-500">{itemDate}</td>
+                  <td className="px-5 py-4">
+                    {item.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAction(item.id, "approve")}
+                          disabled={isActioning}
+                          className="px-3 py-1 bg-green-400/20 text-green-400 text-xs rounded-lg hover:bg-green-400/30 transition disabled:opacity-50"
+                        >
+                          {isActioning ? "..." : "Approve"}
+                        </button>
+                        <button
+                          onClick={() => handleAction(item.id, "reject")}
+                          disabled={isActioning}
+                          className="px-3 py-1 bg-red-400/20 text-red-400 text-xs rounded-lg hover:bg-red-400/30 transition disabled:opacity-50"
+                        >
+                          {isActioning ? "..." : "Reject"}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={`text-xs font-medium ${item.status === "approved" ? "text-green-400" : "text-red-400"}`}>
+                        {item.status === "approved" ? "Approved" : "Rejected"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {items.length === 0 && (
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-chamber-500">No items in the risk queue.</td></tr>
+            )}
           </tbody>
         </table>
       </div>

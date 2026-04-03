@@ -1,20 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
-const recentValidations = [
-  { id: 1, problem: "Private Aviation Charter Gaps", score: 92, date: "2026-04-01", status: "Passed" },
-  { id: 2, problem: "Estate Staff Retention Crisis", score: 87, date: "2026-03-30", status: "Passed" },
-  { id: 3, problem: "Yacht Crew Credentialing", score: 71, date: "2026-03-28", status: "Review" },
-  { id: 4, problem: "Art Collection Insurance Gaps", score: 58, date: "2026-03-25", status: "Failed" },
-  { id: 5, problem: "Concierge Service Fragmentation", score: 89, date: "2026-03-22", status: "Passed" },
-];
+interface Validation {
+  id: number | string;
+  problem: string;
+  problem_title?: string;
+  score: number;
+  date: string;
+  created_at?: string;
+  status: string;
+}
 
 const quickActions = [
-  { title: "Validate a Problem", desc: "Run the 4-point validation scorecard on a discovered problem", href: "/discover", icon: "🎯" },
-  { title: "Build Buyer Profile", desc: "Create an Ideal Client Profile for your target market", href: "/qualify/buyer-profile", icon: "👤" },
-  { title: "Run Guardrails Check", desc: "Verify ethical and compliance guardrails before proceeding", href: "/qualify/guardrails", icon: "🛡️" },
-  { title: "Review Risk Queue", desc: "Approve or reject flagged items requiring human review", href: "/qualify/risk-queue", icon: "⚠️" },
+  { title: "Validate a Problem", desc: "Run the 4-point validation scorecard on a discovered problem", href: "/discover", icon: "\uD83C\uDFAF" },
+  { title: "Build Buyer Profile", desc: "Create an Ideal Client Profile for your target market", href: "/qualify/buyer-profile", icon: "\uD83D\uDC64" },
+  { title: "Run Guardrails Check", desc: "Verify ethical and compliance guardrails before proceeding", href: "/qualify/guardrails", icon: "\uD83D\uDEE1\uFE0F" },
+  { title: "Review Risk Queue", desc: "Approve or reject flagged items requiring human review", href: "/qualify/risk-queue", icon: "\u26A0\uFE0F" },
 ];
 
 function Skeleton({ className = "" }: { className?: string }) {
@@ -23,10 +26,57 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function QualifyPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [validations, setValidations] = useState<Validation[]>([]);
+  const [counts, setCounts] = useState({ problems: 0, validations: 0, riskQueue: 0, profiles: 0 });
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch summary counts and recent validations in parallel
+        const results = await Promise.allSettled([
+          api.get("/api/v1/problems", { params: { limit: 1 } }),
+          api.get("/api/v1/qualify/validations", { params: { limit: 5 } }),
+          api.get("/api/v1/qualify/risk-queue"),
+          api.get("/api/v1/qualify/buyer-profiles", { params: { limit: 1 } }),
+        ]);
+
+        // Problems count
+        if (results[0].status === "fulfilled") {
+          const d = results[0].value.data;
+          setCounts((prev) => ({ ...prev, problems: d.total ?? d.count ?? (Array.isArray(d) ? d.length : 0) }));
+        }
+
+        // Validations
+        if (results[1].status === "fulfilled") {
+          const d = results[1].value.data;
+          const items: Validation[] = Array.isArray(d) ? d : d.items ?? d.results ?? [];
+          setValidations(items.slice(0, 5));
+          setCounts((prev) => ({ ...prev, validations: d.total ?? d.count ?? items.length }));
+        }
+
+        // Risk queue count
+        if (results[2].status === "fulfilled") {
+          const d = results[2].value.data;
+          const items = Array.isArray(d) ? d : d.items ?? d.results ?? [];
+          const pendingCount = Array.isArray(items) ? items.filter((i: any) => i.status === "pending").length : d.total ?? d.count ?? 0;
+          setCounts((prev) => ({ ...prev, riskQueue: pendingCount }));
+        }
+
+        // Buyer profiles count
+        if (results[3].status === "fulfilled") {
+          const d = results[3].value.data;
+          setCounts((prev) => ({ ...prev, profiles: d.total ?? d.count ?? (Array.isArray(d) ? d.length : 0) }));
+        }
+      } catch (err: any) {
+        setError(err?.response?.data?.detail ?? err.message ?? "Failed to load qualify data");
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading) {
@@ -46,6 +96,10 @@ export default function QualifyPage() {
     <div className="min-h-screen bg-chamber-950 p-8">
       <h1 className="text-3xl font-display font-bold text-white mb-1">Qualify Hub</h1>
       <p className="text-chamber-400 mb-8">Validate problems, build buyer profiles, and ensure quality guardrails</p>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400 text-sm">{error}</div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -72,9 +126,9 @@ export default function QualifyPage() {
             </tr>
           </thead>
           <tbody>
-            {recentValidations.map((v) => (
+            {validations.map((v) => (
               <tr key={v.id} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
-                <td className="px-5 py-4 text-white font-medium">{v.problem}</td>
+                <td className="px-5 py-4 text-white font-medium">{v.problem ?? v.problem_title}</td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2">
                     <div className="w-16 h-1.5 bg-chamber-700 rounded-full overflow-hidden">
@@ -90,12 +144,15 @@ export default function QualifyPage() {
                     "bg-red-400/20 text-red-400"
                   }`}>{v.status}</span>
                 </td>
-                <td className="px-5 py-4 text-chamber-400 text-sm">{v.date}</td>
+                <td className="px-5 py-4 text-chamber-400 text-sm">{v.date ?? v.created_at}</td>
                 <td className="px-5 py-4">
                   <a href={`/qualify/validate/${v.id}`} className="text-gold-400 text-sm hover:underline">View</a>
                 </td>
               </tr>
             ))}
+            {validations.length === 0 && (
+              <tr><td colSpan={5} className="px-5 py-8 text-center text-chamber-500">No validations yet. Start by validating a discovered problem.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
