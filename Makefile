@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down clean help
+.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down worker beat clean help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,12 @@ docker-down: ## Stop Docker infrastructure services
 deploy-staging: ## Deploy to staging (requires AWS credentials)
 	@echo "Triggering staging deploy via git push to main..."
 	git push origin main
+
+worker: ## Start Celery worker (default, ai, notifications queues)
+	cd backend && celery -A app.jobs.worker.celery worker --loglevel=info -Q default,ai,notifications
+
+beat: ## Start Celery beat scheduler
+	cd backend && celery -A app.jobs.worker.celery beat --loglevel=info
 
 clean: ## Remove all generated files, containers, and volumes
 	docker compose down -v 2>/dev/null || true
