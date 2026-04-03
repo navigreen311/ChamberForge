@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.middleware.rate_limiter import RateLimiterMiddleware
+from app.api.v1.security import router as security_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -12,6 +15,16 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
+# --- Middleware (outermost first) ---
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RateLimiterMiddleware,
+    default_limit=100,
+    window_seconds=60,
+    endpoint_overrides={
+        "/api/v1/security/check-output": (20, 60),
+    },
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -19,6 +32,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Routers ---
+app.include_router(security_router)
 
 
 @app.get("/api/health")
