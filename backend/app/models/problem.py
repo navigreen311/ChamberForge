@@ -94,10 +94,15 @@ class Problem(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
-    __table_args__ = (
-        sa.Index("ix_problems_workspace_lifecycle", "workspace_id", "lifecycle_stage"),
-        sa.Index("ix_problems_workspace_status", "workspace_id", "status"),
+    evidences = relationship(
+        "Evidence",
+        primaryjoin="foreign(Evidence.problem_id) == cast(Problem.id, UUID)",
+        lazy="select",
+        viewonly=True,
     )
-
-    evidences = relationship("Evidence", back_populates="problem", lazy="select")
-    offers = relationship("Offer", back_populates="problem", lazy="select")
+    offers = relationship(
+        "Offer",
+        primaryjoin="foreign(Offer.problem_id) == cast(Problem.id, UUID)",
+        lazy="select",
+        viewonly=True,
+    )
