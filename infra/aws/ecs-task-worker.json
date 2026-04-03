@@ -1,0 +1,51 @@
+{
+  "family": "chamberforge-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-worker-task-role",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "${ECR_REPO}/chamberforge-backend:${TAG}",
+      "essential": true,
+      "command": ["celery", "-A", "app.worker", "worker", "--loglevel=info", "--concurrency=2"],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "CELERY_WORKER", "value": "true" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/DATABASE_URL"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/ANTHROPIC_API_KEY"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/REDIS_URL"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/STRIPE_SECRET_KEY"
+        },
+        {
+          "name": "RESEND_API_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/RESEND_API_KEY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/chamberforge-worker",
+          "awslogs-region": "${REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

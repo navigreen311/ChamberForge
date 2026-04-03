@@ -1,0 +1,64 @@
+{
+  "production": {
+    "engine": "postgres",
+    "engineVersion": "16.4",
+    "instanceClass": "db.t3.medium",
+    "allocatedStorage": 50,
+    "maxAllocatedStorage": 200,
+    "storageType": "gp3",
+    "storageEncrypted": true,
+    "multiAZ": true,
+    "dbName": "chamberforge",
+    "masterUsername": "chamberforge_admin",
+    "port": 5432,
+    "vpcSecurityGroupIds": ["${RDS_SECURITY_GROUP}"],
+    "dbSubnetGroupName": "chamberforge-db-subnet-group",
+    "backupRetentionPeriod": 14,
+    "preferredBackupWindow": "03:00-04:00",
+    "preferredMaintenanceWindow": "sun:05:00-sun:06:00",
+    "deletionProtection": true,
+    "copyTagsToSnapshot": true,
+    "performanceInsightsEnabled": true,
+    "performanceInsightsRetentionPeriod": 7,
+    "monitoringInterval": 60,
+    "monitoringRoleArn": "arn:aws:iam::${ACCOUNT}:role/rds-monitoring-role",
+    "enableCloudwatchLogsExports": ["postgresql", "upgrade"],
+    "parameterGroup": {
+      "family": "postgres16",
+      "parameters": [
+        { "name": "shared_preload_libraries", "value": "pg_stat_statements" },
+        { "name": "log_min_duration_statement", "value": "1000" },
+        { "name": "max_connections", "value": "200" }
+      ]
+    },
+    "tags": [
+      { "key": "Project", "value": "ChamberForge" },
+      { "key": "Environment", "value": "production" }
+    ]
+  },
+  "staging": {
+    "engine": "postgres",
+    "engineVersion": "16.4",
+    "instanceClass": "db.t3.micro",
+    "allocatedStorage": 20,
+    "maxAllocatedStorage": 50,
+    "storageType": "gp3",
+    "storageEncrypted": true,
+    "multiAZ": false,
+    "dbName": "chamberforge",
+    "masterUsername": "chamberforge_admin",
+    "port": 5432,
+    "vpcSecurityGroupIds": ["${RDS_SECURITY_GROUP}"],
+    "dbSubnetGroupName": "chamberforge-db-subnet-group",
+    "backupRetentionPeriod": 7,
+    "preferredBackupWindow": "03:00-04:00",
+    "preferredMaintenanceWindow": "sun:05:00-sun:06:00",
+    "deletionProtection": false,
+    "copyTagsToSnapshot": true,
+    "performanceInsightsEnabled": false,
+    "tags": [
+      { "key": "Project", "value": "ChamberForge" },
+      { "key": "Environment", "value": "staging" }
+    ]
+  }
+}

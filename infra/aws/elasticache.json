@@ -1,0 +1,49 @@
+{
+  "production": {
+    "engine": "redis",
+    "engineVersion": "7.1",
+    "cacheNodeType": "cache.t3.micro",
+    "numCacheNodes": 1,
+    "replicationGroupDescription": "ChamberForge production Redis",
+    "automaticFailoverEnabled": true,
+    "numNodeGroups": 1,
+    "replicasPerNodeGroup": 1,
+    "port": 6379,
+    "cacheSubnetGroupName": "chamberforge-cache-subnet-group",
+    "securityGroupIds": ["${REDIS_SECURITY_GROUP}"],
+    "atRestEncryptionEnabled": true,
+    "transitEncryptionEnabled": true,
+    "snapshotRetentionLimit": 7,
+    "snapshotWindow": "03:00-04:00",
+    "preferredMaintenanceWindow": "sun:05:00-sun:06:00",
+    "autoMinorVersionUpgrade": true,
+    "parameterGroup": {
+      "family": "redis7",
+      "parameters": [
+        { "name": "maxmemory-policy", "value": "allkeys-lru" },
+        { "name": "notify-keyspace-events", "value": "Ex" }
+      ]
+    },
+    "tags": [
+      { "key": "Project", "value": "ChamberForge" },
+      { "key": "Environment", "value": "production" }
+    ]
+  },
+  "staging": {
+    "engine": "redis",
+    "engineVersion": "7.1",
+    "cacheNodeType": "cache.t3.micro",
+    "numCacheNodes": 1,
+    "port": 6379,
+    "cacheSubnetGroupName": "chamberforge-cache-subnet-group",
+    "securityGroupIds": ["${REDIS_SECURITY_GROUP}"],
+    "atRestEncryptionEnabled": true,
+    "transitEncryptionEnabled": true,
+    "snapshotRetentionLimit": 1,
+    "autoMinorVersionUpgrade": true,
+    "tags": [
+      { "key": "Project", "value": "ChamberForge" },
+      { "key": "Environment", "value": "staging" }
+    ]
+  }
+}

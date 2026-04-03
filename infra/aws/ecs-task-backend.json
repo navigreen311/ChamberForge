@@ -1,0 +1,68 @@
+{
+  "family": "chamberforge-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-backend-task-role",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "${ECR_REPO}/chamberforge-backend:${TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "APP_ENV", "value": "production" },
+        { "name": "PORT", "value": "8000" },
+        { "name": "WORKERS", "value": "2" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/DATABASE_URL"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/JWT_SECRET"
+        },
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/ANTHROPIC_API_KEY"
+        },
+        {
+          "name": "STRIPE_SECRET_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/STRIPE_SECRET_KEY"
+        },
+        {
+          "name": "RESEND_API_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/RESEND_API_KEY"
+        },
+        {
+          "name": "REDIS_URL",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/REDIS_URL"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/chamberforge-backend",
+          "awslogs-region": "${REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
