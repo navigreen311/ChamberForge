@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.db.session import get_db
 from app.models.billing import Invoice, Subscription
 from app.services.backbone.referral_tracker import referral_tracker
@@ -85,6 +86,7 @@ def create_subscription(body: CreateSubscriptionReq, db: Session = Depends(get_d
     db.add(sub)
     db.commit()
     db.refresh(sub)
+    cache.invalidate_pattern("billing:*")
     return {
         "id": str(sub.id),
         "stripe_subscription_id": sub.stripe_subscription_id,
@@ -104,6 +106,7 @@ def cancel_subscription(subscription_id: str, db: Session = Depends(get_db)):
     if sub:
         sub.status = "canceled"
         db.commit()
+    cache.invalidate_pattern("billing:*")
     return result
 
 
@@ -126,6 +129,7 @@ def create_invoice(body: CreateInvoiceReq, db: Session = Depends(get_db)):
     db.add(inv)
     db.commit()
     db.refresh(inv)
+    cache.invalidate_pattern("billing:*")
     return {
         "id": str(inv.id),
         "stripe_invoice_id": inv.stripe_invoice_id,
@@ -164,7 +168,13 @@ def list_invoices(workspace_id: UUID = Query(...), db: Session = Depends(get_db)
 
 @router.get("/revenue")
 def revenue_dashboard(workspace_id: UUID = Query(...), db: Session = Depends(get_db)):
-    return stripe_service.get_revenue_dashboard(db, str(workspace_id))
+    key = cache.make_key("billing:revenue", workspace_id=str(workspace_id))
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    result = stripe_service.get_revenue_dashboard(db, str(workspace_id))
+    cache.set(key, result, ttl_seconds=120)
+    return result
 
 
 # ---------------------------------------------------------------------------

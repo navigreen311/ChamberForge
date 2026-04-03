@@ -7,6 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
+from app.core.cache import cache
 from app.core.config import settings
 from app.services.backbone.search_indices import get_all_indices
 from app.services.backbone.search_service import SearchService
@@ -37,11 +38,16 @@ async def unified_search(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
 ) -> dict:
-    """Unified search endpoint.
+    """Unified search endpoint (cached 60s).
 
     When ``index=all`` the query fans out to every registered index and
     results are merged by descending relevance score.
     """
+    key = cache.make_key("search:unified", q=q, index=index, filters=filters, page=page, size=size)
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+
     service = _get_service()
 
     try:
@@ -87,21 +93,22 @@ async def unified_search(
     if index == "all":
         merged_results = merged_results[:size]
 
-    return {
+    result = {
         "results": merged_results,
         "total": total,
         "page": page,
         "size": size,
     }
+    cache.set(key, result, ttl_seconds=60)
+    return result
 
 
 @router.post("/reindex/{index_name}")
 async def reindex(index_name: str) -> dict:
     """Trigger a full reindex for the given index (admin use)."""
     service = _get_service()
-    # For a real app this would fetch all documents from the DB.
-    # Here we expose the hook so callers can POST a body with docs.
     result = await service.reindex_all(index_name, [])
+    cache.invalidate_pattern("search:*")
     return {"index": index_name, **result}
 
 

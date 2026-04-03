@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.db.session import get_db
 from app.models.enums import LifecycleStage, PainCategory, WealthTier
 from app.schemas.problem import ProblemCreate, ProblemList, ProblemRead, ProblemUpdate
@@ -21,7 +22,13 @@ def trending_problems(
     limit: int = 10,
     db: Session = Depends(get_db),
 ):
-    return library.get_trending(db, workspace_id, limit=limit)
+    key = cache.make_key("problems:trending", workspace_id=workspace_id, limit=limit)
+    hit = cache.get(key)
+    if hit is not None:
+        return hit
+    result = library.get_trending(db, workspace_id, limit=limit)
+    cache.set(key, result, ttl_seconds=120)
+    return result
 
 
 @router.get("/", response_model=ProblemList)
@@ -56,6 +63,7 @@ def list_problems(
 def create_problem(payload: ProblemCreate, db: Session = Depends(get_db)):
     data = payload.model_dump(exclude={"workspace_id"})
     problem = library.create_problem(db, payload.workspace_id, data)
+    cache.invalidate_pattern("problems:*")
     return problem
 
 
@@ -75,6 +83,7 @@ def update_problem(
     problem = library.update_problem(db, problem_id, data)
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
+    cache.invalidate_pattern("problems:*")
     return problem
 
 
@@ -83,4 +92,5 @@ def delete_problem(problem_id: str, db: Session = Depends(get_db)):
     deleted = library.delete_problem(db, problem_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Problem not found")
+    cache.invalidate_pattern("problems:*")
     return None
