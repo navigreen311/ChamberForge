@@ -4,12 +4,15 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { useFormValidation } from '@/hooks/useFormValidation';
+import { loginSchema } from '@/lib/validations';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { validate, getError, clearErrors } = useFormValidation(loginSchema);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,6 +21,10 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    clearErrors();
+
+    if (!validate({ email, password })) return;
+
     setLoading(true);
 
     try {
@@ -58,23 +65,33 @@ export default function LoginPage() {
             </div>
           )}
 
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <div>
+            <Input
+              label="Email"
+              type="email"
+              placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            {getError('email') && (
+              <p className="mt-1 text-xs text-red-400">{getError('email')}</p>
+            )}
+          </div>
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div>
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {getError('password') && (
+              <p className="mt-1 text-xs text-red-400">{getError('password')}</p>
+            )}
+          </div>
 
           <Button
             type="submit"
