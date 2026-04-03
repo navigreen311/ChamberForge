@@ -2,7 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.polish import router as polish_router
+from app.api.v1.admin import router as admin_router
+from app.api.v1.primitives import router as primitives_router
 from app.core.config import settings
 from app.api.v1.lifecycle import router as lifecycle_router
 
@@ -22,14 +23,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ──────────────────────────────────────────────────────────────────
-app.include_router(compliance_router)
-
-
-app.include_router(lifecycle_router)
-
-
-app.include_router(polish_router)
+app.include_router(primitives_router)
+app.include_router(admin_router)
 
 
 @app.get("/api/health")
