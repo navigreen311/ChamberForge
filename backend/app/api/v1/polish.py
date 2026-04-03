@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.crisis_console import CrisisConsole
 from app.services.backbone.cross_playbook import CrossPlaybookComposer
@@ -76,7 +77,7 @@ class AuditRequest(BaseModel):
 
 
 @router.post("/versions")
-def create_version(req: CreateVersionRequest, db: Session = Depends(get_db)):
+def create_version(req: CreateVersionRequest, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     version = TemplateVersioning.create_version(
         db=db,
         workspace_id=req.workspace_id,
@@ -95,7 +96,7 @@ def create_version(req: CreateVersionRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/versions/{template_id}")
-def get_version_history(template_id: UUID, db: Session = Depends(get_db)):
+def get_version_history(template_id: UUID, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     history = TemplateVersioning.get_version_history(db, template_id)
     return [
         {
@@ -132,7 +133,7 @@ def diff_versions(req: DiffRequest):
 
 
 @router.post("/crisis")
-def create_incident(req: CreateIncidentRequest, db: Session = Depends(get_db)):
+def create_incident(req: CreateIncidentRequest, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     try:
         incident = CrisisConsole.create_incident(
             db=db,
@@ -147,7 +148,7 @@ def create_incident(req: CreateIncidentRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/crisis")
-def get_active_incidents(workspace_id: UUID, db: Session = Depends(get_db)):
+def get_active_incidents(workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     incidents = CrisisConsole.get_active_incidents(db, workspace_id)
     return [
         {
@@ -162,7 +163,7 @@ def get_active_incidents(workspace_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/crisis/{incident_id}")
-def get_incident_detail(incident_id: UUID, db: Session = Depends(get_db)):
+def get_incident_detail(incident_id: UUID, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     incident = CrisisConsole.get_incident_detail(db, incident_id)
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")

@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Query
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.models.document import Document
 from app.services.backbone.storage_service import storage_service
@@ -30,8 +31,8 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    workspace_id: str = Form(...),
     uploaded_by: Optional[str] = Form(None),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Upload a file to S3 and record it in the database."""
@@ -73,8 +74,8 @@ async def upload_file(
 
 @router.get("/files")
 async def list_files(
-    workspace_id: str = Query(...),
     prefix: str = Query(""),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """List documents for a workspace."""
@@ -97,9 +98,9 @@ async def list_files(
 
 
 @router.get("/files/{doc_id}/download")
-async def download_file(doc_id: str, db: Session = Depends(get_db)):
+async def download_file(doc_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     """Get a pre-signed download URL for a document."""
-    doc = db.query(Document).filter(Document.id == uuid.UUID(doc_id)).first()
+    doc = db.query(Document).filter(Document.id == uuid.UUID(doc_id), Document.workspace_id == uuid.UUID(workspace_id)).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -108,9 +109,9 @@ async def download_file(doc_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/files/{doc_id}")
-async def delete_file(doc_id: str, db: Session = Depends(get_db)):
+async def delete_file(doc_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     """Delete a document from S3 and the database."""
-    doc = db.query(Document).filter(Document.id == uuid.UUID(doc_id)).first()
+    doc = db.query(Document).filter(Document.id == uuid.UUID(doc_id), Document.workspace_id == uuid.UUID(workspace_id)).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 

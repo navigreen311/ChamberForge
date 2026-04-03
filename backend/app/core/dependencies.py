@@ -38,6 +38,16 @@ async def get_current_user(
     return user
 
 
+async def get_workspace_id(current_user: User = Depends(get_current_user)) -> str:
+    """Extract workspace_id from the authenticated user, enforcing tenant context."""
+    if not current_user.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No workspace assigned",
+        )
+    return str(current_user.workspace_id)
+
+
 def require_role(*allowed_roles: str):
     """Return a dependency that enforces the user holds one of *allowed_roles*."""
 

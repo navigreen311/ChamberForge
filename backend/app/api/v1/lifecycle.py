@@ -1,8 +1,10 @@
 """Lifecycle API — Endpoints for all 9 Client Lifecycle modules."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+
+from app.core.dependencies import get_workspace_id
 
 from app.services.backbone import (
     IntelBrief,
@@ -74,7 +76,7 @@ class HealthScoreRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/intel-brief/{client_id}")
-async def create_intel_brief(client_id: str, body: IntelBriefRequest):
+async def create_intel_brief(client_id: str, body: IntelBriefRequest, workspace_id: str = Depends(get_workspace_id)):
     brief = IntelBrief()
     data = body.client_data
     data.setdefault("client_id", client_id)
@@ -94,7 +96,7 @@ async def compute_health_score(body: HealthScoreRequest):
 
 
 @router.get("/health/{client_id}")
-async def get_client_health(client_id: str):
+async def get_client_health(client_id: str, workspace_id: str = Depends(get_workspace_id)):
     """Get current health + churn detection for a client."""
     trend = await ClientHealth.get_health_trend(None, client_id)
     scores = [t["score"] for t in trend]
@@ -133,7 +135,7 @@ async def generate_brand_positioning(body: BrandPositioningRequest):
 # ---------------------------------------------------------------------------
 
 @router.get("/alumni")
-async def list_alumni(workspace_id: str = Query("default")):
+async def list_alumni(workspace_id: str = Depends(get_workspace_id)):
     return await AlumniSystem.get_referral_candidates(None, workspace_id)
 
 
@@ -216,10 +218,10 @@ async def get_mobile_brief(client_id: str):
 
 
 @router.get("/mobile/approvals")
-async def get_pending_approvals(user_id: str = Query("current-user")):
+async def get_pending_approvals(user_id: str = Query("current-user"), workspace_id: str = Depends(get_workspace_id)):
     return await MobileAccess.get_pending_approvals(None, user_id)
 
 
 @router.get("/mobile/alerts")
-async def get_active_alerts(user_id: str = Query("current-user")):
+async def get_active_alerts(user_id: str = Query("current-user"), workspace_id: str = Depends(get_workspace_id)):
     return await MobileAccess.get_active_alerts(None, user_id)

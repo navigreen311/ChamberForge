@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+
+from app.core.dependencies import get_workspace_id
 
 from app.services.agents.copy_ai import CopyAI
 from app.services.agents.relationship_ai import RelationshipAI
@@ -191,26 +193,27 @@ class TrustChannelsRequest(BaseModel):
 # ── CopyAI Endpoints ────────────────────────────────────────────────
 
 @router.post("/copy/positioning")
-async def generate_positioning(offer: OfferData):
-    return await copy_ai.generate_positioning(offer.model_dump())
+async def generate_positioning(offer: OfferData, workspace_id: str = Depends(get_workspace_id)):
+    result = await copy_ai.generate_positioning(offer.model_dump())
+    return result
 
 
 @router.post("/copy/outreach")
-async def generate_outreach(req: OutreachRequest):
+async def generate_outreach(req: OutreachRequest, workspace_id: str = Depends(get_workspace_id)):
     return await copy_ai.generate_outreach(
         req.offer_data.model_dump(), req.buyer_profile.model_dump()
     )
 
 
 @router.post("/copy/authority-content")
-async def generate_authority_content(offer: OfferData):
+async def generate_authority_content(offer: OfferData, workspace_id: str = Depends(get_workspace_id)):
     return await copy_ai.generate_authority_content(offer.model_dump())
 
 
 # ── RelationshipAI Endpoints ────────────────────────────────────────
 
 @router.post("/relationships/gatekeepers")
-async def map_gatekeepers(buyer: BuyerProfile):
+async def map_gatekeepers(buyer: BuyerProfile, workspace_id: str = Depends(get_workspace_id)):
     return await relationship_ai.map_gatekeepers(buyer.model_dump())
 
 
@@ -348,7 +351,7 @@ async def score_persona_session(session_id: str):
 # ── ClientRetention Endpoints ───────────────────────────────────────
 
 @router.post("/retention/client")
-async def register_retention_client(req: RetentionClientRequest):
+async def register_retention_client(req: RetentionClientRequest, workspace_id: str = Depends(get_workspace_id)):
     return retention.register_client(
         req.client_id, req.client_name, req.contract_start, req.contract_months, req.monthly_value
     )
@@ -373,7 +376,7 @@ async def get_client_health(client_id: str):
 
 
 @router.get("/retention/clients")
-async def list_retention_clients():
+async def list_retention_clients(workspace_id: str = Depends(get_workspace_id)):
     return retention.get_all_clients()
 
 
@@ -388,7 +391,7 @@ async def get_renewal_cadence(client_id: str):
 # ── DecisionRoom Endpoints ──────────────────────────────────────────
 
 @router.post("/decision-room/deal")
-async def create_deal(req: DealRequest):
+async def create_deal(req: DealRequest, workspace_id: str = Depends(get_workspace_id)):
     return decision_room.create_deal(req.deal_name, req.description, req.required_approvals)
 
 
@@ -427,14 +430,14 @@ async def request_testimonial(req: TestimonialRequest):
 
 
 @router.get("/proof/summary")
-async def get_proof_summary():
+async def get_proof_summary(workspace_id: str = Depends(get_workspace_id)):
     return proof_rep.get_proof_summary()
 
 
 # ── ExpertNetwork Endpoints ─────────────────────────────────────────
 
 @router.post("/experts")
-async def add_expert(req: ExpertRequest):
+async def add_expert(req: ExpertRequest, workspace_id: str = Depends(get_workspace_id)):
     return expert_net.add_expert(
         req.name, req.title, req.specializations, req.credentials,
         req.contact_email, req.bio, req.hourly_rate,
@@ -442,7 +445,7 @@ async def add_expert(req: ExpertRequest):
 
 
 @router.get("/experts")
-async def list_experts(specialization: str | None = None, verified_only: bool = False):
+async def list_experts(specialization: str | None = None, verified_only: bool = False, workspace_id: str = Depends(get_workspace_id)):
     return expert_net.list_experts(specialization, verified_only)
 
 

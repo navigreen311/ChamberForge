@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, get_workspace_id, require_role
 from app.db.session import get_db
 from app.models.user import User
 from app.services.backbone.audit_service import AuditService
@@ -81,11 +81,14 @@ def list_audit_trail(
 def user_activity(
     user_id: uuid.UUID,
     days: int = Query(30, ge=1, le=365),
+    workspace_id: str = Depends(get_workspace_id),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return recent activity for a specific user."""
+    """Return recent activity for a specific user within the current workspace."""
     entries = AuditService.get_user_activity(db, user_id=user_id, days=days)
+    # Filter entries to current workspace to prevent cross-tenant leakage
+    entries = [e for e in entries if str(e.workspace_id) == workspace_id]
     return [_to_response(e) for e in entries]
 
 
