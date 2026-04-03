@@ -1,67 +1,39 @@
-"""Domain enums for the Qualify layer."""
+"""Enumerations for the ChamberForge domain models."""
 import enum
 
 
-class WealthTier(str, enum.Enum):
-    AFFLUENT = "Affluent"           # $1M-$5M
-    HNW = "HNW"                     # $5M-$30M
-    UHNW = "UHNW"                   # $30M-$100M
-    ULTRA = "Ultra"                 # $100M+
-
-
-class BuyerType(str, enum.Enum):
-    INDIVIDUAL = "Individual"
-    FAMILY_OFFICE = "FamilyOffice"
-    CORPORATE = "Corporate"
-    TRUST = "Trust"
-    FOUNDATION = "Foundation"
-
-
-class LifeStage(str, enum.Enum):
-    ACCUMULATION = "Accumulation"
-    PRESERVATION = "Preservation"
-    TRANSITION = "Transition"
-    LEGACY = "Legacy"
-    NEXT_GEN = "NextGen"
-
-
-class PainCategory(str, enum.Enum):
-    PRIVACY = "Privacy"
-    SECURITY = "Security"
-    LIFESTYLE = "Lifestyle"
-    GOVERNANCE = "Governance"
-    LEGACY_PLANNING = "LegacyPlanning"
-    REPUTATION = "Reputation"
-    TRAVEL = "Travel"
-    MEDICAL = "Medical"
-    EDUCATION = "Education"
-    CONCIERGE = "Concierge"
-
-
-class ComplianceRisk(str, enum.Enum):
-    NONE = "None"
-    LOW = "Low"
-    MODERATE = "Moderate"
-    REGULATED_DOMAIN = "RegulatedDomain"
-    HIGH = "High"
+class OfferStatus(str, enum.Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SUNSET = "sunset"
 
 
 class DeliveryModel(str, enum.Enum):
-    SOLO = "Solo"
-    TEAM = "Team"
-    ORCHESTRATED = "Orchestrated"
-    TECH_ASSISTED = "TechAssisted"
+    RETAINER = "retainer"
+    PROJECT = "project"
+    HYBRID = "hybrid"
+    CONCIERGE = "concierge"
+    MEMBERSHIP = "membership"
 
 
-class RiskLevel(str, enum.Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+class PainCategory(str, enum.Enum):
+    COORDINATION = "coordination"
+    SECURITY = "security"
+    PRIVACY = "privacy"
+    GOVERNANCE = "governance"
+    MEDICAL = "medical"
+    TRAVEL = "travel"
 
 
-class ReviewStatus(str, enum.Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    ESCALATED = "escalated"
+class WealthTier(str, enum.Enum):
+    HNW = "hnw"          # High Net Worth ($1M-$10M)
+    VHNW = "vhnw"        # Very High Net Worth ($10M-$30M)
+    UHNW = "uhnw"        # Ultra High Net Worth ($30M+)
+
+
+class BuyerType(str, enum.Enum):
+    PRINCIPAL = "principal"
+    FAMILY_OFFICE = "family_office"
+    ESTATE_MANAGER = "estate_manager"
+    EXECUTIVE_ASSISTANT = "executive_assistant"
+    ADVISOR = "advisor"

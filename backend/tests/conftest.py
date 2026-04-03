@@ -1,137 +1,70 @@
-"""Shared test fixtures — in-memory SQLite for fast isolated tests."""
+"""Shared test fixtures."""
 import uuid
+from unittest.mock import MagicMock
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.db.session import Base, get_db
 from app.main import app
-from app.models.user import User
-from app.models.workspace import Workspace
-from app.core.security import get_password_hash, create_access_token
 
-# Use in-memory SQLite for tests
-SQLALCHEMY_TEST_URL = "sqlite://"
-engine = create_engine(
-    SQLALCHEMY_TEST_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-
-# Enable foreign key support for SQLite
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
-TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# In-memory SQLite for tests
+SQLALCHEMY_TEST_URL = "sqlite:///./test.db"
+engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    """Create all tables before each test, drop after."""
+    """Create tables before each test, drop after."""
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture()
-def db():
-    session = TestSessionLocal()
+@pytest.fixture
+def db_session():
+    session = TestSession()
     try:
         yield session
     finally:
         session.close()
 
 
-@pytest.fixture()
-def client(db):
+@pytest.fixture
+def client(db_session):
     """FastAPI test client with overridden DB dependency."""
-    def _override_get_db():
+    def override_get_db():
         try:
-            yield db
+            yield db_session
         finally:
             pass
 
-    app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
 
 
-@pytest.fixture()
-def workspace(db) -> Workspace:
-    ws = Workspace(
-        id=str(uuid.uuid4()),
-        name="Test Workspace",
-        slug="test-workspace",
-        plan="core",
-        settings={},
-    )
-    db.add(ws)
-    db.commit()
-    db.refresh(ws)
-    return ws
-
-
-@pytest.fixture()
-def admin_user(db, workspace) -> User:
-    user = User(
-        id=str(uuid.uuid4()),
-        email="admin@test.com",
-        name="Admin User",
-        hashed_password=get_password_hash("password123"),
-        role="admin",
-        workspace_id=workspace.id,
-    )
-    db.add(user)
-    workspace.owner_id = user.id
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@pytest.fixture()
-def operator_user(db, workspace) -> User:
-    user = User(
-        id=str(uuid.uuid4()),
-        email="operator@test.com",
-        name="Operator User",
-        hashed_password=get_password_hash("password123"),
-        role="operator",
-        workspace_id=workspace.id,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@pytest.fixture()
-def viewer_user(db, workspace) -> User:
-    user = User(
-        id=str(uuid.uuid4()),
-        email="viewer@test.com",
-        name="Viewer User",
-        hashed_password=get_password_hash("password123"),
-        role="viewer",
-        workspace_id=workspace.id,
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-def make_auth_header(user: User) -> dict:
-    """Build an Authorization header for the given user."""
-    token = create_access_token({
-        "sub": str(user.id),
-        "workspace_id": str(user.workspace_id) if user.workspace_id else None,
-        "role": user.role,
-    })
-    return {"Authorization": f"Bearer {token}"}
+@pytest.fixture
+def sample_offer_payload():
+    return {
+        "workspace_id": str(uuid.uuid4()),
+        "name": "Test Offer",
+        "description": "A test premium offer",
+        "value_stack": [
+            {
+                "name": "Core Service",
+                "description": "Primary delivery",
+                "delivery_method": "retainer",
+                "estimated_hours": 80,
+            }
+        ],
+        "delivery_model": "retainer",
+        "guarantee_framework": {"type": "performance", "terms": "95% SLA"},
+        "pricing_model": {"monthly_price": 20000, "setup_fee": 5000},
+        "status": "draft",
+    }
