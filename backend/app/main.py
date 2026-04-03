@@ -1,4 +1,6 @@
 """ChamberForge API — Main Application Entry Point."""
+import logging
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,8 +14,8 @@ from app.core.error_handlers import (
 )
 from app.core.exceptions import AppException
 from app.core.logging_config import setup_logging
-from app.core.datadog_config import init_datadog
-from app.core.sentry_config import init_sentry
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="ChamberForge API",
@@ -24,8 +26,18 @@ app = FastAPI(
 )
 
 setup_logging()
-init_sentry(dsn=settings.SENTRY_DSN, environment=settings.APP_ENV)
-init_datadog()
+
+try:
+    from app.core.sentry_config import init_sentry
+    init_sentry(dsn=settings.SENTRY_DSN, environment=settings.APP_ENV)
+except Exception as e:
+    logger.warning(f"Sentry init failed (non-fatal): {e}")
+
+try:
+    from app.core.datadog_config import init_datadog
+    init_datadog()
+except Exception as e:
+    logger.warning(f"Datadog init failed (non-fatal): {e}")
 
 # --- Exception Handlers ---
 app.add_exception_handler(AppException, app_exception_handler)
@@ -40,6 +52,7 @@ from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E40
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
 from app.middleware.tenant import TenantMiddleware  # noqa: E402
+from app.middleware.datadog_metrics import DatadogMetricsMiddleware  # noqa: E402
 from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -155,9 +168,17 @@ app.include_router(community_router)
 
 @app.on_event("startup")
 async def startup():
-    from app.core.search_init import init_search
+    try:
+        from app.core.search_init import init_search
+        await init_search()
+    except Exception as e:
+        logger.warning(f"Search init failed (non-fatal): {e}")
 
-    await init_search()
+    try:
+        from app.core.datadog_config import init_datadog
+        init_datadog()
+    except Exception as e:
+        logger.warning(f"Datadog startup init failed (non-fatal): {e}")
 
 
 @app.get("/api/health")

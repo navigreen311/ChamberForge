@@ -15,8 +15,13 @@ class CacheService:
         try:
             import redis
 
-            self.client = redis.from_url(settings.REDIS_URL)
-            self.available = self.client.ping()
+            self.client = redis.from_url(
+                settings.REDIS_URL,
+                socket_timeout=2,
+                socket_connect_timeout=2,
+            )
+            self.client.ping()
+            self.available = True
         except Exception:
             logger.info("Redis unavailable — caching disabled")
             self.client = None
