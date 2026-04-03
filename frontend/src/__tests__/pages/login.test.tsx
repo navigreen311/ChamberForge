@@ -61,7 +61,7 @@ jest.mock('@/components/ui/Button', () => {
   }: {
     children: React.ReactNode
     loading?: boolean
-    type?: string
+    type?: 'button' | 'reset' | 'submit'
     variant?: string
     size?: string
     className?: string
