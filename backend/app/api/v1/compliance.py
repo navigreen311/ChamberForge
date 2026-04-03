@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.ai_explainability import AIExplainability
 from app.services.backbone.benchmark_exchange import BenchmarkExchange
@@ -54,12 +55,16 @@ class ContributeMetricsRequest(BaseModel):
 
 
 @router.post("/consent")
-def grant_consent(req: GrantConsentRequest, db: Session = Depends(get_db)):
+def grant_consent(
+    req: GrantConsentRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Grant a new consent record for a client."""
     try:
         record = ConsentLedger.grant_consent(
             db=db,
-            workspace_id=req.workspace_id,
+            workspace_id=workspace_id,
             client_id=req.client_id,
             consent_type=req.consent_type,
             nda_url=req.nda_url,
@@ -73,6 +78,7 @@ def grant_consent(req: GrantConsentRequest, db: Session = Depends(get_db)):
 def revoke_consent(
     consent_id: UUID,
     req: RevokeConsentRequest,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Revoke an existing consent record."""
@@ -84,14 +90,23 @@ def revoke_consent(
 
 
 @router.get("/consent/client/{client_id}")
-def get_client_consents(client_id: UUID, db: Session = Depends(get_db)):
+def get_client_consents(
+    client_id: UUID,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Get all consent records for a client."""
     records = ConsentLedger.get_client_consents(db=db, client_id=client_id)
     return [r.to_dict() for r in records]
 
 
 @router.get("/consent/check/{client_id}/{consent_type}")
-def check_consent(client_id: UUID, consent_type: str, db: Session = Depends(get_db)):
+def check_consent(
+    client_id: UUID,
+    consent_type: str,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Check whether a client has an active consent of the given type."""
     has_consent = ConsentLedger.check_consent(db=db, client_id=client_id, consent_type=consent_type)
     return {"client_id": str(client_id), "consent_type": consent_type, "active": has_consent}
@@ -99,7 +114,7 @@ def check_consent(client_id: UUID, consent_type: str, db: Session = Depends(get_
 
 @router.get("/consent/deletion-candidates")
 def get_deletion_candidates(
-    workspace_id: UUID = Query(...),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """List clients whose consents are all revoked (GDPR deletion candidates)."""
@@ -127,7 +142,7 @@ def generate_explainability_report(req: ExplainabilityRequest):
 @router.get("/quality/sla/{offer_id}")
 def check_sla(
     offer_id: UUID,
-    workspace_id: UUID = Query(...),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Check SLA adherence for a specific offer/engagement."""
@@ -135,14 +150,18 @@ def check_sla(
 
 
 @router.get("/quality/onboarding/{client_id}")
-def onboarding_quality(client_id: UUID, db: Session = Depends(get_db)):
+def onboarding_quality(
+    client_id: UUID,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Score onboarding quality for a client."""
     return ServiceQualityQA.score_onboarding_quality(db=db, client_id=client_id)
 
 
 @router.get("/quality/retention-risks")
 def retention_risks(
-    workspace_id: UUID = Query(...),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Detect clients at risk of churn."""
@@ -153,11 +172,15 @@ def retention_risks(
 
 
 @router.post("/comms/message")
-def send_message(req: SendMessageRequest, db: Session = Depends(get_db)):
+def send_message(
+    req: SendMessageRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Send an encrypted message."""
     return SecureComms.create_message(
         db=db,
-        workspace_id=req.workspace_id,
+        workspace_id=workspace_id,
         sender_id=req.sender_id,
         recipient_id=req.recipient_id,
         content=req.content,
@@ -167,9 +190,9 @@ def send_message(req: SendMessageRequest, db: Session = Depends(get_db)):
 
 @router.get("/comms/messages")
 def get_messages(
-    workspace_id: UUID = Query(...),
     user_id: UUID = Query(...),
     conversation_with: UUID | None = Query(None),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Get messages for a user, optionally filtered to a conversation."""
@@ -183,8 +206,8 @@ def get_messages(
 
 @router.get("/comms/audit-trail")
 def audit_trail(
-    workspace_id: UUID = Query(...),
     user_id: UUID | None = Query(None),
+    workspace_id: str = Depends(get_workspace_id),
     start_date: datetime | None = Query(None),
     end_date: datetime | None = Query(None),
     db: Session = Depends(get_db),
@@ -209,11 +232,15 @@ def get_benchmarks(pain_category: str, db: Session = Depends(get_db)):
 
 
 @router.post("/benchmarks")
-def contribute_benchmarks(req: ContributeMetricsRequest, db: Session = Depends(get_db)):
+def contribute_benchmarks(
+    req: ContributeMetricsRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Contribute anonymized metrics to the benchmark pool."""
     try:
         success = BenchmarkExchange.contribute_metrics(
-            db=db, workspace_id=req.workspace_id, metrics=req.metrics
+            db=db, workspace_id=workspace_id, metrics=req.metrics
         )
         return {"success": success}
     except ValueError as e:

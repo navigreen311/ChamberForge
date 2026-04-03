@@ -1,4 +1,4 @@
-"""Offer Architect, Pricing Intelligence & Service Design API endpoints."""
+"""Offer Architect, Pricing Intelligence & Service Design API endpoints — workspace-isolated."""
 from __future__ import annotations
 
 import uuid
@@ -7,8 +7,10 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_user, get_workspace_id
 from app.db.session import get_db
 from app.models.offer import Offer
+from app.models.user import User
 from app.schemas.offer import OfferCreate, OfferRead, OfferUpdate
 from app.services.agents.offer_ai import OfferAI
 from app.services.agents.pricing_ai import PricingAI
@@ -29,8 +31,8 @@ service_studio = ServiceDesignStudio()
 
 @router.get("/", response_model=list[OfferRead])
 def list_offers(
-    workspace_id: uuid.UUID = Query(...),
     status: str | None = Query(None),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """List offers scoped to a workspace, optionally filtered by status."""
@@ -43,11 +45,13 @@ def list_offers(
 @router.post("/", response_model=OfferRead, status_code=201)
 def create_offer(
     payload: OfferCreate,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Create a new offer."""
-    offer = Offer(**payload.model_dump())
+    data = payload.model_dump()
+    data["workspace_id"] = workspace_id
+    offer = Offer(**data)
     db.add(offer)
     db.commit()
     db.refresh(offer)
@@ -65,9 +69,13 @@ def create_offer(
 
 
 @router.get("/{offer_id}", response_model=OfferRead)
-def get_offer(offer_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_offer(
+    offer_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Get a single offer by ID."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     return offer
@@ -77,11 +85,11 @@ def get_offer(offer_id: uuid.UUID, db: Session = Depends(get_db)):
 def update_offer(
     offer_id: uuid.UUID,
     payload: OfferUpdate,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Update an existing offer."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -104,11 +112,11 @@ def update_offer(
 @router.delete("/{offer_id}", status_code=204)
 def delete_offer(
     offer_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Soft-delete an offer by setting status to sunset."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     offer.status = "sunset"
@@ -132,13 +140,17 @@ def delete_offer(
 # ---------------------------------------------------------------------------
 
 @router.post("/generate")
-async def generate_offer(body: dict[str, Any]):
+async def generate_offer(
+    body: dict[str, Any],
+    workspace_id: str = Depends(get_workspace_id),
+):
     """AI-generate an offer draft from problem data and optional buyer profile."""
     problem_data = body.get("problem_data")
     if not problem_data:
         raise HTTPException(status_code=422, detail="problem_data is required")
     buyer_profile = body.get("buyer_profile")
     result = await offer_ai.generate_offer(problem_data, buyer_profile)
+    result["workspace_id"] = workspace_id
     return result
 
 
@@ -146,10 +158,11 @@ async def generate_offer(body: dict[str, Any]):
 async def refine_offer(
     offer_id: uuid.UUID,
     body: dict[str, Any],
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Refine an existing offer based on user feedback."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     feedback = body.get("feedback", "")
@@ -172,10 +185,11 @@ async def refine_offer(
 @router.post("/{offer_id}/pricing")
 async def generate_pricing(
     offer_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Generate pricing recommendation for an offer."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     offer_data = {
@@ -189,7 +203,10 @@ async def generate_pricing(
 
 
 @router.post("/simulate-margins")
-def simulate_margins(body: dict[str, Any]):
+def simulate_margins(
+    body: dict[str, Any],
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Run a margin simulation with provided inputs."""
     monthly_price = body.get("monthly_price", 0)
     setup_fee = body.get("setup_fee", 0)
@@ -198,7 +215,10 @@ def simulate_margins(body: dict[str, Any]):
 
 
 @router.get("/benchmarks/{pain_category}")
-def get_benchmarks(pain_category: str):
+def get_benchmarks(
+    pain_category: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Return market benchmarks for a pain category."""
     benchmarks = pricing_ai.get_market_benchmarks(pain_category)
     if not benchmarks:
@@ -211,9 +231,13 @@ def get_benchmarks(pain_category: str):
 # ---------------------------------------------------------------------------
 
 @router.post("/{offer_id}/sops")
-def generate_sops(offer_id: uuid.UUID, db: Session = Depends(get_db)):
+def generate_sops(
+    offer_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Generate SOPs for an offer."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     sops = service_studio.generate_sops(
@@ -228,9 +252,13 @@ def generate_sops(offer_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{offer_id}/journey")
-def generate_journey(offer_id: uuid.UUID, db: Session = Depends(get_db)):
+def generate_journey(
+    offer_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Generate a client journey map for an offer."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     journey = service_studio.map_client_journey(

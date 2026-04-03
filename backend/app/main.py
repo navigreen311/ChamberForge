@@ -23,7 +23,7 @@ from app.middleware.rate_limiter import RateLimiterMiddleware  # noqa: E402
 from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
-from app.middleware.compression import GZipMiddleware  # noqa: E402
+from app.middleware.tenant import TenantMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -45,6 +45,7 @@ app.add_middleware(
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(PerformanceMiddleware)
 app.add_middleware(AuditMiddleware)
+app.add_middleware(TenantMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

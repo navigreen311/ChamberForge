@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from app.core.cache import cache
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.models.billing import Invoice, Subscription
 from app.services.backbone.referral_tracker import referral_tracker
@@ -68,12 +68,12 @@ def create_customer(body: CreateCustomerReq):
 # ---------------------------------------------------------------------------
 
 @router.post("/subscriptions")
-def create_subscription(body: CreateSubscriptionReq, db: Session = Depends(get_db)):
+def create_subscription(body: CreateSubscriptionReq, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     result = stripe_service.create_subscription(
         body.customer_id, body.amount, body.plan_name, body.interval
     )
     sub = Subscription(
-        workspace_id=str(body.workspace_id),
+        workspace_id=workspace_id,
         client_id=str(body.client_id),
         stripe_subscription_id=result["subscription_id"],
         stripe_customer_id=body.customer_id,
@@ -96,11 +96,11 @@ def create_subscription(body: CreateSubscriptionReq, db: Session = Depends(get_d
 
 
 @router.delete("/subscriptions/{subscription_id}")
-def cancel_subscription(subscription_id: str, db: Session = Depends(get_db)):
+def cancel_subscription(subscription_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     result = stripe_service.cancel_subscription(subscription_id)
     sub = (
         db.query(Subscription)
-        .filter(Subscription.stripe_subscription_id == subscription_id)
+        .filter(Subscription.stripe_subscription_id == subscription_id, Subscription.workspace_id == workspace_id)
         .first()
     )
     if sub:
@@ -115,10 +115,10 @@ def cancel_subscription(subscription_id: str, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.post("/invoices")
-def create_invoice(body: CreateInvoiceReq, db: Session = Depends(get_db)):
+def create_invoice(body: CreateInvoiceReq, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     result = stripe_service.create_invoice(body.customer_id, body.line_items, body.due_date)
     inv = Invoice(
-        workspace_id=str(body.workspace_id),
+        workspace_id=workspace_id,
         client_id=str(body.client_id),
         stripe_invoice_id=result["invoice_id"],
         amount=result["amount"],
@@ -139,10 +139,10 @@ def create_invoice(body: CreateInvoiceReq, db: Session = Depends(get_db)):
 
 
 @router.get("/invoices")
-def list_invoices(workspace_id: UUID = Query(...), db: Session = Depends(get_db)):
+def list_invoices(workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     invoices = (
         db.query(Invoice)
-        .filter(Invoice.workspace_id == str(workspace_id))
+        .filter(Invoice.workspace_id == workspace_id)
         .order_by(Invoice.created_at.desc())
         .all()
     )
@@ -167,14 +167,8 @@ def list_invoices(workspace_id: UUID = Query(...), db: Session = Depends(get_db)
 # ---------------------------------------------------------------------------
 
 @router.get("/revenue")
-def revenue_dashboard(workspace_id: UUID = Query(...), db: Session = Depends(get_db)):
-    key = cache.make_key("billing:revenue", workspace_id=str(workspace_id))
-    hit = cache.get(key)
-    if hit is not None:
-        return hit
-    result = stripe_service.get_revenue_dashboard(db, str(workspace_id))
-    cache.set(key, result, ttl_seconds=120)
-    return result
+def revenue_dashboard(workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
+    return stripe_service.get_revenue_dashboard(db, workspace_id)
 
 
 # ---------------------------------------------------------------------------
@@ -182,10 +176,10 @@ def revenue_dashboard(workspace_id: UUID = Query(...), db: Session = Depends(get
 # ---------------------------------------------------------------------------
 
 @router.post("/referrals")
-def create_referral(body: CreateReferralReq, db: Session = Depends(get_db)):
+def create_referral(body: CreateReferralReq, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     ref = referral_tracker.create_referral(
         db,
-        str(body.workspace_id),
+        workspace_id,
         str(body.referrer_id),
         str(body.referred_client_id),
         body.deal_value,
@@ -195,12 +189,12 @@ def create_referral(body: CreateReferralReq, db: Session = Depends(get_db)):
 
 
 @router.get("/referrals")
-def referral_report(workspace_id: UUID = Query(...), db: Session = Depends(get_db)):
-    return referral_tracker.get_referral_report(db, str(workspace_id))
+def referral_report(workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
+    return referral_tracker.get_referral_report(db, workspace_id)
 
 
 @router.put("/referrals/{referral_id}/paid")
-def mark_referral_paid(referral_id: UUID, db: Session = Depends(get_db)):
+def mark_referral_paid(referral_id: UUID, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     try:
         ref = referral_tracker.mark_paid(db, str(referral_id))
         return {"id": str(ref.id), "status": ref.status}

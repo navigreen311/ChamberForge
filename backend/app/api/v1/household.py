@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.household_graph import HouseholdGraphService
 
@@ -11,7 +12,7 @@ svc = HouseholdGraphService()
 
 
 @router.post("/{client_id}")
-def create_household_graph(client_id: str, data: dict = Body(...), db: Session = Depends(get_db)):
+def create_household_graph(client_id: str, data: dict = Body(...), workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     existing = svc.get(db, client_id)
     if existing:
         raise HTTPException(status_code=409, detail="Household graph already exists for this client")
@@ -20,7 +21,7 @@ def create_household_graph(client_id: str, data: dict = Body(...), db: Session =
 
 
 @router.get("/{client_id}")
-def get_household_graph(client_id: str, db: Session = Depends(get_db)):
+def get_household_graph(client_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     graph = svc.get(db, client_id)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")
@@ -28,7 +29,7 @@ def get_household_graph(client_id: str, db: Session = Depends(get_db)):
 
 
 @router.put("/{client_id}")
-def update_household_graph(client_id: str, data: dict = Body(...), db: Session = Depends(get_db)):
+def update_household_graph(client_id: str, data: dict = Body(...), workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     graph = svc.update(db, client_id, data)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")
@@ -68,7 +69,7 @@ def add_vendor(client_id: str, vendor_data: dict = Body(...), db: Session = Depe
 
 
 @router.get("/{client_id}/risks")
-def get_risk_summary(client_id: str, db: Session = Depends(get_db)):
+def get_risk_summary(client_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     return svc.get_risk_summary(db, client_id)
 
 

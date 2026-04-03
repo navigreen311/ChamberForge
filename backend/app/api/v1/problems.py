@@ -1,4 +1,4 @@
-"""REST endpoints for Problem CRUD."""
+"""REST endpoints for Problem CRUD — workspace-isolated."""
 from __future__ import annotations
 
 from typing import Optional
@@ -6,9 +6,10 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.cache import cache
+from app.core.dependencies import get_current_user, get_workspace_id
 from app.db.session import get_db
 from app.models.enums import LifecycleStage, PainCategory, WealthTier
+from app.models.user import User
 from app.schemas.problem import ProblemCreate, ProblemList, ProblemRead, ProblemUpdate
 from app.services.backbone.problem_library import ProblemLibrary
 from app.services.backbone.search_indices import PROBLEM_INDEX
@@ -20,8 +21,8 @@ library = ProblemLibrary()
 
 @router.get("/trending", response_model=list[ProblemRead])
 def trending_problems(
-    workspace_id: str = "default",
     limit: int = 10,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     key = cache.make_key("problems:trending", workspace_id=workspace_id, limit=limit)
@@ -35,7 +36,6 @@ def trending_problems(
 
 @router.get("/", response_model=ProblemList)
 def list_problems(
-    workspace_id: str = "default",
     wealth_tier: Optional[WealthTier] = None,
     pain_category: Optional[PainCategory] = None,
     lifecycle_stage: Optional[LifecycleStage] = None,
@@ -43,6 +43,7 @@ def list_problems(
     max_urgency: Optional[int] = None,
     skip: int = 0,
     limit: int = 20,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     filters: dict = {}
@@ -64,19 +65,22 @@ def list_problems(
 @router.post("/", response_model=ProblemRead, status_code=201)
 def create_problem(
     payload: ProblemCreate,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     data = payload.model_dump(exclude={"workspace_id"})
-    problem = library.create_problem(db, payload.workspace_id, data)
-    cache.invalidate_pattern("problems:*")
+    problem = library.create_problem(db, workspace_id, data)
     return problem
 
 
 @router.get("/{problem_id}", response_model=ProblemRead)
-def get_problem(problem_id: str, db: Session = Depends(get_db)):
+def get_problem(
+    problem_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     problem = library.get_problem(db, problem_id)
-    if not problem:
+    if not problem or problem.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Problem not found")
     return problem
 
@@ -85,25 +89,25 @@ def get_problem(problem_id: str, db: Session = Depends(get_db)):
 def update_problem(
     problem_id: str,
     payload: ProblemUpdate,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
-    data = payload.model_dump(exclude_unset=True)
-    problem = library.update_problem(db, problem_id, data)
-    if not problem:
+    problem = library.get_problem(db, problem_id)
+    if not problem or problem.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Problem not found")
-    cache.invalidate_pattern("problems:*")
-    return problem
+    data = payload.model_dump(exclude_unset=True)
+    updated = library.update_problem(db, problem_id, data)
+    return updated
 
 
 @router.delete("/{problem_id}", status_code=204)
 def delete_problem(
     problem_id: str,
-    background_tasks: BackgroundTasks,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
-    deleted = library.delete_problem(db, problem_id)
-    if not deleted:
+    problem = library.get_problem(db, problem_id)
+    if not problem or problem.workspace_id != workspace_id:
         raise HTTPException(status_code=404, detail="Problem not found")
-    cache.invalidate_pattern("problems:*")
+    library.delete_problem(db, problem_id)
     return None

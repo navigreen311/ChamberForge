@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_user, get_workspace_id
 from app.db.session import get_db
+from app.models.user import User
 from app.services.backbone.notifications import NotificationService
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
@@ -68,6 +70,7 @@ def list_notifications(
     type_filter: str | None = Query(None, alias="type"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """List notifications with optional type filter and pagination."""
@@ -79,6 +82,7 @@ def list_notifications(
 def list_unread(
     user_id: uuid.UUID = Query(...),
     limit: int = Query(50, ge=1, le=200),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Get unread notifications."""
@@ -89,6 +93,7 @@ def list_unread(
 @router.get("/count", response_model=UnreadCountOut)
 def unread_count(
     user_id: uuid.UUID = Query(...),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Get unread notification count."""
@@ -99,6 +104,7 @@ def unread_count(
 @router.put("/{notification_id}/read", response_model=NotificationOut)
 def mark_read(
     notification_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Mark a single notification as read."""
@@ -111,6 +117,7 @@ def mark_read(
 @router.put("/read-all", response_model=MarkedAllReadOut)
 def mark_all_read(
     user_id: uuid.UUID = Query(...),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Mark all notifications as read for a user."""
@@ -121,6 +128,7 @@ def mark_all_read(
 @router.delete("/old", response_model=CleanupOut)
 def cleanup_old(
     days: int = Query(90, ge=1),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     """Delete notifications older than N days (admin endpoint)."""
