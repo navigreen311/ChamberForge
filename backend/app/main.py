@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.evidence import router as evidence_router
 from app.core.config import settings
-from app.api.v1.compliance import router as compliance_router
+from app.api.v1.lifecycle import router as lifecycle_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -24,6 +24,9 @@ app.add_middleware(
 
 # ── Routers ──────────────────────────────────────────────────────────────────
 app.include_router(compliance_router)
+
+
+app.include_router(lifecycle_router)
 
 
 @app.get("/api/health")
