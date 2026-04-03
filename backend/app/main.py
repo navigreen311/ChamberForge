@@ -2,7 +2,6 @@
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
 
 from app.core.config import settings
 from app.core.error_handlers import (
@@ -34,13 +33,13 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 # --- Middleware ---
 from app.middleware.compression import GZipMiddleware  # noqa: E402
+from app.middleware.datadog_metrics import DatadogMetricsMiddleware  # noqa: E402
 from app.middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402
 from app.middleware.rate_limiter import RateLimiterMiddleware  # noqa: E402
 from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
 from app.middleware.tenant import TenantMiddleware  # noqa: E402
-from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(DatadogMetricsMiddleware)
