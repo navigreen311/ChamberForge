@@ -1,6 +1,7 @@
 """Authentication endpoints — register, login, refresh, me, logout."""
 import re
 import uuid
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -19,11 +20,14 @@ from app.models.user import User
 from app.models.workspace import Workspace
 from app.schemas.auth import (
     LoginRequest,
+    MFARequiredResponse,
+    MFAVerifyRequest,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
     UserResponse,
 )
+from app.services.backbone.mfa_service import MFAService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -94,19 +98,61 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(body: LoginRequest, db: Session = Depends(get_db)):
-    """Authenticate via email + password and return tokens."""
+    """Authenticate via email + password and return tokens (or MFA challenge)."""
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.hashed_password):
         raise AuthenticationError("Invalid email or password")
     if not user.is_active:
         raise AuthenticationError("Account deactivated")
 
+    # If MFA is enabled, return a short-lived MFA token instead of full tokens
+    if MFAService.is_mfa_enabled(db=db, user_id=str(user.id)):
+        mfa_payload = {
+            "sub": str(user.id),
+            "purpose": "mfa_challenge",
+        }
+        mfa_token = create_access_token(mfa_payload, expires_delta=timedelta(minutes=5))
+        return MFARequiredResponse(requires_mfa=True, mfa_token=mfa_token)
+
     payload = _build_token_payload(user)
     return TokenResponse(
         access_token=create_access_token(payload),
         refresh_token=create_refresh_token(payload),
+    )
+
+
+@router.post("/mfa-verify", response_model=TokenResponse)
+def mfa_verify(body: MFAVerifyRequest, db: Session = Depends(get_db)):
+    """Complete login by verifying TOTP code after MFA challenge."""
+    payload = decode_access_token(body.mfa_token)
+    if payload is None or payload.get("purpose") != "mfa_challenge":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired MFA token",
+        )
+
+    user_id = payload.get("sub")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive",
+        )
+
+    # Try TOTP code first, then backup code
+    if not MFAService.verify_totp(user_id=str(user.id), code=body.totp_code, db=db):
+        if not MFAService.verify_backup_code(db=db, user_id=str(user.id), code=body.totp_code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid TOTP or backup code",
+            )
+
+    token_payload = _build_token_payload(user)
+    return TokenResponse(
+        access_token=create_access_token(token_payload),
+        refresh_token=create_refresh_token(token_payload),
     )
 
 

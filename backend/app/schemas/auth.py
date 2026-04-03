@@ -24,6 +24,16 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class MFARequiredResponse(BaseModel):
+    requires_mfa: bool = True
+    mfa_token: str
+
+
+class MFAVerifyRequest(BaseModel):
+    mfa_token: str
+    totp_code: str = Field(min_length=6, max_length=8)
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
