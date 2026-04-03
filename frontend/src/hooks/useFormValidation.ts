@@ -7,7 +7,8 @@ interface UseFormValidationOptions<T> {
   schema: ZodSchema<T>;
 }
 
-export function useFormValidation<T>({ schema }: UseFormValidationOptions<T>) {
+export function useFormValidation<T>(schemaOrOptions: ZodSchema<T> | UseFormValidationOptions<T>) {
+  const schema = 'schema' in (schemaOrOptions as object) ? (schemaOrOptions as UseFormValidationOptions<T>).schema : schemaOrOptions as ZodSchema<T>;
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = useCallback(
@@ -30,7 +31,12 @@ export function useFormValidation<T>({ schema }: UseFormValidationOptions<T>) {
     [schema],
   );
 
+  const getError = useCallback(
+    (field: string): string | undefined => errors[field],
+    [errors],
+  );
+
   const clearErrors = useCallback(() => setErrors({}), []);
 
-  return { errors, validate, clearErrors };
+  return { errors, validate, getError, clearErrors };
 }

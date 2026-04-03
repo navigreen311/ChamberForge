@@ -59,7 +59,7 @@ export default function RecordsRetentionPage() {
   const [running, setRunning] = useState(false);
 
   // Form state
-  const [formClass, setFormClass] = useState(DOCUMENT_CLASSES[0]);
+  const [formClass, setFormClass] = useState<typeof DOCUMENT_CLASSES[number]>(DOCUMENT_CLASSES[0]);
   const [formDays, setFormDays] = useState(365);
   const [formAutoDelete, setFormAutoDelete] = useState(false);
 
@@ -187,7 +187,7 @@ export default function RecordsRetentionPage() {
             <div className="space-y-3">
               <select
                 value={formClass}
-                onChange={(e) => setFormClass(e.target.value)}
+                onChange={(e) => setFormClass(e.target.value as typeof DOCUMENT_CLASSES[number])}
                 className="w-full bg-chamber-800 text-white rounded-lg px-3 py-2 text-sm border border-chamber-700"
               >
                 {DOCUMENT_CLASSES.map((c) => (

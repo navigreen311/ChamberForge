@@ -17,6 +17,7 @@ interface BuyerProfile {
     triggers?: string[];
   };
   buyingBehavior?: {
+    decision_time?: string;
     decisionTime?: string;
     budget?: string;
     channels?: string[];
