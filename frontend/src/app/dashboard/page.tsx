@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWorkspaceEvents, useEvent } from "@/hooks/useRealtime";
+import api from "@/lib/api";
+import NextActionCard from "@/components/modules/NextActionCard";
+import DailyBriefPanel from "@/components/modules/DailyBriefPanel";
+import OpportunityRanker from "@/components/modules/OpportunityRanker";
 
 const WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID || null;
 
@@ -19,14 +23,11 @@ function Skeleton({ className = "" }: { className?: string }) {
 }
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
-  const [liveMetrics, setLiveMetrics] = useState(metrics);
-  const [liveAgents, setLiveAgents] = useState(agents);
-
-export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [liveMetrics, setLiveMetrics] = useState<any[]>([]);
+  const [liveAgents, setLiveAgents] = useState<any[]>([]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -55,10 +56,29 @@ export default function DashboardPage() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  useEffect(() => {
+    if (data) {
+      setLiveMetrics(data.dashboard?.metrics ?? []);
+      const statuses = data.agentStatus ?? {};
+      const details = data.agentDetails ?? {};
+      setLiveAgents(
+        Object.entries(statuses).map(([name, status]) => ({
+          name,
+          status,
+          task: details[name]?.last_output ?? "",
+        }))
+      );
+    }
+  }, [data]);
+
   /* ---- Realtime: workspace events ---- */
   const wsChannel = useWorkspaceEvents(WORKSPACE_ID);
 
-  useEvent<typeof metrics>(wsChannel, "dashboard-update", (data) => {
+  useEvent<any[]>(wsChannel, "dashboard-update", (data) => {
     if (Array.isArray(data)) {
       setLiveMetrics(data);
     }
@@ -98,8 +118,7 @@ export default function DashboardPage() {
     );
   }
 
-  const metrics = data?.dashboard?.metrics ?? [];
-  const clientHealth = data?.dashboard?.client_health ?? [];
+  const _metrics = data?.dashboard?.metrics ?? [];
 
   return (
     <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">

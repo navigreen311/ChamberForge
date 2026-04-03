@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useWorkspaceEvents, useEvent } from "@/hooks/useRealtime";
+
+const WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID || null;
 
 interface Client {
   name: string;
@@ -51,7 +54,7 @@ export default function RetentionPage() {
     wsChannel,
     "health-score-update",
     (data) => {
-      setLiveClients((prev) =>
+      setClients((prev) =>
         prev.map((c) =>
           c.name === data.name
             ? { ...c, health: data.health, ...(data.trend ? { trend: data.trend } : {}) }
