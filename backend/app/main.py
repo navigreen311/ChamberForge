@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
 from app.api.v1.workspaces import router as workspaces_router
+from app.api.v1.problems import router as problems_router
+from app.api.v1.discovery import router as discovery_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -27,6 +29,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(workspaces_router)
+app.include_router(problems_router)
+app.include_router(discovery_router)
 
 
 @app.get("/api/health")

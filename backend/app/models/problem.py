@@ -1,41 +1,96 @@
-"""Problem model."""
+"""Problem model — core entity for the Problem Discovery Engine."""
 import uuid
+from datetime import datetime
 
-import sqlalchemy as sa
-import sqlalchemy.dialects.postgresql as pg
+from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Enum
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
+from app.models.enums import (
+    WealthTier,
+    BuyerType,
+    LifeStage,
+    TriggerEvent,
+    PainCategory,
+    WTPProfile,
+    TrustChannel,
+    ComplianceRisk,
+    DeliveryModel,
+    ProofMetric,
+    LifecycleStage,
+)
 
 
 class Problem(Base):
     __tablename__ = "problems"
 
-    id = sa.Column(pg.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = sa.Column(
-        pg.UUID(as_uuid=True), sa.ForeignKey("workspaces.id"), nullable=False
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    workspace_id = Column(String(36), nullable=False, index=True)
+
+    # Core fields
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Ontology fields
+    wealth_tier = Column(
+        Enum(WealthTier, name="wealth_tier", create_constraint=False),
+        nullable=True,
     )
-    title = sa.Column(sa.String, nullable=False)
-    description = sa.Column(sa.Text, nullable=True)
-    wealth_tier = sa.Column(sa.String, nullable=True)
-    buyer_type = sa.Column(sa.String, nullable=True)
-    life_stage = sa.Column(sa.String, nullable=True)
-    trigger_event = sa.Column(sa.String, nullable=True)
-    pain_category = sa.Column(sa.String, nullable=True)
-    urgency_score = sa.Column(sa.Integer, nullable=True)
-    wtp_profile = sa.Column(sa.String, nullable=True)
-    trust_channel = sa.Column(sa.String, nullable=True)
-    compliance_risk = sa.Column(sa.String, nullable=True)
-    delivery_model = sa.Column(sa.String, nullable=True)
-    proof_metric = sa.Column(sa.String, nullable=True)
-    lifecycle_stage = sa.Column(sa.String, nullable=True)
-    status = sa.Column(sa.String, default="active", nullable=False)
-    created_by = sa.Column(
-        pg.UUID(as_uuid=True), sa.ForeignKey("users.id"), nullable=True
+    buyer_type = Column(
+        Enum(BuyerType, name="buyer_type", create_constraint=False),
+        nullable=True,
     )
-    created_at = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
-    updated_at = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False
+    life_stage = Column(
+        Enum(LifeStage, name="life_stage", create_constraint=False),
+        nullable=True,
+    )
+    trigger_event = Column(
+        Enum(TriggerEvent, name="trigger_event", create_constraint=False),
+        nullable=True,
+    )
+    pain_category = Column(
+        Enum(PainCategory, name="pain_category", create_constraint=False),
+        nullable=True,
+    )
+    wtp_profile = Column(
+        Enum(WTPProfile, name="wtp_profile", create_constraint=False),
+        nullable=True,
+    )
+    trust_channel = Column(
+        Enum(TrustChannel, name="trust_channel", create_constraint=False),
+        nullable=True,
+    )
+    compliance_risk = Column(
+        Enum(ComplianceRisk, name="compliance_risk", create_constraint=False),
+        nullable=True,
+    )
+    delivery_model = Column(
+        Enum(DeliveryModel, name="delivery_model", create_constraint=False),
+        nullable=True,
+    )
+    proof_metric = Column(
+        Enum(ProofMetric, name="proof_metric", create_constraint=False),
+        nullable=True,
+    )
+    lifecycle_stage = Column(
+        Enum(LifecycleStage, name="lifecycle_stage", create_constraint=False),
+        nullable=True,
+    )
+
+    # Scoring
+    urgency_score = Column(Integer, nullable=True, default=5)
+    wtp_confidence = Column(Float, nullable=True, default=0.5)
+
+    # Metadata
+    source = Column(String(255), nullable=True)
+    geo = Column(String(100), nullable=True)
+    status = Column(String(50), default="active", nullable=False)
+    created_by = Column(String(36), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
 
     evidences = relationship("Evidence", back_populates="problem", lazy="select")
