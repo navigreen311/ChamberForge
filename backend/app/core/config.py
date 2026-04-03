@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     APP_ENV: str = "development"
+    APP_VERSION: str = "1.0.0"
     APP_PORT: int = 8000
     FRONTEND_URL: str = "http://localhost:3000"
 
