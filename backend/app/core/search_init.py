@@ -15,6 +15,10 @@ async def init_search() -> None:
         if not svc.available:
             logger.warning("Elasticsearch unavailable — skipping index init")
             return
+        # Quick connectivity check before iterating indices
+        if not await svc._check_available():
+            logger.warning("Elasticsearch not reachable — skipping index init")
+            return
         for name, mapping in get_all_indices().items():
             await svc.create_index(name, mapping)
             logger.info("Index %s ready", name)
