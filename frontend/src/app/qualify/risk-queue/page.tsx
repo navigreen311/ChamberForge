@@ -19,7 +19,7 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function RiskQueuePage() {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState<Array<{ id: number; type: string; item: string; risk: string; reason: string; flaggedBy: string; date: string; status: ItemStatus }>>(initialItems);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
