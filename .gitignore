@@ -15,8 +15,9 @@ env/
 .next/
 out/
 dist/
-build/
+/build/
 *.egg-info/
+!frontend/src/app/build/
 
 # IDE
 .vscode/
