@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down clean help
+.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -45,6 +45,15 @@ docker-down: ## Stop Docker infrastructure services
 deploy-staging: ## Deploy to staging (requires AWS credentials)
 	@echo "Triggering staging deploy via git push to main..."
 	git push origin main
+
+backup: ## Backup ChamberForge database
+	bash scripts/backup-db.sh
+
+restore: ## Restore database from backup (usage: make restore BACKUP=<file>)
+	bash scripts/restore-db.sh $(BACKUP)
+
+health-check: ## Check system health via API
+	@curl -sf http://localhost:8000/api/v1/metrics/detailed | python -m json.tool || echo "Health check failed - is the server running?"
 
 clean: ## Remove all generated files, containers, and volumes
 	docker compose down -v 2>/dev/null || true
