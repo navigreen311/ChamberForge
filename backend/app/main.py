@@ -66,6 +66,7 @@ from app.api.v1.jobs import router as jobs_router  # noqa: E402
 from app.api.v1.health import router as health_router  # noqa: E402
 from app.api.v1.metrics import router as metrics_router  # noqa: E402
 from app.api.v1.security import router as security_router  # noqa: E402
+from app.api.v1.onboarding import router as onboarding_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -97,6 +98,7 @@ app.include_router(jobs_router)
 app.include_router(health_router)
 app.include_router(metrics_router)
 app.include_router(security_router)
+app.include_router(onboarding_router)
 
 
 @app.get("/api/health")

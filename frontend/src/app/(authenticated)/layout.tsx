@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import AppShell from '@/components/layout/AppShell';
-import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import OnboardingBanner from '@/components/modules/OnboardingBanner';
 
 export default function AuthenticatedLayout({
   children,
@@ -34,7 +34,8 @@ export default function AuthenticatedLayout({
 
   return (
     <AppShell>
-      <ErrorBoundary>{children}</ErrorBoundary>
+      <OnboardingBanner />
+      {children}
     </AppShell>
   );
 }
