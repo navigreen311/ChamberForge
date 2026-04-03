@@ -1,6 +1,17 @@
-"""Sandbox Service — Demo environments with synthetic data."""
+"""Sandbox Service — Demo environments with rich synthetic data."""
 import uuid
 from datetime import datetime, timezone
+
+from app.data.demo_scenarios import (
+    ALL_SCENARIOS,
+    get_all_clients,
+    get_all_evidence,
+    get_all_household_graphs,
+    get_all_notifications,
+    get_all_offers,
+    get_all_playbook_activations,
+    get_all_problems,
+)
 
 
 class SandboxService:
@@ -16,7 +27,7 @@ class SandboxService:
 
     @classmethod
     def create_sandbox(cls, db, workspace_id: str, name: str) -> dict:  # noqa: ARG003
-        """Create a new sandbox environment."""
+        """Create a new sandbox environment pre-loaded with demo scenarios."""
         sandbox_id = str(uuid.uuid4())
         sandbox = {
             "sandbox_id": sandbox_id,
@@ -28,65 +39,50 @@ class SandboxService:
         }
         cls._sandboxes[sandbox_id] = sandbox
 
-        # Auto-load synthetic data on creation
+        # Auto-load rich demo data on creation
         cls._load_synthetic_data_internal(sandbox_id)
 
         return sandbox
 
     @classmethod
     def _load_synthetic_data_internal(cls, sandbox_id: str) -> dict:
-        """Generate synthetic demo data for a sandbox."""
+        """Populate sandbox with all 3 demo scenarios and their full data."""
         synthetic_data = {
-            "households": [
+            "scenarios": ALL_SCENARIOS,
+            "clients": get_all_clients(),
+            "problems": get_all_problems(),
+            "offers": get_all_offers(),
+            "household_graphs": get_all_household_graphs(),
+            "evidence": get_all_evidence(),
+            "notifications": get_all_notifications(),
+            "playbook_activations": get_all_playbook_activations(),
+            "health_scores": [s["health_score"] for s in ALL_SCENARIOS],
+            "kpis": {s["client"]["name"]: s["kpis"] for s in ALL_SCENARIOS},
+            "crisis_incidents": [
+                s["crisis_incident"]
+                for s in ALL_SCENARIOS
+                if "crisis_incident" in s
+            ],
+            "users": [
                 {
                     "id": str(uuid.uuid4()),
-                    "name": "The Harrison Family",
-                    "net_worth": 45_000_000,
-                    "members": [
-                        {"name": "James Harrison", "role": "Patriarch"},
-                        {"name": "Eleanor Harrison", "role": "Matriarch"},
-                        {"name": "William Harrison", "role": "Heir"},
-                    ],
+                    "email": "demo-advisor@chamberforge.com",
+                    "name": "Demo Advisor",
+                    "role": "admin",
                 },
                 {
                     "id": str(uuid.uuid4()),
-                    "name": "The Chen Dynasty",
-                    "net_worth": 120_000_000,
-                    "members": [
-                        {"name": "David Chen", "role": "Patriarch"},
-                        {"name": "Mei Chen", "role": "Matriarch"},
-                    ],
+                    "email": "demo-operator@chamberforge.com",
+                    "name": "Demo Operator",
+                    "role": "operator",
                 },
             ],
-            "clients": [
-                {"id": str(uuid.uuid4()), "name": "James Harrison", "tier": "UHNW"},
-                {"id": str(uuid.uuid4()), "name": "David Chen", "tier": "UHNW"},
-                {"id": str(uuid.uuid4()), "name": "Sarah Mitchell", "tier": "HNW"},
-            ],
-            "problems": [
+            "workspaces": [
                 {
                     "id": str(uuid.uuid4()),
-                    "title": "Estate tax optimization",
-                    "status": "open",
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "Succession planning",
-                    "status": "in_progress",
-                },
-            ],
-            "offers": [
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "Family Office Setup",
-                    "price": 250_000,
-                    "status": "draft",
-                },
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "Wealth Transfer Strategy",
-                    "price": 150_000,
-                    "status": "active",
+                    "name": "ChamberForge Demo Workspace",
+                    "plan": "enterprise",
+                    "settings": {"demo_mode": True},
                 },
             ],
         }
@@ -98,7 +94,7 @@ class SandboxService:
 
     @classmethod
     def load_synthetic_data(cls, db, sandbox_id: str) -> dict:  # noqa: ARG003
-        """Generate fake household graph, clients, problems, offers for demo."""
+        """Reload demo data for a sandbox, returning record counts."""
         if sandbox_id not in cls._sandboxes:
             raise ValueError(f"Sandbox {sandbox_id} not found")
 
@@ -107,16 +103,24 @@ class SandboxService:
             "sandbox_id": sandbox_id,
             "data_loaded": True,
             "record_counts": {
-                "households": len(data["households"]),
+                "scenarios": len(data["scenarios"]),
                 "clients": len(data["clients"]),
                 "problems": len(data["problems"]),
                 "offers": len(data["offers"]),
+                "household_graphs": len(data["household_graphs"]),
+                "evidence": len(data["evidence"]),
+                "notifications": len(data["notifications"]),
+                "playbook_activations": len(data["playbook_activations"]),
+                "health_scores": len(data["health_scores"]),
+                "crisis_incidents": len(data["crisis_incidents"]),
+                "users": len(data["users"]),
+                "workspaces": len(data["workspaces"]),
             },
         }
 
     @classmethod
     def reset_sandbox(cls, db, sandbox_id: str) -> dict:  # noqa: ARG003
-        """Reset a sandbox to clean state and reload synthetic data."""
+        """Reset a sandbox to clean state and reload demo data."""
         if sandbox_id not in cls._sandboxes:
             raise ValueError(f"Sandbox {sandbox_id} not found")
 
@@ -135,3 +139,8 @@ class SandboxService:
             for s in cls._sandboxes.values()
             if s["workspace_id"] == workspace_id
         ]
+
+    @classmethod
+    def get_sandbox(cls, db, sandbox_id: str) -> dict | None:  # noqa: ARG003
+        """Get a sandbox by ID, including its synthetic data."""
+        return cls._sandboxes.get(sandbox_id)
