@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "001_initial"
@@ -115,9 +114,9 @@ def upgrade() -> None:
 
     op.create_table(
         "evidence",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("problem_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("problem_id", sa.String(36), nullable=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("source_url", sa.String, nullable=False),
         sa.Column("source_type", sa.String, nullable=False),
         sa.Column("publication_date", sa.Date, nullable=False),
@@ -135,9 +134,9 @@ def upgrade() -> None:
 
     op.create_table(
         "offers",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("problem_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("problem_id", sa.String(36), nullable=True),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("value_stack", sa.JSON, nullable=True, server_default="[]"),
         sa.Column("delivery_model", sa.String(50), nullable=False, server_default="'done_for_you'"),
@@ -145,7 +144,7 @@ def upgrade() -> None:
         sa.Column("pricing_model", sa.JSON, nullable=True, server_default="{}"),
         sa.Column("sop_bundle", sa.JSON, nullable=True, server_default="{}"),
         sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("created_by", sa.String(36), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
@@ -154,8 +153,8 @@ def upgrade() -> None:
 
     op.create_table(
         "clients",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("company", sa.String(255), nullable=True),
         sa.Column("wealth_tier", sa.String(30), nullable=False, server_default="'hnw'"),
@@ -171,10 +170,10 @@ def upgrade() -> None:
 
     op.create_table(
         "household_graphs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("id", sa.String(36), primary_key=True),
         sa.Column(
             "client_id",
-            postgresql.UUID(as_uuid=True),
+            sa.String(36),
             sa.ForeignKey("clients.id", ondelete="CASCADE"),
             nullable=False,
             unique=True,
@@ -215,21 +214,21 @@ def upgrade() -> None:
 
     op.create_table(
         "audit_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("user_id", sa.String(36), nullable=True),
         sa.Column("action", sa.String, nullable=False),
         sa.Column("resource_type", sa.String, nullable=False),
-        sa.Column("resource_id", postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column("details", postgresql.JSON, server_default="{}"),
+        sa.Column("resource_id", sa.String(36), nullable=True),
+        sa.Column("details", sa.JSON, server_default="{}"),
         sa.Column("ip_address", sa.String, nullable=True),
         sa.Column("timestamp", sa.DateTime, nullable=False, server_default=sa.func.now()),
     )
 
     op.create_table(
         "ai_usage_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("agent_name", sa.String(255), nullable=False),
         sa.Column("tokens_in", sa.Integer, nullable=False, server_default="0"),
         sa.Column("tokens_out", sa.Integer, nullable=False, server_default="0"),
@@ -259,9 +258,9 @@ def upgrade() -> None:
 
     op.create_table(
         "subscriptions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("client_id", sa.String(36), nullable=False),
         sa.Column("stripe_subscription_id", sa.String, unique=True, nullable=True),
         sa.Column("stripe_customer_id", sa.String, nullable=True),
         sa.Column("plan_name", sa.String, nullable=False),
@@ -277,9 +276,9 @@ def upgrade() -> None:
 
     op.create_table(
         "invoices",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("client_id", sa.String(36), nullable=False),
         sa.Column("stripe_invoice_id", sa.String, nullable=True),
         sa.Column("amount", sa.Float, nullable=False),
         sa.Column("status", sa.String, server_default="'draft'"),
@@ -293,10 +292,10 @@ def upgrade() -> None:
 
     op.create_table(
         "referrals",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("referrer_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("referred_client_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("referrer_id", sa.String(36), nullable=False),
+        sa.Column("referred_client_id", sa.String(36), nullable=False),
         sa.Column("deal_value", sa.Float, nullable=False),
         sa.Column("commission_pct", sa.Float, server_default="10.0"),
         sa.Column("commission_amount", sa.Float, nullable=False),
@@ -307,9 +306,9 @@ def upgrade() -> None:
 
     op.create_table(
         "consent_records",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("client_id", sa.String(36), nullable=False),
         sa.Column("consent_type", sa.String(50), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'active'"),
         sa.Column("granted_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
@@ -323,15 +322,15 @@ def upgrade() -> None:
 
     op.create_table(
         "crisis_incidents",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("title", sa.String(500), nullable=False),
         sa.Column("severity", sa.String(20), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'active'"),
-        sa.Column("timeline", postgresql.JSON, nullable=False, server_default="[]"),
-        sa.Column("escalation_tree", postgresql.JSON, nullable=False, server_default="[]"),
-        sa.Column("lockdown_actions", postgresql.JSON, nullable=False, server_default="[]"),
-        sa.Column("reported_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("timeline", sa.JSON, nullable=False, server_default="[]"),
+        sa.Column("escalation_tree", sa.JSON, nullable=False, server_default="[]"),
+        sa.Column("lockdown_actions", sa.JSON, nullable=False, server_default="[]"),
+        sa.Column("reported_by", sa.String(36), nullable=True),
         sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
@@ -340,12 +339,12 @@ def upgrade() -> None:
 
     op.create_table(
         "deletion_requests",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("client_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("requested_by", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("client_id", sa.String(36), nullable=False),
+        sa.Column("requested_by", sa.String(36), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'pending'"),
-        sa.Column("tables_cleaned", postgresql.JSON, server_default="[]"),
+        sa.Column("tables_cleaned", sa.JSON, server_default="[]"),
         sa.Column("records_deleted", sa.Integer, server_default="0"),
         sa.Column("requested_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
@@ -355,13 +354,13 @@ def upgrade() -> None:
 
     op.create_table(
         "documents",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("file_name", sa.String(512), nullable=False),
         sa.Column("file_type", sa.String(128), nullable=False),
         sa.Column("s3_key", sa.String(1024), nullable=False, unique=True),
         sa.Column("size_bytes", sa.Integer, nullable=False),
-        sa.Column("uploaded_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("uploaded_by", sa.String(36), nullable=True),
         sa.Column("watermark_id", sa.String(256), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )
@@ -369,13 +368,13 @@ def upgrade() -> None:
 
     op.create_table(
         "email_logs",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("to_email", sa.String(320), nullable=False),
         sa.Column("template", sa.String(100), nullable=True),
         sa.Column("subject", sa.String(500), nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'sent'"),
-        sa.Column("metadata", postgresql.JSON, nullable=False, server_default="{}"),
+        sa.Column("metadata", sa.JSON, nullable=False, server_default="{}"),
         sa.Column("sent_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
         sa.Column("delivered_at", sa.DateTime, nullable=True),
     )
@@ -384,14 +383,14 @@ def upgrade() -> None:
 
     op.create_table(
         "legal_holds",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("resource_type", sa.String(100), nullable=False),
-        sa.Column("resource_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("resource_id", sa.String(36), nullable=False),
         sa.Column("reason", sa.Text, nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'active'"),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("released_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("created_by", sa.String(36), nullable=False),
+        sa.Column("released_by", sa.String(36), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("released_at", sa.DateTime(timezone=True), nullable=True),
     )
@@ -400,10 +399,10 @@ def upgrade() -> None:
 
     op.create_table(
         "secure_messages",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("sender_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("recipient_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
+        sa.Column("sender_id", sa.String(36), nullable=False),
+        sa.Column("recipient_id", sa.String(36), nullable=False),
         sa.Column("content", sa.Text, nullable=False),
         sa.Column("is_encrypted", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("read_at", sa.DateTime, nullable=True),
@@ -415,9 +414,9 @@ def upgrade() -> None:
 
     op.create_table(
         "notifications",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("user_id", sa.String(36), nullable=False),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("type", sa.String(20), nullable=False, server_default="'info'"),
         sa.Column("title", sa.String(255), nullable=False),
         sa.Column("body", sa.Text, nullable=False),
@@ -443,14 +442,14 @@ def upgrade() -> None:
 
     op.create_table(
         "risk_reviews",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("item_type", sa.String(50), nullable=False),
-        sa.Column("item_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("item_id", sa.String(36), nullable=False),
         sa.Column("risk_level", sa.String(20), nullable=False),
         sa.Column("reason", sa.Text, nullable=False),
         sa.Column("status", sa.String(20), nullable=False, server_default="'pending'"),
-        sa.Column("reviewer_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("reviewer_id", sa.String(36), nullable=True),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("notes", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
@@ -460,14 +459,14 @@ def upgrade() -> None:
 
     op.create_table(
         "template_versions",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("workspace_id", sa.String(36), nullable=False),
         sa.Column("template_type", sa.String(50), nullable=False),
-        sa.Column("template_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("template_id", sa.String(36), nullable=False),
         sa.Column("version_number", sa.Integer, nullable=False, server_default="1"),
         sa.Column("content", sa.JSON, nullable=False),
         sa.Column("changes_summary", sa.Text, nullable=True),
-        sa.Column("created_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("created_by", sa.String(36), nullable=True),
         sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.text("true")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
     )

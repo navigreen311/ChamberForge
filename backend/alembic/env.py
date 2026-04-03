@@ -49,10 +49,11 @@ from app.models.notification import Notification  # noqa: F401, E402
 from app.models.prompt_version import PromptVersion  # noqa: F401, E402
 from app.models.risk_review import RiskReview  # noqa: F401, E402
 from app.models.template_version import TemplateVersion  # noqa: F401, E402
-
-# NOTE: EmailLog uses its own Base in email_log.py — its table is created
-# in the manual migration. If it is refactored to use the shared Base, it
-# will be auto-detected here.
+from app.models.email_log import EmailLog  # noqa: F401, E402
+from app.models.onboarding import OnboardingProgress  # noqa: F401, E402
+from app.models.client_portal import ClientPortalAccess  # noqa: F401, E402
+from app.models.drip_status import DripStatus  # noqa: F401, E402
+from app.models.retention_policy import RetentionPolicy  # noqa: F401, E402
 
 target_metadata = Base.metadata
 
