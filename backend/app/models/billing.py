@@ -2,6 +2,7 @@
 import uuid
 from datetime import date, datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Column, Date, DateTime, Float, JSON, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -15,7 +16,7 @@ class Subscription(Base):
     workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     stripe_subscription_id = Column(String, unique=True, nullable=True)
-    stripe_customer_id = Column(String, nullable=True)
+    stripe_customer_id = Column(String, nullable=True, index=True)
     plan_name = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     currency = Column(String, default="usd")
@@ -23,6 +24,10 @@ class Subscription(Base):
     current_period_start = Column(DateTime, nullable=True)
     current_period_end = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        sa.Index("ix_subscriptions_workspace_status", "workspace_id", "status"),
+    )
 
 
 class Invoice(Base):
@@ -34,10 +39,14 @@ class Invoice(Base):
     stripe_invoice_id = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
     status = Column(String, default="draft")  # draft | sent | paid | overdue
-    due_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True, index=True)
     paid_at = Column(DateTime, nullable=True)
     line_items = Column(JSON, default=list)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        sa.Index("ix_invoices_workspace_status", "workspace_id", "status"),
+    )
 
 
 class Referral(Base):

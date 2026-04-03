@@ -2,7 +2,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Enum
+import sqlalchemy as sa
+from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Enum, Index
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
@@ -79,7 +80,7 @@ class Problem(Base):
     )
 
     # Scoring
-    urgency_score = Column(Integer, nullable=True, default=5)
+    urgency_score = Column(Integer, nullable=True, default=5, index=True)
     wtp_confidence = Column(Float, nullable=True, default=0.5)
 
     # Metadata
@@ -88,9 +89,14 @@ class Problem(Base):
     status = Column(String(50), default="active", nullable=False)
     created_by = Column(String(36), nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        sa.Index("ix_problems_workspace_lifecycle", "workspace_id", "lifecycle_stage"),
+        sa.Index("ix_problems_workspace_status", "workspace_id", "status"),
     )
 
     evidences = relationship("Evidence", back_populates="problem", lazy="select")

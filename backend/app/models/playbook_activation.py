@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, String, Integer, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -18,6 +19,7 @@ class PlaybookActivation(Base):
         GUID(),
         ForeignKey("playbooks.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
     customizations = Column(JSON, nullable=False, default=dict)
     progress = Column(JSON, nullable=False, default=dict)
@@ -27,6 +29,10 @@ class PlaybookActivation(Base):
     )
     completed_sections = Column(Integer, nullable=False, default=0)
     total_sections = Column(Integer, nullable=False, default=8)
+
+    __table_args__ = (
+        sa.Index("ix_playbook_activations_workspace_status", "workspace_id", "status"),
+    )
 
     playbook = relationship("Playbook", lazy="joined")
 

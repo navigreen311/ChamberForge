@@ -15,7 +15,7 @@ class Evidence(Base):
     problem_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     source_url = Column(String, nullable=False, index=True)
-    source_type = Column(String, nullable=False)
+    source_type = Column(String, nullable=False, index=True)
     publication_date = Column(Date, nullable=False)
     credibility_score = Column(Float, nullable=False, default=5.0)
     extracted_claims = Column(JSON, default=list)

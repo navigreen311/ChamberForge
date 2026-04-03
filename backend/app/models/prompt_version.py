@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, String, Text
 
 from app.db.session import Base
@@ -22,4 +23,8 @@ class PromptVersion(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    __table_args__ = (
+        sa.Index("ix_prompt_versions_agent_version", "agent_name", "version"),
     )

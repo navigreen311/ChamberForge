@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, String, DateTime, JSON, Text
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -14,7 +15,7 @@ class Offer(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    problem_id = Column(UUID(as_uuid=True), nullable=True)
+    problem_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     value_stack = Column(JSON, nullable=True, default=list)
     delivery_model = Column(String(50), nullable=False, default=DeliveryModel.DONE_FOR_YOU.value)
@@ -23,9 +24,13 @@ class Offer(Base):
     sop_bundle = Column(JSON, nullable=True, default=dict)
     status = Column(String(20), nullable=False, default=OfferStatus.DRAFT.value, index=True)
     created_by = Column(UUID(as_uuid=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        sa.Index("ix_offers_workspace_status", "workspace_id", "status"),
     )

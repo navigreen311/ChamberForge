@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, ForeignKey, String, DateTime
 from sqlalchemy.orm import relationship
 
@@ -21,7 +22,7 @@ class User(Base):
     hashed_password = Column(String(1024), nullable=False)
     role = Column(String(50), nullable=False, default="operator")
     workspace_id = Column(
-        String(36), ForeignKey("workspaces.id"), nullable=True
+        String(36), ForeignKey("workspaces.id"), nullable=True, index=True
     )
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(
@@ -34,6 +35,10 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        sa.Index("ix_users_workspace_role", "workspace_id", "role"),
     )
 
     workspace = relationship("Workspace", back_populates="members", foreign_keys=[workspace_id])

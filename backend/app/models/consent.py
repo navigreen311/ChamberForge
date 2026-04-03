@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -25,6 +26,10 @@ class ConsentRecord(Base):
     nda_document_url = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        sa.Index("ix_consent_records_client_status", "client_id", "status"),
+    )
 
     def to_dict(self) -> dict:
         return {

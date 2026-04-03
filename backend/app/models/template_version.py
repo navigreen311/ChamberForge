@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
 
@@ -24,4 +25,9 @@ class TemplateVersion(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    __table_args__ = (
+        sa.Index("ix_template_versions_template", "template_type", "template_id"),
+        sa.Index("ix_template_versions_workspace_type", "workspace_id", "template_type"),
     )

@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
 
@@ -22,11 +23,16 @@ class EmailLog(Base):
         String(20),
         nullable=False,
         default="sent",
+        index=True,
         comment="sent | delivered | bounced | failed",
     )
     metadata_ = Column("metadata", JSON, nullable=False, default=dict)
     sent_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     delivered_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        sa.Index("ix_email_logs_workspace_status", "workspace_id", "status"),
+    )
 
     def __repr__(self) -> str:
         return f"<EmailLog {self.id} to={self.to_email} status={self.status}>"
