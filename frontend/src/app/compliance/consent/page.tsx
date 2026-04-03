@@ -15,13 +15,23 @@ const initialRecords = [
 
 type ConsentStatus = "active" | "expired" | "expiring" | "pending" | "revoked";
 
+interface ConsentRecord {
+  id: number;
+  client: string;
+  type: string;
+  jurisdiction: string;
+  granted: string | null;
+  expires: string | null;
+  status: ConsentStatus;
+}
+
 function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
 export default function ConsentLedgerPage() {
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState(initialRecords);
+  const [records, setRecords] = useState<ConsentRecord[]>(initialRecords);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
