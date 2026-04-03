@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useWorkspaceEvents, useEvent } from "@/hooks/useRealtime";
+
+const WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID || null;
 
 const clients = [
   { name: "Henderson Family Office", health: 96, trend: "stable", mrr: "$22,000", lastContact: "2 days ago", nps: 9, riskFactors: [] },
@@ -19,11 +22,29 @@ function Skeleton({ className = "" }: { className?: string }) {
 
 export default function RetentionPage() {
   const [loading, setLoading] = useState(true);
+  const [liveClients, setLiveClients] = useState(clients);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(t);
   }, []);
+
+  /* ---- Realtime: health score updates ---- */
+  const wsChannel = useWorkspaceEvents(WORKSPACE_ID);
+
+  useEvent<{ name: string; health: number; trend?: string }>(
+    wsChannel,
+    "health-score-update",
+    (data) => {
+      setLiveClients((prev) =>
+        prev.map((c) =>
+          c.name === data.name
+            ? { ...c, health: data.health, ...(data.trend ? { trend: data.trend } : {}) }
+            : c
+        )
+      );
+    }
+  );
 
   const healthColor = (h: number) => h >= 80 ? "text-green-400" : h >= 60 ? "text-gold-400" : "text-red-400";
   const healthBg = (h: number) => h >= 80 ? "bg-green-400" : h >= 60 ? "bg-gold-400" : "bg-red-400";
@@ -47,10 +68,10 @@ export default function RetentionPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          ["Avg Health", "80", healthColor(80)],
-          ["At Risk", clients.filter(c => c.health < 70).length.toString(), "text-red-400"],
-          ["Healthy", clients.filter(c => c.health >= 80).length.toString(), "text-green-400"],
-          ["Avg NPS", (clients.reduce((a, c) => a + c.nps, 0) / clients.length).toFixed(1), "text-gold-400"],
+          ["Avg Health", Math.round(liveClients.reduce((a, c) => a + c.health, 0) / liveClients.length).toString(), healthColor(Math.round(liveClients.reduce((a, c) => a + c.health, 0) / liveClients.length))],
+          ["At Risk", liveClients.filter(c => c.health < 70).length.toString(), "text-red-400"],
+          ["Healthy", liveClients.filter(c => c.health >= 80).length.toString(), "text-green-400"],
+          ["Avg NPS", (liveClients.reduce((a, c) => a + c.nps, 0) / liveClients.length).toFixed(1), "text-gold-400"],
         ].map(([l, v, c]) => (
           <div key={String(l)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
             <p className="text-chamber-400 text-sm">{String(l)}</p>
@@ -74,7 +95,7 @@ export default function RetentionPage() {
             </tr>
           </thead>
           <tbody>
-            {clients.sort((a, b) => a.health - b.health).map((c) => (
+            {[...liveClients].sort((a, b) => a.health - b.health).map((c) => (
               <tr key={c.name} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
                 <td className="px-5 py-4 text-white font-medium">{c.name}</td>
                 <td className="px-5 py-4">

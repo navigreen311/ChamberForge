@@ -1,8 +1,11 @@
-'use client'
+/**
+ * Hook for notifications — fetches from API on mount, then stays live via Pusher.
+ */
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import api from '@/lib/api'
-import type { Notification } from '@/types'
+import { useState, useEffect, useCallback, useRef } from "react";
+import axios from "axios";
+import { useUserEvents, useEvent } from "@/hooks/useRealtime";
 
 // ─── useNotifications ───────────────────────────────────────────────────────
 
@@ -18,6 +21,8 @@ export function useNotifications(options?: UseNotificationsOptions) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  /* ---------- API fetchers ---------- */
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true)
@@ -48,7 +53,25 @@ export function useNotifications(options?: UseNotificationsOptions) {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to mark notification as read')
     }
-  }, [])
+  }, [userId]);
+
+  /* ---------- Mutations ---------- */
+
+  const markRead = useCallback(async (notificationId: string) => {
+    try {
+      await axios.put(
+        `${API_BASE}/api/v1/notifications/${notificationId}/read`
+      );
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  }, []);
 
   const markAllRead = useCallback(async () => {
     setError(null)
@@ -61,25 +84,49 @@ export function useNotifications(options?: UseNotificationsOptions) {
     }
   }, [])
 
-  const fetchMore = useCallback(async () => {
-    setError(null)
-    try {
-      const params: Record<string, string | number> = {
-        limit,
-        offset: notifications.length,
-      }
-      if (typeFilter) params.type = typeFilter
+  /* ---------- Initial fetch ---------- */
 
-      const { data } = await api.get('/api/v1/notifications', { params })
-      const items = Array.isArray(data) ? data : data.items ?? []
-      setNotifications((prev) => [...prev, ...items])
-      setUnreadCount((c) => c + items.filter((n: Notification) => !n.is_read).length)
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to fetch more notifications')
+  useEffect(() => {
+    fetchNotifications();
+    fetchUnreadCount();
+  }, [fetchNotifications, fetchUnreadCount]);
+
+  /* ---------- Realtime: subscribe to user channel ---------- */
+
+  const userChannel = useUserEvents(userId || null);
+
+  // new-notification event — prepend to list, bump unread count
+  useEvent<Notification>(userChannel, "new-notification", (data) => {
+    setNotifications((prev) => [data, ...prev].slice(0, limit));
+    if (!data.is_read) {
+      setUnreadCount((c) => c + 1);
     }
-  }, [typeFilter, limit, notifications.length])
+  });
 
-  useEffect(() => { fetchNotifications() }, [fetchNotifications])
+  // notification-read event — mark single notification as read
+  useEvent<{ id: string }>(userChannel, "notification-read", (data) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === data.id ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((c) => Math.max(0, c - 1));
+  });
 
-  return { notifications, unreadCount, loading, error, markRead, markAllRead, fetchMore, refresh: fetchNotifications }
+  /* ---------- Public incrementUnread for external callers ---------- */
+
+  const incrementUnread = useCallback(() => {
+    setUnreadCount((c) => c + 1);
+  }, []);
+
+  return {
+    notifications,
+    unreadCount,
+    loading,
+    markRead,
+    markAllRead,
+    incrementUnread,
+    refresh: () => {
+      fetchNotifications();
+      fetchUnreadCount();
+    },
+  };
 }

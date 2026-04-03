@@ -7,7 +7,9 @@ import { useState, useRef, useEffect } from "react";
 import { Bell, Info, AlertTriangle, AlertOctagon, Siren } from "lucide-react";
 import { clsx } from "clsx";
 import { formatDistanceToNow } from "date-fns";
+import type { Channel } from "pusher-js";
 import type { Notification } from "@/hooks/useNotifications";
+import { useEvent } from "@/hooks/useRealtime";
 
 const TYPE_ICONS: Record<string, React.FC<{ className?: string }>> = {
   info: Info,
@@ -29,6 +31,8 @@ interface NotificationBellProps {
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   onNavigate?: (url: string) => void;
+  /** Optional Pusher channel — when provided, new-notification events bump the badge */
+  realtimeChannel?: Channel | null;
 }
 
 export default function NotificationBell({
@@ -37,9 +41,23 @@ export default function NotificationBell({
   onMarkRead,
   onMarkAllRead,
   onNavigate,
+  realtimeChannel,
 }: NotificationBellProps) {
   const [open, setOpen] = useState(false);
+  const [realtimeBump, setRealtimeBump] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Bump badge count on realtime event without an API call
+  useEvent<Notification>(realtimeChannel ?? null, "new-notification", () => {
+    setRealtimeBump((c) => c + 1);
+  });
+
+  // Reset bump when unreadCount changes from parent (e.g. after markAllRead)
+  useEffect(() => {
+    setRealtimeBump(0);
+  }, [unreadCount]);
+
+  const displayCount = unreadCount + realtimeBump;
 
   // Close on outside click
   useEffect(() => {
@@ -66,9 +84,9 @@ export default function NotificationBell({
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5 text-gray-700" />
-        {unreadCount > 0 && (
+        {displayCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount > 99 ? "99+" : unreadCount}
+            {displayCount > 99 ? "99+" : displayCount}
           </span>
         )}
       </button>
@@ -78,7 +96,7 @@ export default function NotificationBell({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900">Notifications</h3>
-            {unreadCount > 0 && (
+            {displayCount > 0 && (
               <button
                 onClick={onMarkAllRead}
                 className="text-sm text-blue-600 hover:text-blue-800"

@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import api from "@/lib/api";
-import NextActionCard from "@/components/modules/NextActionCard";
-import AgentStatusGrid from "@/components/modules/AgentStatusGrid";
-import DailyBriefPanel from "@/components/modules/DailyBriefPanel";
-import OpportunityRanker from "@/components/modules/OpportunityRanker";
-import MetricCard from "@/components/modules/MetricCard";
+import { useState, useEffect } from "react";
+import { useWorkspaceEvents, useEvent } from "@/hooks/useRealtime";
+
+const WORKSPACE_ID = process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID || null;
 
 interface DashboardData {
   nextAction: any;
@@ -21,30 +18,10 @@ function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
-function SkeletonGrid() {
-  return (
-    <div className="min-h-screen bg-chamber-950 p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <Skeleton className="h-10 w-64 mb-2" />
-          <Skeleton className="h-5 w-96" />
-        </div>
-        <Skeleton className="h-10 w-28" />
-      </div>
-      <Skeleton className="h-40 w-full mb-8" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[...Array(4)].map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Skeleton className="lg:col-span-2 h-48" />
-        <Skeleton className="h-48" />
-      </div>
-      <Skeleton className="h-64 w-full" />
-    </div>
-  );
-}
+export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [liveMetrics, setLiveMetrics] = useState(metrics);
+  const [liveAgents, setLiveAgents] = useState(agents);
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -78,17 +55,28 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchAll();
-    const interval = setInterval(fetchAll, 60_000);
-    return () => clearInterval(interval);
-  }, [fetchAll]);
+  /* ---- Realtime: workspace events ---- */
+  const wsChannel = useWorkspaceEvents(WORKSPACE_ID);
 
-  if (loading && !data) {
-    return <SkeletonGrid />;
-  }
+  useEvent<typeof metrics>(wsChannel, "dashboard-update", (data) => {
+    if (Array.isArray(data)) {
+      setLiveMetrics(data);
+    }
+  });
 
-  if (error && !data) {
+  useEvent<{ name: string; status: string; task: string }>(
+    wsChannel,
+    "agent-status-change",
+    (data) => {
+      setLiveAgents((prev) =>
+        prev.map((a) =>
+          a.name === data.name ? { ...a, status: data.status, task: data.task } : a
+        )
+      );
+    }
+  );
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-chamber-950 p-8 flex items-center justify-center">
         <div className="text-center">
@@ -178,24 +166,33 @@ export default function DashboardPage() {
       </div>
 
       {/* Metrics Row */}
-      {metrics.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {metrics.map((m: any, i: number) => (
-            <MetricCard
-              key={m.label ?? i}
-              label={m.label}
-              value={m.value}
-              trend={m.trend ?? "flat"}
-              sparkline={m.sparkline}
-            />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {liveMetrics.map((m) => (
+          <div key={m.label} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
+            <p className="text-chamber-400 text-sm mb-1">{m.label}</p>
+            <div className="flex items-end gap-2">
+              <span className="text-2xl font-bold text-white">{m.value}</span>
+              <span className={`text-sm ${m.up ? "text-green-400" : "text-red-400"}`}>{m.change}</span>
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* Agent Grid + Daily Brief */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2">
-          <AgentStatusGrid statuses={data?.agentStatus ?? {}} details={data?.agentDetails} />
+          <h3 className="text-lg font-semibold text-white mb-4">AI Agent Status</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {liveAgents.map((a) => (
+              <div key={a.name} className="bg-chamber-900 rounded-lg p-4 border border-chamber-800 flex items-start gap-3">
+                <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${a.status === "active" ? "bg-green-400 animate-pulse" : "bg-chamber-500"}`} />
+                <div>
+                  <p className="font-semibold text-white">{a.name}</p>
+                  <p className="text-sm text-chamber-400">{a.task}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         <div>
           <DailyBriefPanel brief={data?.dailyBrief ?? null} />
