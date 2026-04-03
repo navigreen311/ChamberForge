@@ -44,6 +44,59 @@ jobs:
       - name: Run tests
         run: cd backend && python -m pytest tests/ -v --tb=short
 
+  integration-real:
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start test infrastructure
+        run: docker compose -f docker-compose.test.yml up -d
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for PostgreSQL..."
+          for i in $(seq 1 30); do
+            docker compose -f docker-compose.test.yml exec -T test-db pg_isready -U test -d chamberforge_test && break
+            sleep 2
+          done
+          echo "Waiting for Redis..."
+          for i in $(seq 1 15); do
+            docker compose -f docker-compose.test.yml exec -T test-redis redis-cli ping | grep -q PONG && break
+            sleep 2
+          done
+          echo "Waiting for Elasticsearch..."
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:9201/_cluster/health > /dev/null && break
+            sleep 3
+          done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: cd backend && pip install -r requirements.txt
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5433/chamberforge_test
+          REDIS_URL: redis://localhost:6380
+          ELASTICSEARCH_URL: http://localhost:9201
+          JWT_SECRET: test-secret-key
+          APP_ENV: testing
+        run: |
+          cd backend && python -m pytest \
+            tests/integration/test_real_postgres.py \
+            tests/integration/test_real_redis.py \
+            tests/integration/test_real_elasticsearch.py \
+            -v --tb=short -c tests/conftest_docker.py
+      - name: Tear down test infrastructure
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
   frontend:
     runs-on: ubuntu-latest
     steps:
