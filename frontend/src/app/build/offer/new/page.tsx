@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useFormValidation } from "@/hooks/useFormValidation";
+import { offerSchema } from "@/lib/validations";
 
 const steps = [
   { title: "Problem Selection", desc: "Choose the validated problem this offer solves" },
@@ -18,6 +20,11 @@ function Skeleton({ className = "" }: { className?: string }) {
 export default function NewOfferPage() {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
+  const [offerName, setOfferName] = useState("");
+  const [deliveryModel, setDeliveryModel] = useState("DONE_FOR_YOU");
+  const [monthlyPrice, setMonthlyPrice] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const { validate, errors: fieldErrors, clearErrors } = useFormValidation(offerSchema);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
@@ -73,7 +80,8 @@ export default function NewOfferPage() {
             </div>
             <div>
               <label className="text-sm text-chamber-300 mb-1 block">Offer Name</label>
-              <input type="text" placeholder="e.g., Private Aviation Concierge" className="w-full bg-chamber-800 border border-chamber-700 rounded-lg px-4 py-2.5 text-white placeholder-chamber-500 focus:outline-none focus:border-gold-400" />
+              <input type="text" placeholder="e.g., Private Aviation Concierge" value={offerName} onChange={(e) => setOfferName(e.target.value)} className="w-full bg-chamber-800 border border-chamber-700 rounded-lg px-4 py-2.5 text-white placeholder-chamber-500 focus:outline-none focus:border-gold-400" />
+              {fieldErrors['name'] && <p className="mt-1 text-xs text-red-400">{fieldErrors['name']}</p>}
             </div>
             <div>
               <label className="text-sm text-chamber-300 mb-1 block">Brief Description</label>
@@ -113,7 +121,8 @@ export default function NewOfferPage() {
               </div>
               <div>
                 <label className="text-sm text-chamber-300 mb-1 block">Base Price</label>
-                <input type="text" placeholder="$0" className="w-full bg-chamber-800 border border-chamber-700 rounded-lg px-4 py-2.5 text-white placeholder-chamber-500 focus:outline-none focus:border-gold-400" />
+                <input type="text" placeholder="$0" value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} className="w-full bg-chamber-800 border border-chamber-700 rounded-lg px-4 py-2.5 text-white placeholder-chamber-500 focus:outline-none focus:border-gold-400" />
+                {fieldErrors['pricing_model.monthly_price'] && <p className="mt-1 text-xs text-red-400">{fieldErrors['pricing_model.monthly_price']}</p>}
               </div>
             </div>
             <div>
@@ -162,7 +171,26 @@ export default function NewOfferPage() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Ready to Launch</h3>
             <p className="text-chamber-400 mb-6">Your offer has passed all checks and is ready to go live.</p>
-            <button className="px-6 py-3 bg-gold-400 text-chamber-950 font-semibold rounded-lg hover:bg-gold-300 transition">Activate Offer</button>
+            {validationError && (
+              <p className="mb-4 text-sm text-red-400">{validationError}</p>
+            )}
+            <button
+              onClick={() => {
+                clearErrors();
+                setValidationError("");
+                const offerData = {
+                  name: offerName,
+                  delivery_model: deliveryModel,
+                  pricing_model: { monthly_price: parseFloat(monthlyPrice) || 0 },
+                };
+                if (!validate(offerData)) {
+                  setValidationError("Please go back and fix validation errors before activating.");
+                  return;
+                }
+                // proceed with activation
+              }}
+              className="px-6 py-3 bg-gold-400 text-chamber-950 font-semibold rounded-lg hover:bg-gold-300 transition"
+            >Activate Offer</button>
           </div>
         )}
       </div>

@@ -3,9 +3,12 @@
 import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useFormValidation } from "@/hooks/useFormValidation";
+import { registerSchema } from "@/lib/validations";
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const { validate, getError: getFieldError, clearErrors } = useFormValidation(registerSchema);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,14 +19,14 @@ export default function RegisterPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
+    clearErrors();
+
+    const formData = { name, email, password, workspace_name: workspaceName };
+    if (!validate(formData)) return;
+
     setIsSubmitting(true);
     try {
-      await register({
-        name,
-        email,
-        password,
-        workspace_name: workspaceName,
-      });
+      await register(formData);
     } catch (err: any) {
       setError(
         err.response?.data?.detail || "Registration failed. Please try again."
@@ -59,6 +62,9 @@ export default function RegisterPage() {
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {getFieldError("name") && (
+              <p className="mt-1 text-xs text-red-600">{getFieldError("name")}</p>
+            )}
           </div>
 
           <div>
@@ -73,6 +79,9 @@ export default function RegisterPage() {
               required
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {getFieldError("email") && (
+              <p className="mt-1 text-xs text-red-600">{getFieldError("email")}</p>
+            )}
           </div>
 
           <div>
@@ -91,6 +100,9 @@ export default function RegisterPage() {
               minLength={8}
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {getFieldError("password") && (
+              <p className="mt-1 text-xs text-red-600">{getFieldError("password")}</p>
+            )}
           </div>
 
           <div>
@@ -109,6 +121,9 @@ export default function RegisterPage() {
               placeholder="e.g. Acme Family Office"
               className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {getFieldError("workspace_name") && (
+              <p className="mt-1 text-xs text-red-600">{getFieldError("workspace_name")}</p>
+            )}
           </div>
 
           <button
