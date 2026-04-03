@@ -1,2 +1,11 @@
-"""Pytest configuration for ChamberForge backend tests."""
+"""Shared test fixtures."""
 import pytest
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+@pytest.fixture
+def client():
+    """FastAPI test client."""
+    return TestClient(app)

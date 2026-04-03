@@ -18,7 +18,7 @@ resend==2.7.0
 pusher==3.3.2
 python-dotenv==1.1.0
 celery==5.5.2
-reportlab==4.4.0
+sentry-sdk[fastapi]==2.19.2
 pytest==8.4.0
 pytest-asyncio==1.0.0
 pytest-cov==6.1.1

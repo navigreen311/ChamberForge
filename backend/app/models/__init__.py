@@ -1,2 +1,2 @@
 """SQLAlchemy models for ChamberForge."""
-from app.models.document import Document  # noqa: F401
+from app.models.ai_usage import AIUsageLog  # noqa: F401
