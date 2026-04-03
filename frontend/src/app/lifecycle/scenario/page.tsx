@@ -132,7 +132,7 @@ export default function ScenarioPage() {
 
           {scenarios.length === 0 && !loading ? (
             <div className="bg-chamber-900 rounded-xl p-8 border border-chamber-800 text-center text-chamber-500">
-              Configure your assumptions and click "Run Scenarios" to see projections.
+              Configure your assumptions and click &quot;Run Scenarios&quot; to see projections.
             </div>
           ) : loading ? (
             <Skeleton className="h-64 w-full" />
