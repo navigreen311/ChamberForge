@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.evidence import router as evidence_router
+from app.api.v1.polish import router as polish_router
 from app.core.config import settings
 from app.api.v1.lifecycle import router as lifecycle_router
 
@@ -27,6 +27,9 @@ app.include_router(compliance_router)
 
 
 app.include_router(lifecycle_router)
+
+
+app.include_router(polish_router)
 
 
 @app.get("/api/health")
