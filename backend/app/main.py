@@ -4,8 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.evidence import router as evidence_router
 from app.core.config import settings
-from app.api.v1.build import router as build_router
-from app.api.v1.household import router as household_router
+from app.api.v1.compliance import router as compliance_router
 
 app = FastAPI(
     title="ChamberForge API",
@@ -23,25 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ──────────────────────────────────────────────────────────
-app.include_router(auth_router)
-app.include_router(users_router)
-app.include_router(workspaces_router)
-app.include_router(problems_router)
-app.include_router(discovery_router)
-
-
-app.include_router(evidence_router)
-
-
-app.include_router(qualify_router)
-
-
-app.include_router(offers_router)
-
-
-app.include_router(build_router)
-app.include_router(household_router)
+# ── Routers ──────────────────────────────────────────────────────────────────
+app.include_router(compliance_router)
 
 
 @app.get("/api/health")
