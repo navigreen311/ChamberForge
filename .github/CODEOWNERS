@@ -1,0 +1,14 @@
+# Backend
+/backend/ @navigreen311
+/backend/app/core/security.py @navigreen311
+/backend/app/middleware/ @navigreen311
+
+# Frontend
+/frontend/ @navigreen311
+
+# Infrastructure
+/infra/ @navigreen311
+/.github/ @navigreen311
+
+# Documentation
+/docs/ @navigreen311
