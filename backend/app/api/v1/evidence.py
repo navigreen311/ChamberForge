@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -15,6 +15,8 @@ from app.schemas.evidence import (
 )
 from app.services.agents.research_ai import ResearchAI
 from app.services.backbone.evidence_ops import EvidenceOps
+from app.services.backbone.search_indices import EVIDENCE_INDEX
+from app.services.backbone.search_sync import remove_from_index, sync_evidence
 
 router = APIRouter(prefix="/api/v1/evidence", tags=["evidence"])
 
@@ -47,13 +49,25 @@ def list_evidence(
 @router.post("/", response_model=EvidenceRead, status_code=201)
 def create_evidence(
     data: EvidenceCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """Create a new evidence record."""
     duplicate = EvidenceOps.check_duplicate(db, data.source_url)
     if duplicate:
         raise HTTPException(status_code=409, detail="Duplicate source URL already exists")
-    return EvidenceOps.create(db, data.workspace_id, data)
+    evidence = EvidenceOps.create(db, data.workspace_id, data)
+    background_tasks.add_task(
+        sync_evidence,
+        str(evidence.id),
+        {
+            "source_url": evidence.source_url,
+            "source_type": evidence.source_type,
+            "credibility_score": evidence.credibility_score,
+            "workspace_id": str(evidence.workspace_id),
+        },
+    )
+    return evidence
 
 
 @router.get("/{evidence_id}", response_model=EvidenceRead)
@@ -72,24 +86,37 @@ def get_evidence(
 def update_evidence(
     evidence_id: UUID,
     data: EvidenceUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """Update an evidence record."""
     evidence = EvidenceOps.update(db, evidence_id, data)
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
+    background_tasks.add_task(
+        sync_evidence,
+        str(evidence.id),
+        {
+            "source_url": evidence.source_url,
+            "source_type": evidence.source_type,
+            "credibility_score": evidence.credibility_score,
+            "workspace_id": str(evidence.workspace_id),
+        },
+    )
     return evidence
 
 
 @router.delete("/{evidence_id}", status_code=204)
 def delete_evidence(
     evidence_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """Delete an evidence record."""
     success = EvidenceOps.delete(db, evidence_id)
     if not success:
         raise HTTPException(status_code=404, detail="Evidence not found")
+    background_tasks.add_task(remove_from_index, EVIDENCE_INDEX, str(evidence_id))
     return None
 
 

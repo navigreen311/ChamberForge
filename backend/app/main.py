@@ -124,6 +124,13 @@ app.include_router(profile_router)
 app.include_router(workspace_settings_router)
 
 
+@app.on_event("startup")
+async def startup():
+    from app.core.search_init import init_search
+
+    await init_search()
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "version": "0.1.0"}

@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -12,6 +12,8 @@ from app.models.offer import Offer
 from app.schemas.offer import OfferCreate, OfferRead, OfferUpdate
 from app.services.agents.offer_ai import OfferAI
 from app.services.agents.pricing_ai import PricingAI
+from app.services.backbone.search_indices import OFFER_INDEX
+from app.services.backbone.search_sync import remove_from_index, sync_offer
 from app.services.backbone.service_design import ServiceDesignStudio
 
 router = APIRouter(prefix="/api/v1/offers", tags=["offers"])
@@ -39,12 +41,26 @@ def list_offers(
 
 
 @router.post("/", response_model=OfferRead, status_code=201)
-def create_offer(payload: OfferCreate, db: Session = Depends(get_db)):
+def create_offer(
+    payload: OfferCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Create a new offer."""
     offer = Offer(**payload.model_dump())
     db.add(offer)
     db.commit()
     db.refresh(offer)
+    background_tasks.add_task(
+        sync_offer,
+        str(offer.id),
+        {
+            "name": offer.name,
+            "delivery_model": offer.delivery_model,
+            "status": offer.status,
+            "workspace_id": str(offer.workspace_id),
+        },
+    )
     return offer
 
 
@@ -61,6 +77,7 @@ def get_offer(offer_id: uuid.UUID, db: Session = Depends(get_db)):
 def update_offer(
     offer_id: uuid.UUID,
     payload: OfferUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     """Update an existing offer."""
@@ -71,17 +88,42 @@ def update_offer(
         setattr(offer, field, value)
     db.commit()
     db.refresh(offer)
+    background_tasks.add_task(
+        sync_offer,
+        str(offer.id),
+        {
+            "name": offer.name,
+            "delivery_model": offer.delivery_model,
+            "status": offer.status,
+            "workspace_id": str(offer.workspace_id),
+        },
+    )
     return offer
 
 
 @router.delete("/{offer_id}", status_code=204)
-def delete_offer(offer_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_offer(
+    offer_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """Soft-delete an offer by setting status to sunset."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if not offer:
         raise HTTPException(status_code=404, detail="Offer not found")
     offer.status = "sunset"
     db.commit()
+    # Sync updated status rather than removing — soft delete keeps the record
+    background_tasks.add_task(
+        sync_offer,
+        str(offer.id),
+        {
+            "name": offer.name,
+            "delivery_model": offer.delivery_model,
+            "status": "sunset",
+            "workspace_id": str(offer.workspace_id),
+        },
+    )
     return None
 
 
