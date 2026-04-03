@@ -3,7 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.v1.sell import router as sell_router
+from app.core.logging_config import setup_logging
+from app.core.sentry_config import init_sentry
 
 # --- Application ---
 app = FastAPI(
@@ -48,6 +49,7 @@ from app.api.v1.offers import router as offers_router  # noqa: E402
 from app.api.v1.build import router as build_router  # noqa: E402
 from app.api.v1.household import router as household_router  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
+from app.api.v1.sell import router as sell_router  # noqa: E402
 from app.api.v1.command import router as command_router  # noqa: E402
 from app.api.v1.compliance import router as compliance_router  # noqa: E402
 from app.api.v1.lifecycle import router as lifecycle_router  # noqa: E402
@@ -86,6 +88,7 @@ app.include_router(household_router)
 app.include_router(billing_router)
 
 # Layer 4 — Sell & Retain
+app.include_router(sell_router)
 app.include_router(command_router)
 
 # Layer 5 — Trust & Compliance
@@ -115,9 +118,6 @@ app.include_router(jobs_router)
 app.include_router(health_router)
 app.include_router(metrics_router)
 app.include_router(security_router)
-
-
-app.include_router(sell_router)
 
 
 @app.get("/api/health")
