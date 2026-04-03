@@ -4,6 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
 
@@ -21,6 +22,7 @@ class DeletionRequest(Base):
         String(20),
         nullable=False,
         default="pending",
+        index=True,
         comment="pending | approved | executing | completed | failed",
     )
     tables_cleaned = Column(JSON, default=list)
@@ -31,3 +33,7 @@ class DeletionRequest(Base):
         default=lambda: datetime.now(timezone.utc),
     )
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        sa.Index("ix_deletion_requests_workspace_status", "workspace_id", "status"),
+    )

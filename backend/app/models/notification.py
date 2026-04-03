@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -19,7 +20,11 @@ class Notification(Base):
     body = Column(Text, nullable=False)
     action_url = Column(String(2048), nullable=True)
     is_read = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        sa.Index("ix_notifications_user_is_read", "user_id", "is_read"),
+    )
 
     def __repr__(self):
         return f"<Notification {self.id} type={self.type} read={self.is_read}>"

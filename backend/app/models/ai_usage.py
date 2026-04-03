@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, Float, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -25,4 +26,8 @@ class AIUsageLog(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        sa.Index("ix_ai_usage_logs_workspace_created_at", "workspace_id", "created_at"),
     )

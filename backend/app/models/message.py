@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Text
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -18,7 +19,12 @@ class SecureMessage(Base):
     content = Column(Text, nullable=False)
     is_encrypted = Column(Boolean, nullable=False, default=True)
     read_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        sa.Index("ix_secure_messages_workspace_sender", "workspace_id", "sender_id"),
+        sa.Index("ix_secure_messages_workspace_recipient", "workspace_id", "recipient_id"),
+    )
 
     def to_dict(self) -> dict:
         return {

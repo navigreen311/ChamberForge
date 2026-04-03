@@ -19,7 +19,7 @@ class Workspace(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(255), unique=True, nullable=False, index=True)
     plan = Column(String(50), nullable=False, default="core")
-    owner_id = Column(String(36), nullable=True)
+    owner_id = Column(String(36), nullable=True, index=True)
     settings = Column(JSON, nullable=False, default=dict)
     created_at = Column(
         DateTime(timezone=True),

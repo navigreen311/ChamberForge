@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, String, Text, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -25,6 +26,11 @@ class RiskReview(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        sa.Index("ix_risk_reviews_workspace_status", "workspace_id", "status"),
+        sa.Index("ix_risk_reviews_item", "item_type", "item_id"),
     )
 
     def __repr__(self) -> str:

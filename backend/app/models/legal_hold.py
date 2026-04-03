@@ -4,6 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -32,3 +33,8 @@ class LegalHold(Base):
         default=lambda: datetime.now(timezone.utc),
     )
     released_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        sa.Index("ix_legal_holds_workspace_status", "workspace_id", "status"),
+        sa.Index("ix_legal_holds_resource", "resource_type", "resource_id"),
+    )

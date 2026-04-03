@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, String
 
 from app.db.session import Base
@@ -25,4 +26,8 @@ class AutomationRule(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
+    )
+
+    __table_args__ = (
+        sa.Index("ix_automation_rules_workspace_active", "workspace_id", "is_active"),
     )
