@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import AppShell from '@/components/layout/AppShell';
 import OnboardingBanner from '@/components/modules/OnboardingBanner';
+import InstallPrompt from '@/components/modules/InstallPrompt';
 
 export default function AuthenticatedLayout({
   children,
@@ -35,6 +36,7 @@ export default function AuthenticatedLayout({
 
   return (
     <AppShell>
+      <InstallPrompt />
       <OnboardingBanner />
       {children}
     </AppShell>
