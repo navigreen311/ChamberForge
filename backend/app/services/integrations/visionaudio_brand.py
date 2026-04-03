@@ -16,7 +16,12 @@ class BrandStudio:
         self,
         brand_config: dict[str, Any],
     ) -> dict[str, Any]:
-        """Generate a full brand identity package."""
+        """Generate a full brand identity package.
+
+        Returns a rich identity object with logo concepts (descriptions, variants),
+        a 5-color hex palette with usage guidance, typography recommendations,
+        style guide notes, and a presentation template URL.
+        """
         assets_result = await self.client.generate_brand_assets(brand_config)
 
         # Enrich the raw asset response with structured identity fields
@@ -26,6 +31,23 @@ class BrandStudio:
             (a for a in assets if a.get("type") == "color_palette"),
             None,
         )
+        typography_asset = next(
+            (a for a in assets if a.get("type") == "typography"),
+            None,
+        )
+        style_guide = next(
+            (a for a in assets if a.get("type") == "style_guide_notes"),
+            None,
+        )
+
+        # Build typography — prefer asset data, fall back to brand_config
+        if typography_asset and "recommendations" in typography_asset:
+            typography = typography_asset["recommendations"]
+        else:
+            typography = {
+                "primary_font": brand_config.get("primary_font", "Inter"),
+                "secondary_font": brand_config.get("secondary_font", "Playfair Display"),
+            }
 
         # Request a presentation template using the new brand
         template_content = {
@@ -40,10 +62,8 @@ class BrandStudio:
         return {
             "logo_concepts": logo_concepts,
             "color_palette": palette,
-            "typography": {
-                "primary_font": brand_config.get("primary_font", "Inter"),
-                "secondary_font": brand_config.get("secondary_font", "Playfair Display"),
-            },
+            "typography": typography,
+            "style_guide_notes": style_guide.get("notes", []) if style_guide else [],
             "presentation_template_url": template_result.get(
                 "output_url",
                 f"https://mock.visionaudioforge.io/templates/{template_result.get('render_id', 'default')}.pptx",

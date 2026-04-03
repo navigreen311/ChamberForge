@@ -17,7 +17,11 @@ class DeliveryPortal:
         metrics: dict[str, Any],
         narrative: str,
     ) -> dict[str, Any]:
-        """Render a branded quarterly report presentation."""
+        """Render a branded quarterly report presentation.
+
+        Returns render tracking info plus structured section data including
+        executive summary, KPI dashboard, trend analysis, and recommendations.
+        """
         content = {
             "type": "quarterly_report",
             "metrics": metrics,
@@ -30,7 +34,15 @@ class DeliveryPortal:
             ],
         }
         result = await self.client.render_presentation(content, template="quarterly")
-        return {**result, "type": "quarterly_report"}
+
+        # Surface structured sections from the render result (populated in mock mode)
+        sections = result.pop("sections", {})
+
+        return {
+            **result,
+            "type": "quarterly_report",
+            "report_sections": sections,
+        }
 
     async def render_kpi_dashboard(
         self,
