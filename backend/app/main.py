@@ -1,8 +1,16 @@
 """ChamberForge API — Main Application Entry Point."""
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.core.config import settings
+from app.core.error_handlers import (
+    app_exception_handler,
+    generic_exception_handler,
+    validation_exception_handler,
+)
+from app.core.exceptions import AppException
 from app.core.logging_config import setup_logging
 from app.core.datadog_config import init_datadog
 from app.core.sentry_config import init_sentry
@@ -18,6 +26,11 @@ app = FastAPI(
 setup_logging()
 init_sentry(dsn=settings.SENTRY_DSN, environment=settings.APP_ENV)
 init_datadog()
+
+# --- Exception Handlers ---
+app.add_exception_handler(AppException, app_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, generic_exception_handler)
 
 # --- Middleware ---
 from app.middleware.security_headers import SecurityHeadersMiddleware  # noqa: E402

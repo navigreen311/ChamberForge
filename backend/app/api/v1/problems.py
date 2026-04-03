@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.models.enums import LifecycleStage, PainCategory, WealthTier
 from app.models.user import User
@@ -81,7 +82,7 @@ def get_problem(
 ):
     problem = library.get_problem(db, problem_id)
     if not problem or problem.workspace_id != workspace_id:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        raise NotFoundError("Problem", problem_id)
     return problem
 
 
@@ -94,7 +95,7 @@ def update_problem(
 ):
     problem = library.get_problem(db, problem_id)
     if not problem or problem.workspace_id != workspace_id:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        raise NotFoundError("Problem", problem_id)
     data = payload.model_dump(exclude_unset=True)
     updated = library.update_problem(db, problem_id, data)
     return updated
@@ -108,6 +109,6 @@ def delete_problem(
 ):
     problem = library.get_problem(db, problem_id)
     if not problem or problem.workspace_id != workspace_id:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        raise NotFoundError("Problem", problem_id)
     library.delete_problem(db, problem_id)
     return None

@@ -4,10 +4,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.exceptions import NotFoundError, ValidationError
 from app.db.session import get_db
 from app.models.offer import Offer
 from app.models.user import User
@@ -77,7 +78,7 @@ def get_offer(
     """Get a single offer by ID."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     return offer
 
 
@@ -91,7 +92,7 @@ def update_offer(
     """Update an existing offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(offer, field, value)
     db.commit()
@@ -118,7 +119,7 @@ def delete_offer(
     """Soft-delete an offer by setting status to sunset."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     offer.status = "sunset"
     db.commit()
     # Sync updated status rather than removing — soft delete keeps the record
@@ -147,7 +148,7 @@ async def generate_offer(
     """AI-generate an offer draft from problem data and optional buyer profile."""
     problem_data = body.get("problem_data")
     if not problem_data:
-        raise HTTPException(status_code=422, detail="problem_data is required")
+        raise ValidationError("problem_data is required", {"problem_data": "Field is required"})
     buyer_profile = body.get("buyer_profile")
     result = await offer_ai.generate_offer(problem_data, buyer_profile)
     result["workspace_id"] = workspace_id
@@ -164,7 +165,7 @@ async def refine_offer(
     """Refine an existing offer based on user feedback."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     feedback = body.get("feedback", "")
     offer_data = {
         "name": offer.name,
@@ -191,7 +192,7 @@ async def generate_pricing(
     """Generate pricing recommendation for an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     offer_data = {
         "name": offer.name,
         "description": offer.description,
@@ -222,7 +223,7 @@ def get_benchmarks(
     """Return market benchmarks for a pain category."""
     benchmarks = pricing_ai.get_market_benchmarks(pain_category)
     if not benchmarks:
-        raise HTTPException(status_code=404, detail=f"No benchmarks for '{pain_category}'")
+        raise NotFoundError("Benchmarks", pain_category)
     return benchmarks
 
 
@@ -239,7 +240,7 @@ def generate_sops(
     """Generate SOPs for an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     sops = service_studio.generate_sops(
         offer_name=offer.name,
         delivery_model=offer.delivery_model,
@@ -260,7 +261,7 @@ def generate_journey(
     """Generate a client journey map for an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundError("Offer", str(offer_id))
     journey = service_studio.map_client_journey(
         offer_name=offer.name,
         value_stack=offer.value_stack or [],

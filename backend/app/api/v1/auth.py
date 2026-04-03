@@ -2,10 +2,11 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
+from app.core.exceptions import AuthenticationError, ConflictError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -46,10 +47,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     """Create a new workspace and its owner (admin) user."""
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
+        raise ConflictError("Email already registered", resource="User")
 
     # Create workspace
     base_slug = _slugify(body.workspace_name)
@@ -101,15 +99,9 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate via email + password and return tokens."""
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+        raise AuthenticationError("Invalid email or password")
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account deactivated",
-        )
+        raise AuthenticationError("Account deactivated")
 
     payload = _build_token_payload(user)
     return TokenResponse(
@@ -123,18 +115,12 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token."""
     payload = decode_access_token(body.refresh_token)
     if payload is None or payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-        )
+        raise AuthenticationError("Invalid refresh token")
 
     user_id = payload.get("sub")
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise AuthenticationError("User not found or inactive")
 
     new_payload = _build_token_payload(user)
     return TokenResponse(
@@ -159,4 +145,4 @@ def me(current_user: User = Depends(get_current_user)):
 @router.post("/logout")
 def logout():
     """Logout endpoint. Token invalidation is handled client-side."""
-    return {"detail": "Successfully logged out"}
+    return {"message": "Successfully logged out"}
