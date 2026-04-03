@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { User, Settings, Moon, Sun, LogOut } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -10,7 +12,7 @@ export default function UserMenu() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const { isDark: darkMode, toggle: toggleTheme } = useTheme();
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -32,14 +34,6 @@ export default function UserMenu() {
         .toUpperCase()
         .slice(0, 2)
     : 'U';
-
-  const toggleTheme = () => {
-    setDarkMode((prev) => {
-      const next = !prev;
-      document.documentElement.classList.toggle('dark', next);
-      return next;
-    });
-  };
 
   return (
     <div ref={menuRef} className="relative">
