@@ -1,0 +1,26 @@
+[
+  {
+    "name": "High Error Rate",
+    "type": "metric alert",
+    "query": "avg(last_5m):sum:trace.fastapi.request.errors{service:chamberforge-api} > 50",
+    "message": "Error rate exceeds 50/5min"
+  },
+  {
+    "name": "High P95 Latency",
+    "type": "metric alert",
+    "query": "avg(last_5m):p95:trace.fastapi.request.duration{service:chamberforge-api} > 2000000000",
+    "message": "P95 latency > 2s"
+  },
+  {
+    "name": "AI Cost Budget",
+    "type": "metric alert",
+    "query": "sum(last_1d):sum:chamberforge.ai_cost{*} > 100",
+    "message": "Daily AI cost exceeds $100"
+  },
+  {
+    "name": "DB Connection Pool",
+    "type": "metric alert",
+    "query": "avg(last_5m):avg:chamberforge.db_pool_overflow{*} > 0",
+    "message": "DB connection pool overflow detected"
+  }
+]

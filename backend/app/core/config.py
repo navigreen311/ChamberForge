@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # Sentry
     SENTRY_DSN: str = ""
 
+    # Datadog
+    DD_API_KEY: str = ""
+    DD_AGENT_HOST: str = "localhost"
+    DD_ENV: str = "development"
+
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
     AI_MODEL: str = "claude-sonnet-4-6"
