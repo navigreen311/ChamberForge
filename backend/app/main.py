@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="ChamberForge API",
     description="Premium-service operating system for HNW/UHNW market",
-    version="0.1.0",
+    version="1.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
@@ -187,4 +187,4 @@ async def startup():
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "version": "0.1.0"}
+    return {"status": "healthy", "version": "1.0.0"}
