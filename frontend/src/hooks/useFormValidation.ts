@@ -1,34 +1,36 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { z } from 'zod';
+import { z, ZodSchema } from 'zod';
 
-export function useFormValidation<T>(schema: z.ZodSchema<T>) {
+interface UseFormValidationOptions<T> {
+  schema: ZodSchema<T>;
+}
+
+export function useFormValidation<T>({ schema }: UseFormValidationOptions<T>) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = useCallback(
     (data: unknown): data is T => {
       const result = schema.safeParse(data);
-      if (!result.success) {
-        const fieldErrors: Record<string, string> = {};
-        result.error.errors.forEach((e) => {
-          fieldErrors[e.path.join('.')] = e.message;
-        });
-        setErrors(fieldErrors);
-        return false;
+      if (result.success) {
+        setErrors({});
+        return true;
       }
-      setErrors({});
-      return true;
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of result.error.issues) {
+        const path = issue.path.join('.');
+        if (!fieldErrors[path]) {
+          fieldErrors[path] = issue.message;
+        }
+      }
+      setErrors(fieldErrors);
+      return false;
     },
     [schema],
   );
 
-  const getError = useCallback(
-    (field: string) => errors[field],
-    [errors],
-  );
-
   const clearErrors = useCallback(() => setErrors({}), []);
 
-  return { validate, errors, getError, clearErrors };
+  return { errors, validate, clearErrors };
 }
