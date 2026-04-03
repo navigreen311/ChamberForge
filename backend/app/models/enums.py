@@ -1,39 +1,47 @@
-"""Enumerations for the ChamberForge domain models."""
+"""Shared enumerations for ChamberForge models."""
 import enum
+
+
+class WealthTier(str, enum.Enum):
+    HNW = "hnw"
+    UHNW = "uhnw"
+    FAMILY_OFFICE = "family_office"
+    INSTITUTIONAL = "institutional"
+
+
+class ClientStatus(str, enum.Enum):
+    PROSPECT = "prospect"
+    ONBOARDING = "onboarding"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    CHURNED = "churned"
 
 
 class OfferStatus(str, enum.Enum):
     DRAFT = "draft"
     ACTIVE = "active"
-    SUNSET = "sunset"
+    ARCHIVED = "archived"
+    SOLD = "sold"
 
 
 class DeliveryModel(str, enum.Enum):
-    RETAINER = "retainer"
-    PROJECT = "project"
+    DONE_FOR_YOU = "done_for_you"
+    DONE_WITH_YOU = "done_with_you"
+    ADVISORY = "advisory"
     HYBRID = "hybrid"
-    CONCIERGE = "concierge"
-    MEMBERSHIP = "membership"
 
 
-class PainCategory(str, enum.Enum):
-    COORDINATION = "coordination"
-    SECURITY = "security"
-    PRIVACY = "privacy"
-    GOVERNANCE = "governance"
-    MEDICAL = "medical"
-    TRAVEL = "travel"
+class RiskLevel(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
-class WealthTier(str, enum.Enum):
-    HNW = "hnw"          # High Net Worth ($1M-$10M)
-    VHNW = "vhnw"        # Very High Net Worth ($10M-$30M)
-    UHNW = "uhnw"        # Ultra High Net Worth ($30M+)
-
-
-class BuyerType(str, enum.Enum):
-    PRINCIPAL = "principal"
-    FAMILY_OFFICE = "family_office"
-    ESTATE_MANAGER = "estate_manager"
-    EXECUTIVE_ASSISTANT = "executive_assistant"
-    ADVISOR = "advisor"
+class Frequency(str, enum.Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+    QUARTERLY = "quarterly"
+    ANNUALLY = "annually"
