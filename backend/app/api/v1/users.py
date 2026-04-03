@@ -1,9 +1,10 @@
 """User management endpoints — workspace-scoped, RBAC-protected."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, require_role
+from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import UserResponse
@@ -50,7 +51,7 @@ def get_user(
     """Get a single user by ID (must be in the same workspace)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.workspace_id != current_user.workspace_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise NotFoundError("User", user_id)
     return UserResponse(
         id=str(user.id),
         email=user.email,
@@ -71,7 +72,7 @@ def update_user(
     """Update a user's profile (admin only, same workspace)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.workspace_id != admin.workspace_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise NotFoundError("User", user_id)
 
     if body.name is not None:
         user.name = body.name
@@ -101,8 +102,8 @@ def delete_user(
     """Soft-delete a user by setting is_active=False (admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.workspace_id != admin.workspace_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise NotFoundError("User", user_id)
 
     user.is_active = False
     db.commit()
-    return {"detail": "User deactivated"}
+    return {"message": "User deactivated"}

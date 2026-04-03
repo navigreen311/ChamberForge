@@ -1,8 +1,9 @@
 """FastAPI dependency injection helpers for auth and RBAC."""
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import AuthenticationError, AuthorizationError
 from app.db.session import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
@@ -17,34 +18,22 @@ async def get_current_user(
     """Extract and validate JWT from the Authorization header, return the User."""
     payload = decode_access_token(credentials.credentials)
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
+        raise AuthenticationError("Invalid or expired token")
 
     user_id: str | None = payload.get("sub")
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing subject claim",
-        )
+        raise AuthenticationError("Token missing subject claim")
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise AuthenticationError("User not found or inactive")
     return user
 
 
 async def get_workspace_id(current_user: User = Depends(get_current_user)) -> str:
     """Extract workspace_id from the authenticated user, enforcing tenant context."""
     if not current_user.workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No workspace assigned",
-        )
+        raise AuthorizationError("No workspace assigned")
     return str(current_user.workspace_id)
 
 
@@ -53,10 +42,7 @@ def require_role(*allowed_roles: str):
 
     def dependency(current_user: User = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Insufficient permissions",
-            )
+            raise AuthorizationError("Insufficient permissions")
         return current_user
 
     return dependency

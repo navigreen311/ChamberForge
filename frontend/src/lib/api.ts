@@ -16,10 +16,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 — redirect to login
+// Parse standardized error envelope and handle 401 redirect
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const data = error.response?.data;
+    if (data?.error_code) {
+      error.errorCode = data.error_code;
+      error.userMessage = data.message;
+      error.fieldErrors = data.details?.field_errors;
+      error.requestId = data.request_id;
+    }
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
