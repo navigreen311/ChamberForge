@@ -1,0 +1,51 @@
+{
+  "family": "chamberforge-frontend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-ecs-execution-role",
+  "taskRoleArn": "arn:aws:iam::${ACCOUNT}:role/chamberforge-frontend-task-role",
+  "containerDefinitions": [
+    {
+      "name": "frontend",
+      "image": "${ECR_REPO}/chamberforge-frontend:${TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "3000" }
+      ],
+      "secrets": [
+        {
+          "name": "NEXT_PUBLIC_API_URL",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/API_URL"
+        },
+        {
+          "name": "NEXT_PUBLIC_PUSHER_KEY",
+          "valueFrom": "arn:aws:ssm:${REGION}:${ACCOUNT}:parameter/chamberforge/prod/PUSHER_KEY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/chamberforge-frontend",
+          "awslogs-region": "${REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
