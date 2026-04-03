@@ -24,4 +24,9 @@ BEAT_SCHEDULE = {
         "schedule": crontab(hour=0, minute=0),
         "args": ("all",),
     },
+    "drip_processor": {
+        "task": "app.jobs.tasks.drip_tasks.process_drip_sequences",
+        "schedule": crontab(minute=0),  # every hour
+        "options": {"queue": "notifications"},
+    },
 }

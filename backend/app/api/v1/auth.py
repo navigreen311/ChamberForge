@@ -85,6 +85,10 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Enqueue onboarding drip sequence
+    from app.jobs.tasks.drip_tasks import enqueue_onboarding
+    enqueue_onboarding.delay(str(user.id))
+
     payload = _build_token_payload(user)
     return TokenResponse(
         access_token=create_access_token(payload),

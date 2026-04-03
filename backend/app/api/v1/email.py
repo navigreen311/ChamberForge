@@ -1,11 +1,18 @@
-"""Email API endpoints — send, templates, history."""
+"""Email API endpoints — send, templates, history, drip sequences."""
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
+from app.services.backbone.email_drip import (
+    advance_drip,
+    get_user_drip_status,
+    stop_drip,
+)
 from app.services.backbone.email_service import EmailService
 from app.services.backbone.email_templates import list_templates
 
@@ -77,6 +84,44 @@ async def send_template_email(body: SendTemplateRequest):
 async def get_templates():
     """List all available email templates."""
     return {"templates": list_templates()}
+
+
+# ---------------------------------------------------------------------------
+# Drip sequence endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/drip/{user_id}")
+def get_drip_status(
+    user_id: str,
+    sequence_name: str = Query("onboarding"),
+    db: Session = Depends(get_db),
+):
+    """Return a user's drip sequence status."""
+    return get_user_drip_status(db, user_id, sequence_name)
+
+
+@router.post("/drip/{user_id}/advance")
+def advance_drip_endpoint(
+    user_id: str,
+    sequence_name: str = Query("onboarding"),
+    db: Session = Depends(get_db),
+):
+    """Manually advance a user's drip sequence (admin)."""
+    try:
+        return advance_drip(db, user_id, sequence_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/drip/{user_id}/stop")
+def stop_drip_endpoint(
+    user_id: str,
+    sequence_name: str = Query("onboarding"),
+    db: Session = Depends(get_db),
+):
+    """Stop a user's drip sequence."""
+    return stop_drip(db, user_id, sequence_name)
 
 
 @router.get("/history")
