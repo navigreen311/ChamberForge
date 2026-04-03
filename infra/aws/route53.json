@@ -1,0 +1,101 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Route53 hosted zone and DNS records for chamberforge.com",
+  "Parameters": {
+    "DomainName": {
+      "Type": "String",
+      "Default": "chamberforge.com",
+      "Description": "Root domain name"
+    },
+    "ALBDnsName": {
+      "Type": "String",
+      "Description": "DNS name of the Application Load Balancer"
+    },
+    "ALBHostedZoneId": {
+      "Type": "String",
+      "Description": "Hosted zone ID of the ALB (region-specific)"
+    },
+    "CloudFrontDomainName": {
+      "Type": "String",
+      "Description": "CloudFront distribution domain name (e.g., d1234.cloudfront.net)"
+    },
+    "CloudFrontHostedZoneId": {
+      "Type": "String",
+      "Default": "Z2FDTNDATAQYW2",
+      "Description": "CloudFront hosted zone ID (always Z2FDTNDATAQYW2)"
+    }
+  },
+  "Resources": {
+    "HostedZone": {
+      "Type": "AWS::Route53::HostedZone",
+      "Properties": {
+        "Name": { "Ref": "DomainName" },
+        "HostedZoneConfig": {
+          "Comment": "ChamberForge production hosted zone"
+        }
+      }
+    },
+    "AppRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "HostedZone" },
+        "Name": { "Fn::Sub": "app.${DomainName}" },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": { "Ref": "ALBDnsName" },
+          "HostedZoneId": { "Ref": "ALBHostedZoneId" },
+          "EvaluateTargetHealth": true
+        }
+      }
+    },
+    "ApiRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "HostedZone" },
+        "Name": { "Fn::Sub": "api.${DomainName}" },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": { "Ref": "ALBDnsName" },
+          "HostedZoneId": { "Ref": "ALBHostedZoneId" },
+          "EvaluateTargetHealth": true
+        }
+      }
+    },
+    "PortalRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "HostedZone" },
+        "Name": { "Fn::Sub": "portal.${DomainName}" },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": { "Ref": "ALBDnsName" },
+          "HostedZoneId": { "Ref": "ALBHostedZoneId" },
+          "EvaluateTargetHealth": true
+        }
+      }
+    },
+    "CdnRecord": {
+      "Type": "AWS::Route53::RecordSet",
+      "Properties": {
+        "HostedZoneId": { "Ref": "HostedZone" },
+        "Name": { "Fn::Sub": "cdn.${DomainName}" },
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": { "Ref": "CloudFrontDomainName" },
+          "HostedZoneId": { "Ref": "CloudFrontHostedZoneId" },
+          "EvaluateTargetHealth": false
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "HostedZoneId": {
+      "Value": { "Ref": "HostedZone" },
+      "Description": "Route53 hosted zone ID"
+    },
+    "NameServers": {
+      "Value": { "Fn::Join": [", ", { "Fn::GetAtt": ["HostedZone", "NameServers"] }] },
+      "Description": "Name servers — update your registrar with these"
+    }
+  }
+}
