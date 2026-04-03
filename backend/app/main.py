@@ -22,11 +22,13 @@ from app.middleware.security_headers import SecurityHeadersMiddleware  # noqa: E
 from app.middleware.rate_limiter import RateLimiterMiddleware  # noqa: E402
 from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E402
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
+from app.middleware.audit import AuditMiddleware  # noqa: E402
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimiterMiddleware, default_limit=100, window_seconds=60)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(PerformanceMiddleware)
+app.add_middleware(AuditMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.FRONTEND_URL],
@@ -66,7 +68,7 @@ from app.api.v1.jobs import router as jobs_router  # noqa: E402
 from app.api.v1.health import router as health_router  # noqa: E402
 from app.api.v1.metrics import router as metrics_router  # noqa: E402
 from app.api.v1.security import router as security_router  # noqa: E402
-from app.api.v1.onboarding import router as onboarding_router  # noqa: E402
+from app.api.v1.audit import router as audit_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -98,7 +100,7 @@ app.include_router(jobs_router)
 app.include_router(health_router)
 app.include_router(metrics_router)
 app.include_router(security_router)
-app.include_router(onboarding_router)
+app.include_router(audit_router)
 
 
 @app.get("/api/health")
