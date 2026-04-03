@@ -6,6 +6,22 @@ export const metadata: Metadata = {
   title: "ChamberForge",
   description:
     "Premium-service operating system for HNW/UHNW market",
+  manifest: "/manifest.json",
+  themeColor: "#fbbf24",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ChamberForge",
+  },
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/icons/icon-192.svg",
+  },
+  openGraph: {
+    title: "ChamberForge",
+    description: "Premium-service operating system for HNW/UHNW market",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
