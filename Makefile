@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help security-test smoke-test
+.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down dev-up dev-down backup restore health-check clean help security-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -41,6 +41,12 @@ docker-up: ## Start Docker infrastructure services
 
 docker-down: ## Stop Docker infrastructure services
 	docker compose down
+
+dev-up: ## Boot full stack via docker-compose.dev.yml (one command)
+	bash scripts/dev-up.sh
+
+dev-down: ## Tear down full dev stack and remove volumes
+	bash scripts/dev-down.sh
 
 deploy-staging: ## Deploy to staging (requires AWS credentials)
 	@echo "Triggering staging deploy via git push to main..."
