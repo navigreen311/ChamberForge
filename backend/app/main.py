@@ -2,8 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.admin import router as admin_router
-from app.api.v1.primitives import router as primitives_router
+from app.api.v1.command import router as command_router
 from app.core.config import settings
 from app.api.v1.lifecycle import router as lifecycle_router
 
@@ -25,6 +24,9 @@ app.add_middleware(
 
 app.include_router(primitives_router)
 app.include_router(admin_router)
+
+
+app.include_router(command_router)
 
 
 @app.get("/api/health")
