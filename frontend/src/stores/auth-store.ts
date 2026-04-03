@@ -32,6 +32,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       } satisfies LoginRequest);
       localStorage.setItem('access_token', data.access_token);
       localStorage.setItem('refresh_token', data.refresh_token);
+      document.cookie = `auth_token=${data.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       set({ token: data.access_token, isAuthenticated: true });
       await get().fetchMe();
     } catch (err: any) {
@@ -52,6 +53,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       );
       localStorage.setItem('access_token', tokens.access_token);
       localStorage.setItem('refresh_token', tokens.refresh_token);
+      document.cookie = `auth_token=${tokens.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       set({ token: tokens.access_token, isAuthenticated: true });
       await get().fetchMe();
     } catch (err: any) {
@@ -67,6 +69,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
+    document.cookie = 'auth_token=; path=/; max-age=0';
     set({ user: null, token: null, isAuthenticated: false, error: null });
   },
 
