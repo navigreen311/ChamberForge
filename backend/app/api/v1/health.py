@@ -56,8 +56,17 @@ async def readiness() -> dict:
     except Exception as exc:
         logger.warning("Elasticsearch readiness check failed: %s", exc)
 
-    all_healthy = all(checks.values())
-    status = "ready" if all_healthy else "degraded"
+    # Environment validation
+    from app.core.env_validator import validate_environment
+
+    env_status = validate_environment()
+    checks["environment"] = {
+        "errors": len(env_status["errors"]),
+        "warnings": len(env_status["warnings"]),
+    }
+
+    infra_healthy = checks["db"] and checks["redis"] and checks["elasticsearch"]
+    status = "ready" if infra_healthy else "degraded"
 
     return {"status": status, "checks": checks}
 

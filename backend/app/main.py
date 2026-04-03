@@ -40,6 +40,7 @@ from app.middleware.request_logging import RequestLoggingMiddleware  # noqa: E40
 from app.middleware.performance import PerformanceMiddleware  # noqa: E402
 from app.middleware.audit import AuditMiddleware  # noqa: E402
 from app.middleware.tenant import TenantMiddleware  # noqa: E402
+from app.middleware.datadog_metrics import DatadogMetricsMiddleware  # noqa: E402
 from starlette.middleware.gzip import GZipMiddleware  # noqa: E402
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -155,8 +156,10 @@ app.include_router(community_router)
 
 @app.on_event("startup")
 async def startup():
+    from app.core.env_validator import validate_environment
     from app.core.search_init import init_search
 
+    validate_environment()
     await init_search()
 
 
