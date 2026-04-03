@@ -3,8 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.logging_config import setup_logging
-from app.core.sentry_config import init_sentry
+from app.api.v1.sell import router as sell_router
 
 # --- Application ---
 app = FastAPI(
@@ -116,6 +115,9 @@ app.include_router(jobs_router)
 app.include_router(health_router)
 app.include_router(metrics_router)
 app.include_router(security_router)
+
+
+app.include_router(sell_router)
 
 
 @app.get("/api/health")
