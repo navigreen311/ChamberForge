@@ -21,6 +21,11 @@ app.add_middleware(
 )
 
 
+from app.api.v1.voiceforge import router as voiceforge_router
+
+app.include_router(voiceforge_router)
+
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "version": "0.1.0"}
