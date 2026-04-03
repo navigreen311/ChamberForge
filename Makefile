@@ -1,4 +1,4 @@
-.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help security-test
+.PHONY: setup dev test lint build seed migrate db-reset docker-up docker-down backup restore health-check clean help security-test smoke-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -57,6 +57,9 @@ health-check: ## Check system health via API
 
 security-test: ## Run security test suite
 	cd backend && python -m pytest tests/security/ -v
+
+smoke-test: ## Run API smoke tests against running server
+	bash scripts/smoke-test.sh
 
 clean: ## Remove all generated files, containers, and volumes
 	docker compose down -v 2>/dev/null || true
