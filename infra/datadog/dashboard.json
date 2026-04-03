@@ -1,0 +1,45 @@
+{
+  "title": "ChamberForge Operations",
+  "widgets": [
+    {
+      "title": "Request Rate",
+      "type": "timeseries",
+      "query": "sum:trace.fastapi.request.hits{service:chamberforge-api}"
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "query": "sum:trace.fastapi.request.errors{service:chamberforge-api}"
+    },
+    {
+      "title": "P95 Latency",
+      "type": "timeseries",
+      "query": "p95:trace.fastapi.request.duration{service:chamberforge-api}"
+    },
+    {
+      "title": "AI Agent Costs (24h)",
+      "type": "query_value",
+      "query": "sum:chamberforge.ai_cost{*}.rollup(sum, 86400)"
+    },
+    {
+      "title": "Active Users",
+      "type": "query_value",
+      "query": "sum:chamberforge.active_users{*}"
+    },
+    {
+      "title": "DB Query Latency",
+      "type": "timeseries",
+      "query": "avg:trace.sqlalchemy.query.duration{service:chamberforge-api}"
+    },
+    {
+      "title": "Redis Cache Hit Rate",
+      "type": "query_value",
+      "query": "sum:chamberforge.cache_hits{*}/(sum:chamberforge.cache_hits{*}+sum:chamberforge.cache_misses{*})*100"
+    },
+    {
+      "title": "Celery Task Queue",
+      "type": "timeseries",
+      "query": "avg:celery.task.active{*}"
+    }
+  ]
+}
