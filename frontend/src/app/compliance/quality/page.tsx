@@ -1,197 +1,87 @@
 "use client";
 
-import { useState } from "react";
-import SLAIndicator from "@/components/modules/SLAIndicator";
+import { useState, useEffect } from "react";
 
-interface SLAItem {
-  metric: string;
-  target: number;
-  actual: number;
-  met: boolean;
-}
-
-interface RetentionRisk {
-  client_id: string;
-  client_name: string;
-  risk_level: "low" | "medium" | "high";
-  risk_score: number;
-  signals: string[];
-  recommended_action: string;
-}
-
-const MOCK_SLA_ITEMS: SLAItem[] = [
-  { metric: "Response Time (hrs)", target: 4, actual: 3.2, met: true },
-  { metric: "Resolution Time (hrs)", target: 24, actual: 18.5, met: true },
-  { metric: "Client Satisfaction (%)", target: 95, actual: 97, met: true },
-  { metric: "Report Delivery On-Time (%)", target: 98, actual: 96, met: false },
-  { metric: "Meeting Prep Completion (%)", target: 100, actual: 100, met: true },
+const slaMetrics = [
+  { name: "First Response Time", target: "< 2 hours", actual: "1.4 hours", compliance: 96, history: [94, 95, 93, 96, 97, 96] },
+  { name: "Issue Resolution Time", target: "< 24 hours", actual: "18.2 hours", compliance: 88, history: [85, 87, 86, 88, 90, 88] },
+  { name: "Client Satisfaction (CSAT)", target: "> 90%", actual: "94%", compliance: 94, history: [91, 92, 93, 93, 94, 94] },
+  { name: "Service Uptime", target: "99.9%", actual: "99.95%", compliance: 100, history: [99, 100, 99, 100, 100, 100] },
+  { name: "Data Accuracy", target: "> 97%", actual: "98.2%", compliance: 98, history: [96, 97, 97, 98, 98, 98] },
+  { name: "Consent Coverage", target: "100%", actual: "90%", compliance: 90, history: [82, 84, 86, 88, 89, 90] },
 ];
 
-const MOCK_RISKS: RetentionRisk[] = [
-  {
-    client_id: "cl1",
-    client_name: "Meridian Holdings",
-    risk_level: "high",
-    risk_score: 0.55,
-    signals: ["AUM declined >10% in 90 days", "No login in 30+ days"],
-    recommended_action: "Schedule immediate relationship review meeting",
-  },
-  {
-    client_id: "cl2",
-    client_name: "Vanguard Estates",
-    risk_level: "medium",
-    risk_score: 0.35,
-    signals: ["Missed 2+ scheduled meetings", "3+ support complaints in 60 days"],
-    recommended_action: "Send personalized check-in within 48 hours",
-  },
-  {
-    client_id: "cl3",
-    client_name: "Ashford Partners",
-    risk_level: "low",
-    risk_score: 0.1,
-    signals: ["Marketing consent revoked"],
-    recommended_action: "Continue standard engagement cadence",
-  },
-];
+const months = ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr"];
 
-export default function QualityDashboard() {
-  const [slaItems] = useState<SLAItem[]>(MOCK_SLA_ITEMS);
-  const [risks] = useState<RetentionRisk[]>(MOCK_RISKS);
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
+}
 
-  const adherencePct =
-    Math.round(
-      (slaItems.filter((s) => s.met).length / slaItems.length) * 1000
-    ) / 10;
+export default function QualityPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-10 w-64 mb-2" />
+        <Skeleton className="h-5 w-96 mb-8" />
+        <div className="space-y-4">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-chamber-950 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-gold-400">
-            Service Quality Dashboard
-          </h1>
-          <p className="text-chamber-400 mt-1">
-            SLA adherence monitoring, onboarding quality, and retention risk detection
-          </p>
-        </div>
+    <div className="min-h-screen bg-chamber-950 p-8">
+      <a href="/compliance" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Compliance</a>
+      <h1 className="text-3xl font-display font-bold text-white mb-1">Service Quality</h1>
+      <p className="text-chamber-400 mb-8">SLA performance monitoring and quality metrics dashboard</p>
 
-        {/* SLA Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-chamber-900 border border-chamber-800 rounded-lg p-6 flex flex-col items-center justify-center">
-            <h2 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider mb-4">
-              Overall SLA Adherence
-            </h2>
-            <SLAIndicator percentage={adherencePct} size={160} />
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          ["Overall SLA Compliance", "94.3%", slaMetrics.filter(m => m.compliance >= 95).length >= 4 ? "text-green-400" : "text-gold-400"],
+          ["Metrics Meeting Target", `${slaMetrics.filter(m => m.compliance >= 95).length}/${slaMetrics.length}`, "text-blue-400"],
+          ["Needs Attention", slaMetrics.filter(m => m.compliance < 95).length.toString(), "text-red-400"],
+        ].map(([l, v, c]) => (
+          <div key={String(l)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
+            <p className="text-chamber-400 text-sm">{String(l)}</p>
+            <p className={`text-2xl font-bold ${c}`}>{String(v)}</p>
           </div>
+        ))}
+      </div>
 
-          <div className="lg:col-span-2 bg-chamber-900 border border-chamber-800 rounded-lg p-6">
-            <h2 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider mb-4">
-              SLA Breakdown
-            </h2>
-            <div className="space-y-3">
-              {slaItems.map((item) => (
-                <div key={item.metric} className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-white">{item.metric}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-chamber-500 font-mono">
-                          Target: {item.target}
-                        </span>
-                        <span
-                          className={`text-sm font-mono font-medium ${
-                            item.met ? "text-emerald-400" : "text-red-400"
-                          }`}
-                        >
-                          {item.actual}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-chamber-800 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all ${
-                          item.met ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            item.metric.includes("Time")
-                              ? (item.target / Math.max(item.actual, 0.1)) * 100
-                              : (item.actual / item.target) * 100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      item.met
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-red-500/10 text-red-400"
-                    }`}
-                  >
-                    {item.met ? "MET" : "MISS"}
-                  </span>
+      {/* SLA Cards with Mini Charts */}
+      <div className="space-y-4">
+        {slaMetrics.map((m) => (
+          <div key={m.name} className={`bg-chamber-900 rounded-xl p-6 border ${m.compliance >= 95 ? "border-chamber-800" : "border-gold-400/30"}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-white font-semibold">{m.name}</h3>
+                <p className="text-sm text-chamber-500">Target: {m.target}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-white">{m.actual}</p>
+                <span className={`text-sm font-medium ${m.compliance >= 95 ? "text-green-400" : m.compliance >= 90 ? "text-gold-400" : "text-red-400"}`}>{m.compliance}% compliant</span>
+              </div>
+            </div>
+
+            {/* Mini Chart */}
+            <div className="flex items-end gap-2 h-12">
+              {m.history.map((v, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div className={`w-full rounded-t ${v >= 95 ? "bg-green-400/60" : v >= 90 ? "bg-gold-400/60" : "bg-red-400/60"}`} style={{ height: `${(v / 100) * 100}%` }} />
+                  <span className="text-xs text-chamber-600">{months[i]}</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-
-        {/* Retention Risks */}
-        <div className="bg-chamber-900 border border-chamber-800 rounded-lg p-6">
-          <h2 className="text-sm font-semibold text-chamber-400 uppercase tracking-wider mb-4">
-            Retention Risk Detection
-          </h2>
-          <div className="space-y-4">
-            {risks.map((risk) => (
-              <div
-                key={risk.client_id}
-                className={`p-4 rounded-lg border ${
-                  risk.risk_level === "high"
-                    ? "border-red-500/30 bg-red-500/5"
-                    : risk.risk_level === "medium"
-                    ? "border-amber-500/30 bg-amber-500/5"
-                    : "border-chamber-700 bg-chamber-800/30"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-white font-medium">{risk.client_name}</h3>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium uppercase ${
-                        risk.risk_level === "high"
-                          ? "bg-red-500/20 text-red-400"
-                          : risk.risk_level === "medium"
-                          ? "bg-amber-500/20 text-amber-400"
-                          : "bg-chamber-700 text-chamber-400"
-                      }`}
-                    >
-                      {risk.risk_level} risk
-                    </span>
-                  </div>
-                  <span className="text-xs text-chamber-500 font-mono">
-                    Score: {(risk.risk_score * 100).toFixed(0)}%
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {risk.signals.map((signal, i) => (
-                    <span
-                      key={i}
-                      className="text-xs px-2 py-1 bg-chamber-800 text-chamber-300 rounded"
-                    >
-                      {signal}
-                    </span>
-                  ))}
-                </div>
-                <p className="text-sm text-chamber-400">
-                  Recommended: <span className="text-white">{risk.recommended_action}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
-    </main>
+    </div>
   );
 }

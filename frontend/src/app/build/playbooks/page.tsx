@@ -1,85 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import PlaybookCard from "@/components/modules/PlaybookCard";
+import { useState, useEffect } from "react";
 
-interface Playbook {
-  id: string;
-  slug: string;
-  name: string;
-  target_buyer: string;
-  price_range_min: number;
-  price_range_max: number;
-  core_pain: string;
+const playbooks = [
+  { slug: "discovery-to-deal", name: "Discovery to Deal", desc: "End-to-end framework from problem identification to closed deal", category: "Sales", uses: 14, steps: 8, status: "Active" },
+  { slug: "uhnw-onboarding", name: "UHNW Client Onboarding", desc: "White-glove onboarding process for ultra-high-net-worth clients", category: "Operations", uses: 9, steps: 12, status: "Active" },
+  { slug: "retention-playbook", name: "Client Retention", desc: "Proactive retention strategies based on health score triggers", category: "Lifecycle", uses: 22, steps: 6, status: "Active" },
+  { slug: "market-entry", name: "New Market Entry", desc: "Systematic approach to entering a new premium service vertical", category: "Strategy", uses: 5, steps: 10, status: "Active" },
+  { slug: "crisis-management", name: "Client Crisis Management", desc: "Rapid response framework for service failures or client emergencies", category: "Operations", uses: 3, steps: 7, status: "Active" },
+  { slug: "pricing-optimization", name: "Pricing Optimization", desc: "Data-driven approach to optimizing service pricing tiers", category: "Strategy", uses: 7, steps: 5, status: "Active" },
+  { slug: "referral-engine", name: "Referral Engine", desc: "Structured referral program for HNW client acquisition", category: "Sales", uses: 11, steps: 6, status: "Active" },
+  { slug: "compliance-audit", name: "Compliance Audit", desc: "Quarterly compliance review and documentation workflow", category: "Compliance", uses: 4, steps: 9, status: "Draft" },
+  { slug: "team-scaling", name: "Team Scaling", desc: "Framework for scaling service delivery teams while maintaining quality", category: "Operations", uses: 2, steps: 8, status: "Draft" },
+  { slug: "exit-strategy", name: "Client Exit & Transition", desc: "Graceful offboarding and knowledge transfer process", category: "Lifecycle", uses: 1, steps: 5, status: "Active" },
+];
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-export default function PlaybooksGalleryPage() {
-  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+export default function PlaybooksPage() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPlaybooks() {
-      try {
-        const res = await fetch(`${API_BASE}/api/v1/playbooks/`);
-        if (!res.ok) throw new Error("Failed to fetch playbooks");
-        const data = await res.json();
-        setPlaybooks(data.playbooks);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchPlaybooks();
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
   }, []);
 
-  return (
-    <div className="min-h-screen bg-chamber-950 px-6 py-12">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-12 text-center">
-          <h1 className="text-3xl font-bold text-white md:text-4xl">
-            Playbook <span className="text-gold-400">Gallery</span>
-          </h1>
-          <p className="mt-4 text-lg text-chamber-300">
-            10 premium service verticals. Activate, customize, and launch in
-            under 60 minutes.
-          </p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-10 w-64 mb-2" />
+        <Skeleton className="h-5 w-96 mb-8" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(9)].map((_, i) => <Skeleton key={i} className="h-44" />)}
         </div>
+      </div>
+    );
+  }
 
-        {/* Loading */}
-        {loading && (
-          <div className="flex justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold-400 border-t-transparent" />
-          </div>
-        )}
+  return (
+    <div className="min-h-screen bg-chamber-950 p-8">
+      <a href="/build" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Build</a>
+      <h1 className="text-3xl font-display font-bold text-white mb-1">Playbook Gallery</h1>
+      <p className="text-chamber-400 mb-8">Proven frameworks for every stage of premium service delivery</p>
 
-        {/* Error */}
-        {error && (
-          <div className="mx-auto max-w-md rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Grid — 2 columns x 5 rows */}
-        {!loading && !error && (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {playbooks.map((playbook) => (
-              <PlaybookCard
-                key={playbook.slug}
-                slug={playbook.slug}
-                name={playbook.name}
-                targetBuyer={playbook.target_buyer}
-                priceRangeMin={playbook.price_range_min}
-                priceRangeMax={playbook.price_range_max}
-                corePain={playbook.core_pain}
-              />
-            ))}
-          </div>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {playbooks.map((p) => (
+          <a key={p.slug} href={`/build/playbooks/${p.slug}`} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="px-2 py-0.5 bg-chamber-800 text-chamber-400 text-xs rounded-full">{p.category}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === "Active" ? "bg-green-400/20 text-green-400" : "bg-chamber-700 text-chamber-400"}`}>{p.status}</span>
+            </div>
+            <h3 className="text-white font-semibold mb-1 group-hover:text-gold-400 transition">{p.name}</h3>
+            <p className="text-sm text-chamber-400 mb-4">{p.desc}</p>
+            <div className="flex items-center justify-between text-xs text-chamber-500">
+              <span>{p.steps} steps</span>
+              <span>{p.uses} times used</span>
+            </div>
+          </a>
+        ))}
       </div>
     </div>
   );

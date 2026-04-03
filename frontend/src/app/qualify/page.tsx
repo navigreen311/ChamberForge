@@ -1,121 +1,103 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
-interface QuickCard {
-  title: string;
-  description: string;
-  href: string;
-  icon: string;
-}
-
-const cards: QuickCard[] = [
-  {
-    title: "Validate Problem",
-    description: "Run a 4-point scorecard on any premium problem.",
-    href: "/qualify/validate/new",
-    icon: "\u2714",
-  },
-  {
-    title: "Buyer Profile",
-    description: "Generate rich ICP profiles by tier, stage, and pain.",
-    href: "/qualify/buyer-profile",
-    icon: "\uD83C\uDFAF",
-  },
-  {
-    title: "Guardrails Check",
-    description: "Run compliance and ethical guardrails on an offer.",
-    href: "/qualify/guardrails",
-    icon: "\uD83D\uDEE1",
-  },
-  {
-    title: "Risk Queue",
-    description: "Review and manage flagged items.",
-    href: "/qualify/risk-queue",
-    icon: "\u26A0",
-  },
-  {
-    title: "Founder Readiness",
-    description: "Assess skills, credentials, and network readiness.",
-    href: "/qualify/buyer-profile",
-    icon: "\uD83D\uDCCA",
-  },
+const recentValidations = [
+  { id: 1, problem: "Private Aviation Charter Gaps", score: 92, date: "2026-04-01", status: "Passed" },
+  { id: 2, problem: "Estate Staff Retention Crisis", score: 87, date: "2026-03-30", status: "Passed" },
+  { id: 3, problem: "Yacht Crew Credentialing", score: 71, date: "2026-03-28", status: "Review" },
+  { id: 4, problem: "Art Collection Insurance Gaps", score: 58, date: "2026-03-25", status: "Failed" },
+  { id: 5, problem: "Concierge Service Fragmentation", score: 89, date: "2026-03-22", status: "Passed" },
 ];
 
-export default function QualifyHub() {
-  const [recentValidations, setRecentValidations] = useState<
-    { id: string; title: string; score: number }[]
-  >([]);
+const quickActions = [
+  { title: "Validate a Problem", desc: "Run the 4-point validation scorecard on a discovered problem", href: "/discover", icon: "🎯" },
+  { title: "Build Buyer Profile", desc: "Create an Ideal Client Profile for your target market", href: "/qualify/buyer-profile", icon: "👤" },
+  { title: "Run Guardrails Check", desc: "Verify ethical and compliance guardrails before proceeding", href: "/qualify/guardrails", icon: "🛡️" },
+  { title: "Review Risk Queue", desc: "Approve or reject flagged items requiring human review", href: "/qualify/risk-queue", icon: "⚠️" },
+];
+
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
+}
+
+export default function QualifyPage() {
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Placeholder for recent validations — would fetch from API
-    setRecentValidations([
-      { id: "1", title: "Privacy Shield Service", score: 8.2 },
-      { id: "2", title: "Family Governance Suite", score: 7.5 },
-      { id: "3", title: "Travel Concierge Platform", score: 6.9 },
-    ]);
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
   }, []);
 
-  return (
-    <div className="mx-auto max-w-6xl space-y-10 px-6 py-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">
-          Qualify
-        </h1>
-        <p className="mt-2 text-white/60">
-          Validate problems, profile buyers, check guardrails, and assess
-          readiness.
-        </p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-10 w-64 mb-2" />
+        <Skeleton className="h-5 w-96 mb-8" />
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <Skeleton className="h-64 w-full" />
       </div>
+    );
+  }
 
-      {/* Quick-access cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className="group flex flex-col rounded-xl border border-white/10 bg-white/5 p-6 transition hover:border-white/20 hover:bg-white/10"
-          >
-            <span className="mb-3 text-2xl">{card.icon}</span>
-            <h2 className="text-lg font-semibold text-white group-hover:text-emerald-400">
-              {card.title}
-            </h2>
-            <p className="mt-1 text-sm text-white/50">{card.description}</p>
-          </Link>
+  return (
+    <div className="min-h-screen bg-chamber-950 p-8">
+      <h1 className="text-3xl font-display font-bold text-white mb-1">Qualify Hub</h1>
+      <p className="text-chamber-400 mb-8">Validate problems, build buyer profiles, and ensure quality guardrails</p>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {quickActions.map((a) => (
+          <a key={a.title} href={a.href} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition group">
+            <span className="text-2xl mb-3 block">{a.icon}</span>
+            <h3 className="text-white font-semibold mb-1 group-hover:text-gold-400 transition">{a.title}</h3>
+            <p className="text-sm text-chamber-400">{a.desc}</p>
+          </a>
         ))}
       </div>
 
-      {/* Recent validations */}
-      <div>
-        <h2 className="mb-4 text-xl font-semibold text-white">
-          Recent Validations
-        </h2>
-        {recentValidations.length === 0 ? (
-          <p className="text-white/40">No recent validations.</p>
-        ) : (
-          <div className="space-y-2">
+      {/* Recent Validations */}
+      <h3 className="text-lg font-semibold text-white mb-4">Recent Validations</h3>
+      <div className="bg-chamber-900 rounded-xl border border-chamber-800 overflow-hidden">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b border-chamber-800">
+              <th className="px-5 py-3 text-xs font-semibold text-chamber-400 uppercase tracking-wider">Problem</th>
+              <th className="px-5 py-3 text-xs font-semibold text-chamber-400 uppercase tracking-wider">Score</th>
+              <th className="px-5 py-3 text-xs font-semibold text-chamber-400 uppercase tracking-wider">Status</th>
+              <th className="px-5 py-3 text-xs font-semibold text-chamber-400 uppercase tracking-wider">Date</th>
+              <th className="px-5 py-3 text-xs font-semibold text-chamber-400 uppercase tracking-wider">Action</th>
+            </tr>
+          </thead>
+          <tbody>
             {recentValidations.map((v) => (
-              <div
-                key={v.id}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-5 py-3"
-              >
-                <span className="text-white">{v.title}</span>
-                <span
-                  className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                    v.score >= 7
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : v.score >= 5
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {v.score.toFixed(1)}
-                </span>
-              </div>
+              <tr key={v.id} className="border-b border-chamber-800/50 hover:bg-chamber-800/30 transition">
+                <td className="px-5 py-4 text-white font-medium">{v.problem}</td>
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 bg-chamber-700 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${v.score >= 80 ? "bg-green-400" : v.score >= 60 ? "bg-gold-400" : "bg-red-400"}`} style={{ width: `${v.score}%` }} />
+                    </div>
+                    <span className="text-sm text-chamber-300">{v.score}</span>
+                  </div>
+                </td>
+                <td className="px-5 py-4">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                    v.status === "Passed" ? "bg-green-400/20 text-green-400" :
+                    v.status === "Review" ? "bg-gold-400/20 text-gold-400" :
+                    "bg-red-400/20 text-red-400"
+                  }`}>{v.status}</span>
+                </td>
+                <td className="px-5 py-4 text-chamber-400 text-sm">{v.date}</td>
+                <td className="px-5 py-4">
+                  <a href={`/qualify/validate/${v.id}`} className="text-gold-400 text-sm hover:underline">View</a>
+                </td>
+              </tr>
             ))}
-          </div>
-        )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -1,177 +1,117 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import IntelBriefCard from "@/components/modules/IntelBriefCard";
+import { useState, useEffect } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const brief = {
+  client: "Henderson Family Office",
+  generatedAt: "2026-04-03 08:00 AM",
+  healthScore: 96,
+  sections: [
+    {
+      title: "Executive Summary",
+      content: "The Henderson Family Office remains a top-tier client with strong engagement metrics. Quarterly review meeting scheduled for April 7. No immediate risk factors identified. Contract renewal opportunity in Q3 2026.",
+    },
+    {
+      title: "Recent Activity",
+      items: [
+        "3 charter flights booked in March (up from 1 in February)",
+        "Estate manager Maria Santos completed annual review",
+        "New property acquisition in progress (Hamptons, $7.2M estimate)",
+        "Victoria Henderson requested concierge services for charity gala (April 22)",
+      ],
+    },
+    {
+      title: "Financial Overview",
+      items: [
+        "Current MRR: $22,000 (Platinum tier)",
+        "Lifetime value: $308,000 (14 months)",
+        "All invoices paid on time — zero payment incidents",
+        "Upsell opportunity: Art advisory services ($4,500/mo potential)",
+      ],
+    },
+    {
+      title: "Relationship Insights",
+      items: [
+        "Primary contact: James Henderson (Principal)",
+        "Decision influencer: Victoria Henderson (strong preference for personalized service)",
+        "Preferred communication: Phone for urgent, email for routine",
+        "NPS score: 9/10 (Promoter)",
+      ],
+    },
+    {
+      title: "Risk Factors",
+      items: [
+        "None currently identified",
+        "Monitor: Competitor outreach detected (Quintessentially sent intro materials)",
+      ],
+    },
+    {
+      title: "Recommended Actions",
+      items: [
+        "Prepare Q1 performance review presentation for April 7 meeting",
+        "Proactively offer property management services for Hamptons acquisition",
+        "Send personalized note re: charity gala — offer concierge support",
+        "Begin art advisory upsell conversation with James",
+      ],
+    },
+  ],
+};
 
-interface ComplexityMap {
-  wealth_tier: string;
-  entities_count: number;
-  jurisdictions: string[];
-  active_risks: string[];
-}
-
-interface Brief {
-  client_name: string;
-  generated_at: string;
-  summary: string;
-  key_facts: string[];
-  complexity_map: ComplexityMap;
-  talking_points: string[];
-  proof_assets_to_bring: string[];
-  recent_changes: string[];
-  recommended_approach: string;
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
 export default function IntelBriefPage() {
-  const params = useParams();
-  const clientId = params.clientId as string;
-  const [brief, setBrief] = useState<Brief | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/v1/lifecycle/intel-brief/${clientId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_data: {
-          name: "Demo Client",
-          wealth_tier: "UHNW",
-          entities: ["Family Trust", "Holdings LLC", "Foundation"],
-          jurisdictions: ["US", "UK", "Singapore"],
-          active_risks: ["Regulatory change in Singapore"],
-          tenure_years: 7,
-          aum: 45000000,
-          engagement_type: "Full-Service Family Office",
-        },
-        meeting_context: "Quarterly strategic review",
-      }),
-    })
-      .then((r) => r.json())
-      .then(setBrief)
-      .catch(() => setBrief(null))
-      .finally(() => setLoading(false));
-  }, [clientId]);
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   if (loading) {
     return (
-      <main className="min-h-screen p-8 flex items-center justify-center">
-        <p className="text-chamber-400 animate-pulse">Generating intelligence brief...</p>
-      </main>
-    );
-  }
-
-  if (!brief) {
-    return (
-      <main className="min-h-screen p-8">
-        <p className="text-red-400">Failed to generate brief.</p>
-      </main>
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-10 w-64 mb-2" />
+        <Skeleton className="h-5 w-96 mb-8" />
+        <div className="space-y-4">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-chamber-950 p-8">
+      <a href="/lifecycle" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Lifecycle</a>
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gold-400">{brief.client_name}</h1>
-          <p className="text-chamber-400 text-sm">
-            Generated {new Date(brief.generated_at).toLocaleString()}
-          </p>
+          <h1 className="text-3xl font-display font-bold text-white mb-1">Intel Brief: {brief.client}</h1>
+          <p className="text-chamber-400">Generated {brief.generatedAt}</p>
         </div>
-        <span className="px-3 py-1 rounded-full text-sm bg-gold-500/20 text-gold-400 border border-gold-500/30">
-          {brief.complexity_map.wealth_tier}
-        </span>
-      </div>
-
-      {/* Summary */}
-      <section className="bg-chamber-900 border border-chamber-700 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold text-white mb-2">Summary</h2>
-        <p className="text-chamber-300">{brief.summary}</p>
-      </section>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Key Facts */}
-        <section className="bg-chamber-900 border border-chamber-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-3">Key Facts</h2>
-          <ul className="space-y-2">
-            {brief.key_facts.map((fact, i) => (
-              <li key={i} className="flex items-start gap-2 text-chamber-300">
-                <span className="text-gold-400 mt-0.5">•</span>
-                {fact}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Complexity Map */}
-        <section className="bg-chamber-900 border border-chamber-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-3">Complexity Map</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-chamber-500 text-xs uppercase">Wealth Tier</p>
-              <p className="text-white font-semibold">{brief.complexity_map.wealth_tier}</p>
-            </div>
-            <div>
-              <p className="text-chamber-500 text-xs uppercase">Entities</p>
-              <p className="text-white font-semibold">{brief.complexity_map.entities_count}</p>
-            </div>
-            <div>
-              <p className="text-chamber-500 text-xs uppercase">Jurisdictions</p>
-              <p className="text-white font-semibold">
-                {brief.complexity_map.jurisdictions.join(", ") || "Domestic"}
-              </p>
-            </div>
-            <div>
-              <p className="text-chamber-500 text-xs uppercase">Active Risks</p>
-              <p className="text-white font-semibold">{brief.complexity_map.active_risks.length}</p>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="text-center">
+            <span className="text-3xl font-bold text-green-400">{brief.healthScore}</span>
+            <p className="text-xs text-chamber-500">Health Score</p>
           </div>
-        </section>
+          <button className="px-4 py-2 border border-chamber-600 text-chamber-300 rounded-lg hover:border-chamber-400 transition text-sm">Refresh Brief</button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Talking Points */}
-        <section className="bg-chamber-900 border border-chamber-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-3">Talking Points</h2>
-          <ol className="space-y-2">
-            {brief.talking_points.map((tp, i) => (
-              <li key={i} className="flex items-start gap-3 text-chamber-300">
-                <span className="bg-gold-500/20 text-gold-400 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">
-                  {i + 1}
-                </span>
-                {tp}
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Proof Assets */}
-        <section className="bg-chamber-900 border border-chamber-700 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-3">Bring to Meeting</h2>
-          <ul className="space-y-2">
-            {brief.proof_assets_to_bring.map((asset, i) => (
-              <li key={i} className="flex items-center gap-2 text-chamber-300">
-                <span className="w-2 h-2 rounded-full bg-gold-400 flex-shrink-0" />
-                {asset}
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="space-y-6">
+        {brief.sections.map((section, idx) => (
+          <div key={idx} className="bg-chamber-900 rounded-xl p-6 border border-chamber-800">
+            <h3 className="text-lg font-semibold text-white mb-3">{section.title}</h3>
+            {section.content ? (
+              <p className="text-chamber-300">{section.content}</p>
+            ) : (
+              <ul className="space-y-2">
+                {section.items?.map((item, i) => (
+                  <li key={i} className="text-sm text-chamber-300 pl-3 border-l-2 border-gold-400/30">{item}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
-
-      {/* Recommended Approach */}
-      <section className="bg-gold-500/10 border border-gold-500/30 rounded-xl p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gold-400 mb-2">Recommended Approach</h2>
-        <p className="text-chamber-200">{brief.recommended_approach}</p>
-      </section>
-
-      {/* Compact Card Preview */}
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-white mb-3">Mobile Card Preview</h2>
-        <IntelBriefCard brief={brief} />
-      </section>
-    </main>
+    </div>
   );
 }

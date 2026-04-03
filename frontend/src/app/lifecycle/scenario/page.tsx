@@ -1,131 +1,138 @@
 "use client";
 
-import { useState } from "react";
-import ScenarioSliders from "@/components/modules/ScenarioSliders";
+import { useState, useEffect } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-interface Scenario {
-  name: string;
-  revenue: number;
-  costs: number;
-  profit: number;
-  margin_pct: number;
-  staff_needed: number;
+function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse bg-chamber-800 rounded ${className}`} />;
 }
 
-interface ScenarioResult {
-  scenarios: Scenario[];
-  comparison_chart_data: { name: string; revenue: number; costs: number; profit: number }[];
-}
+export default function ScenarioPage() {
+  const [loading, setLoading] = useState(true);
+  const [sliders, setSliders] = useState({
+    clientGrowth: 15,
+    churnRate: 3,
+    avgDealSize: 14000,
+    marketExpansion: 2,
+    priceIncrease: 5,
+  });
 
-export default function ScenarioPlannerPage() {
-  const [result, setResult] = useState<ScenarioResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
-  const handleRun = async (params: {
-    basePrice: number;
-    baseClients: number;
-    margin: number;
-    staffingCost: number;
-    scaleFactor: number;
-    wlDiscount: number;
-  }) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/v1/lifecycle/scenario`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_price: params.basePrice,
-          base_clients: params.baseClients,
-          adjustments: {
-            margin: params.margin / 100,
-            staffing_cost: params.staffingCost,
-            scale_factor: params.scaleFactor,
-            white_label_discount: params.wlDiscount / 100,
-          },
-        }),
-      });
-      const data = await res.json();
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Live calculations
+  const currentClients = 18;
+  const currentMrr = 142500;
+  const newClients12m = Math.round(currentClients * (sliders.clientGrowth / 100) * 12);
+  const churnedClients12m = Math.round(currentClients * (sliders.churnRate / 100) * 12);
+  const netNewClients = newClients12m - churnedClients12m;
+  const projectedClients = currentClients + netNewClients;
+  const projectedMrr = Math.round((projectedClients * sliders.avgDealSize * (1 + sliders.priceIncrease / 100)));
+  const projectedArr = projectedMrr * 12;
+  const marketExpansionRevenue = sliders.marketExpansion * 85000;
+  const totalProjectedArr = projectedArr + marketExpansionRevenue;
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-
-  const marginColor = (pct: number) => {
-    if (pct >= 60) return "text-green-400";
-    if (pct >= 40) return "text-yellow-400";
-    return "text-red-400";
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-chamber-950 p-8">
+        <Skeleton className="h-10 w-64 mb-2" />
+        <Skeleton className="h-5 w-96 mb-8" />
+        <div className="grid grid-cols-2 gap-6"><Skeleton className="h-96" /><Skeleton className="h-96" /></div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold text-gold-400 mb-2">Scenario Planner</h1>
-      <p className="text-chamber-400 mb-8">Model revenue, costs, and profit under different conditions</p>
+    <div className="min-h-screen bg-chamber-950 p-8">
+      <a href="/lifecycle" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Lifecycle</a>
+      <h1 className="text-3xl font-display font-bold text-white mb-1">Scenario Planner</h1>
+      <p className="text-chamber-400 mb-8">Adjust business assumptions and see live projected outcomes</p>
 
-      <ScenarioSliders onRun={handleRun} loading={loading} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Sliders */}
+        <div className="bg-chamber-900 rounded-xl p-6 border border-chamber-800 space-y-6">
+          <h3 className="text-lg font-semibold text-white">Adjust Assumptions</h3>
 
-      {result && (
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold text-white mb-4">Results</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-chamber-700 text-chamber-400 text-sm uppercase tracking-wider">
-                  <th className="pb-3 pr-4">Scenario</th>
-                  <th className="pb-3 pr-4 text-right">Revenue</th>
-                  <th className="pb-3 pr-4 text-right">Costs</th>
-                  <th className="pb-3 pr-4 text-right">Profit</th>
-                  <th className="pb-3 pr-4 text-right">Margin</th>
-                  <th className="pb-3 text-right">Staff</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.scenarios.map((s) => (
-                  <tr key={s.name} className="border-b border-chamber-800 hover:bg-chamber-900/50">
-                    <td className="py-3 pr-4 text-white font-medium">{s.name}</td>
-                    <td className="py-3 pr-4 text-right text-chamber-300">{fmt(s.revenue)}</td>
-                    <td className="py-3 pr-4 text-right text-chamber-300">{fmt(s.costs)}</td>
-                    <td className="py-3 pr-4 text-right text-white font-semibold">{fmt(s.profit)}</td>
-                    <td className={`py-3 pr-4 text-right font-semibold ${marginColor(s.margin_pct)}`}>
-                      {s.margin_pct.toFixed(1)}%
-                    </td>
-                    <td className="py-3 text-right text-chamber-300">{s.staff_needed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {[
+            { label: "Monthly Client Growth Rate", key: "clientGrowth" as const, min: 0, max: 30, unit: "%" },
+            { label: "Monthly Churn Rate", key: "churnRate" as const, min: 0, max: 15, unit: "%" },
+            { label: "Average Deal Size", key: "avgDealSize" as const, min: 5000, max: 30000, unit: "$" },
+            { label: "New Market Entries (12mo)", key: "marketExpansion" as const, min: 0, max: 5, unit: "" },
+            { label: "Annual Price Increase", key: "priceIncrease" as const, min: 0, max: 20, unit: "%" },
+          ].map((s) => (
+            <div key={s.key}>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-chamber-300">{s.label}</span>
+                <span className="text-gold-400 font-medium">{s.unit === "$" ? `$${sliders[s.key].toLocaleString()}` : `${sliders[s.key]}${s.unit}`}</span>
+              </div>
+              <input
+                type="range"
+                min={s.min}
+                max={s.max}
+                value={sliders[s.key]}
+                onChange={(e) => setSliders({ ...sliders, [s.key]: Number(e.target.value) })}
+                className="w-full h-2 bg-chamber-700 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gold-400"
+              />
+              <div className="flex justify-between text-xs text-chamber-600 mt-1">
+                <span>{s.unit === "$" ? `$${s.min.toLocaleString()}` : `${s.min}${s.unit}`}</span>
+                <span>{s.unit === "$" ? `$${s.max.toLocaleString()}` : `${s.max}${s.unit}`}</span>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          {/* Simple bar comparison */}
-          <div className="mt-8 space-y-3">
-            <h3 className="text-lg font-semibold text-white">Profit Comparison</h3>
-            {result.scenarios.map((s) => {
-              const maxProfit = Math.max(...result.scenarios.map((x) => x.profit), 1);
-              const width = Math.max(0, (s.profit / maxProfit) * 100);
-              return (
-                <div key={s.name} className="flex items-center gap-3">
-                  <span className="w-44 text-sm text-chamber-400 truncate">{s.name}</span>
-                  <div className="flex-1 bg-chamber-800 rounded-full h-4 overflow-hidden">
-                    <div
-                      className="h-full bg-gold-500 rounded-full transition-all"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-white w-28 text-right">{fmt(s.profit)}</span>
+        {/* Live Results */}
+        <div className="space-y-6">
+          <div className="bg-chamber-900 rounded-xl p-6 border border-gold-400/30">
+            <h3 className="text-lg font-semibold text-gold-400 mb-4">12-Month Projections</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                ["Projected Clients", projectedClients, "text-white"],
+                ["Net New Clients", netNewClients > 0 ? `+${netNewClients}` : netNewClients, netNewClients > 0 ? "text-green-400" : "text-red-400"],
+                ["Projected MRR", `$${projectedMrr.toLocaleString()}`, "text-gold-400"],
+                ["Projected ARR", `$${(totalProjectedArr).toLocaleString()}`, "text-gold-400"],
+                ["New Clients (12mo)", newClients12m, "text-green-400"],
+                ["Churned (12mo)", churnedClients12m, "text-red-400"],
+                ["Market Expansion Rev", `$${marketExpansionRevenue.toLocaleString()}`, "text-blue-400"],
+                ["MRR Growth", `${Math.round(((projectedMrr - currentMrr) / currentMrr) * 100)}%`, projectedMrr > currentMrr ? "text-green-400" : "text-red-400"],
+              ].map(([label, value, color]) => (
+                <div key={String(label)} className="p-3 bg-chamber-800/50 rounded-lg">
+                  <p className="text-xs text-chamber-500">{String(label)}</p>
+                  <p className={`text-xl font-bold ${color}`}>{String(value)}</p>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </section>
-      )}
-    </main>
+
+          {/* Comparison */}
+          <div className="bg-chamber-900 rounded-xl p-6 border border-chamber-800">
+            <h3 className="text-lg font-semibold text-white mb-4">Current vs Projected</h3>
+            <div className="space-y-4">
+              {[
+                ["Clients", currentClients, projectedClients],
+                ["MRR", currentMrr, projectedMrr],
+                ["ARR", currentMrr * 12, totalProjectedArr],
+              ].map(([label, current, projected]) => (
+                <div key={String(label)}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-chamber-400">{String(label)}</span>
+                    <span className="text-chamber-300">
+                      {typeof current === "number" && current > 1000 ? `$${current.toLocaleString()}` : String(current)}
+                      {" → "}
+                      {typeof projected === "number" && Number(projected) > 1000 ? `$${Number(projected).toLocaleString()}` : String(projected)}
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-chamber-800 rounded-full overflow-hidden flex">
+                    <div className="h-full bg-chamber-600 rounded-l" style={{ width: `${(Number(current) / Number(projected)) * 100}%` }} />
+                    <div className="h-full bg-gold-400 rounded-r" style={{ width: `${100 - (Number(current) / Number(projected)) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
