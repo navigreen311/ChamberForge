@@ -1,6 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 interface Opportunity {
+  problem_id?: string;
   problem_name: string;
   offer_name: string;
   probability: number;
@@ -26,6 +29,8 @@ export default function OpportunityRanker({
 }: {
   opportunities: Opportunity[];
 }) {
+  const router = useRouter();
+
   if (opportunities.length === 0) {
     return (
       <div className="rounded-xl border border-chamber-700 bg-chamber-900 p-4 text-center text-chamber-400">
@@ -33,6 +38,12 @@ export default function OpportunityRanker({
       </div>
     );
   }
+
+  const handleRowClick = (opp: Opportunity) => {
+    if (opp.problem_id) {
+      router.push(`/discover/${opp.problem_id}`);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-chamber-700 bg-chamber-900 overflow-hidden">
@@ -55,8 +66,9 @@ export default function OpportunityRanker({
           <tbody>
             {opportunities.map((opp, i) => (
               <tr
-                key={i}
-                className="border-b border-chamber-800 hover:bg-chamber-800/50 transition"
+                key={opp.problem_id ?? i}
+                onClick={() => handleRowClick(opp)}
+                className={`border-b border-chamber-800 hover:bg-chamber-800/50 transition ${opp.problem_id ? "cursor-pointer" : ""}`}
               >
                 <td className="px-4 py-2 text-chamber-400">{i + 1}</td>
                 <td className="px-4 py-2 text-white">{opp.problem_name}</td>
