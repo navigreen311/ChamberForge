@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import api from "@/lib/api";
 
 interface NextAction {
   action_title: string;
@@ -10,6 +11,8 @@ interface NextAction {
   confidence: number;
   priority: "critical" | "high" | "medium" | "low";
   estimated_impact: string;
+  action_endpoint?: string;
+  action_payload?: Record<string, any>;
 }
 
 const priorityColors: Record<string, string> = {
@@ -21,6 +24,9 @@ const priorityColors: Record<string, string> = {
 
 export default function NextActionCard({ action }: { action: NextAction | null }) {
   const [dismissed, setDismissed] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [executed, setExecuted] = useState(false);
+  const [executeError, setExecuteError] = useState<string | null>(null);
 
   if (!action || dismissed) {
     return (
@@ -31,6 +37,20 @@ export default function NextActionCard({ action }: { action: NextAction | null }
   }
 
   const confidencePct = Math.round(action.confidence * 100);
+
+  const handleExecute = async () => {
+    if (!action.action_endpoint) return;
+    setExecuting(true);
+    setExecuteError(null);
+    try {
+      await api.post(action.action_endpoint, action.action_payload ?? {});
+      setExecuted(true);
+    } catch (err: any) {
+      setExecuteError(err?.response?.data?.detail || err?.message || "Action failed");
+    } finally {
+      setExecuting(false);
+    }
+  };
 
   return (
     <div className="rounded-xl border-2 border-gold-400 bg-gradient-to-br from-chamber-900 to-chamber-800 p-6 shadow-lg shadow-gold-400/5">
@@ -77,10 +97,24 @@ export default function NextActionCard({ action }: { action: NextAction | null }
         Estimated impact: {action.estimated_impact}
       </p>
 
+      {/* Execute error */}
+      {executeError && (
+        <p className="mt-2 text-sm text-red-400">{executeError}</p>
+      )}
+
+      {/* Execute success */}
+      {executed && (
+        <p className="mt-2 text-sm text-green-400">Action executed successfully.</p>
+      )}
+
       {/* Actions */}
       <div className="mt-4 flex gap-3">
-        <button className="rounded-lg bg-gold-500 px-5 py-2 text-sm font-semibold text-chamber-950 hover:bg-gold-400 transition">
-          Execute
+        <button
+          onClick={handleExecute}
+          disabled={executing || executed || !action.action_endpoint}
+          className="rounded-lg bg-gold-500 px-5 py-2 text-sm font-semibold text-chamber-950 hover:bg-gold-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {executing ? "Executing..." : executed ? "Executed" : "Execute"}
         </button>
         <button
           onClick={() => setDismissed(true)}

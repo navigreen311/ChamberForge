@@ -23,20 +23,25 @@ export default function DailyBriefPanel({
   brief: DailyBrief | null;
 }) {
   const [open, setOpen] = useState(true);
+  const [checkedActions, setCheckedActions] = useState<Record<number, boolean>>({});
 
   if (!brief) {
     return null;
   }
 
+  const toggleAction = (index: number) => {
+    setCheckedActions((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
   return (
     <div className="rounded-xl border border-chamber-700 bg-chamber-900 overflow-hidden">
-      {/* Header — click to collapse */}
+      {/* Header -- click to collapse */}
       <button
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-chamber-800 transition"
       >
         <h3 className="text-sm font-semibold uppercase tracking-wider text-chamber-400">
-          Daily Brief — {brief.date}
+          Daily Brief &mdash; {brief.date}
         </h3>
         <span className="text-chamber-500">{open ? "\u25B2" : "\u25BC"}</span>
       </button>
@@ -75,7 +80,7 @@ export default function DailyBriefPanel({
             </section>
           )}
 
-          {/* Recommended Actions */}
+          {/* Recommended Actions with checkboxes */}
           {brief.recommended_actions.length > 0 && (
             <section>
               <h4 className="text-xs font-semibold text-chamber-300 mb-1">
@@ -89,9 +94,11 @@ export default function DailyBriefPanel({
                   >
                     <input
                       type="checkbox"
-                      className="mt-0.5 rounded border-chamber-600"
+                      checked={!!checkedActions[i]}
+                      onChange={() => toggleAction(i)}
+                      className="mt-0.5 rounded border-chamber-600 accent-gold-400"
                     />
-                    <div>
+                    <div className={checkedActions[i] ? "line-through opacity-50" : ""}>
                       <span className="font-medium text-white">
                         {ra.action}
                       </span>
