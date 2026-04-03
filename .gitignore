@@ -15,7 +15,7 @@ env/
 .next/
 out/
 dist/
-build/
+/build/
 *.egg-info/
 
 # IDE
