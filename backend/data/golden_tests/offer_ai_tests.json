@@ -1,0 +1,27 @@
+[
+  {
+    "id": "o1",
+    "input": {"problem_title": "Cross-Border Estate Tax Complexity", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["name", "description", "value_stack", "delivery_model"]}
+  },
+  {
+    "id": "o2",
+    "input": {"problem_title": "Digital Privacy for Public-Profile Families", "wealth_tier": "hnw"},
+    "expected": {"required_fields": ["name", "value_stack"], "min_value_stack_items": 1}
+  },
+  {
+    "id": "o3",
+    "input": {"problem_title": "Multi-residence coordination overload", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["name", "delivery_model", "guarantee_framework"]}
+  },
+  {
+    "id": "o4",
+    "input": {"problem_title": "Next-Gen Wealth Transfer Readiness", "wealth_tier": "family_office"},
+    "expected": {"required_fields": ["name", "description"], "delivery_model_in": ["retainer", "project", "concierge", "hybrid"]}
+  },
+  {
+    "id": "o5",
+    "input": {"problem_title": "Executive protection gaps in travel", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["name", "value_stack", "recommended_pricing"], "min_value_stack_items": 1}
+  }
+]

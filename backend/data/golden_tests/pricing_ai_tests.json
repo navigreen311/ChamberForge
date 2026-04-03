@@ -1,0 +1,27 @@
+[
+  {
+    "id": "pr1",
+    "input": {"offer_name": "Elite Estate Coordination Suite", "category": "coordination", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["recommended_monthly", "pricing_model"], "recommended_monthly_min": 1000}
+  },
+  {
+    "id": "pr2",
+    "input": {"offer_name": "Digital Privacy Shield", "category": "privacy", "wealth_tier": "hnw"},
+    "expected": {"required_fields": ["recommended_monthly", "packaging_options"], "recommended_monthly_min": 0}
+  },
+  {
+    "id": "pr3",
+    "input": {"offer_name": "Family Governance Program", "category": "governance", "wealth_tier": "family_office"},
+    "expected": {"required_fields": ["recommended_monthly", "setup_fee", "pricing_model"]}
+  },
+  {
+    "id": "pr4",
+    "input": {"offer_name": "Concierge Medical Coordination", "category": "medical", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["recommended_monthly", "anchors"], "min_anchors": 1}
+  },
+  {
+    "id": "pr5",
+    "input": {"offer_name": "Executive Protection Program", "category": "security", "wealth_tier": "uhnw"},
+    "expected": {"required_fields": ["recommended_monthly", "pricing_model"], "pricing_model_in": ["retainer", "project", "hybrid", "per-trip"]}
+  }
+]

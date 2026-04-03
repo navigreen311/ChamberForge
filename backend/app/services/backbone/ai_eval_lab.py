@@ -132,6 +132,52 @@ class AIEvalLab:
         }
 
     @staticmethod
+    def run_golden_tests(db: Session, agent_name: str) -> dict:
+        """Run the golden test set for *agent_name* and return results.
+
+        Loads test cases from ``data/golden_tests/{agent_name}_tests.json``,
+        invokes each against the active prompt version, and returns a summary
+        dict: {agent, version, pass_rate, results: [{test_id, passed,
+        expected_summary, actual_summary}]}.
+        """
+        from app.services.backbone.golden_test_runner import (
+            load_test_cases,
+            evaluate_output,
+            _summarise,
+        )
+
+        active = AIEvalLab.get_active_prompt(db, agent_name)
+        version = active.version if active else 0
+
+        test_cases = load_test_cases(agent_name)
+        results = []
+
+        for tc in test_cases:
+            test_id = tc["id"]
+            expected = tc["expected"]
+            # In a production system this would invoke the real agent with
+            # tc["input"] using the active prompt.  For now, we delegate to
+            # the golden_test_runner's run_suite which accepts an invoke_fn.
+            # Here we record each case as skipped unless an invoke_fn is
+            # wired externally.
+            results.append({
+                "test_id": test_id,
+                "passed": False,
+                "expected_summary": _summarise(expected),
+                "actual_summary": "agent invocation not wired",
+            })
+
+        passed_count = sum(1 for r in results if r["passed"])
+        total = len(results)
+        return {
+            "agent": agent_name,
+            "version": version,
+            "pass_rate": passed_count / total if total > 0 else 0.0,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "results": results,
+        }
+
+    @staticmethod
     def save_test_results(
         db: Session, prompt_version_id: str, results: dict
     ) -> None:

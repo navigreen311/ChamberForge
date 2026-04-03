@@ -1,0 +1,27 @@
+[
+  {
+    "id": "p1",
+    "input": {"sources": ["Wealthy families face coordination overload across multiple residences"]},
+    "expected": {"min_problems": 1, "required_fields": ["title", "pain_category", "urgency_score"]}
+  },
+  {
+    "id": "p2",
+    "input": {"sources": ["AI-enabled voice cloning threatens HNW wire transfers"]},
+    "expected": {"min_problems": 1, "pain_category_includes": "Security"}
+  },
+  {
+    "id": "p3",
+    "input": {"sources": ["Family offices struggle with next-gen wealth transfer readiness"]},
+    "expected": {"min_problems": 1, "required_fields": ["title", "description", "wealth_tier"]}
+  },
+  {
+    "id": "p4",
+    "input": {"sources": ["UHNW clients need integrated concierge medical coordination globally"]},
+    "expected": {"min_problems": 1, "required_fields": ["title", "urgency_score"], "urgency_score_min": 1}
+  },
+  {
+    "id": "p5",
+    "input": {"sources": ["Multi-jurisdictional estate tax exposure is increasing for cross-border families"]},
+    "expected": {"min_problems": 1, "required_fields": ["title", "pain_category"], "pain_category_includes": "estate"}
+  }
+]

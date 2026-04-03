@@ -1,0 +1,27 @@
+[
+  {
+    "id": "c1",
+    "input": {"action": "next_best_action", "payload": {"active_clients": 10, "pipeline_value": 500000}},
+    "expected": {"required_fields": ["action_title", "action_description", "confidence", "priority"]}
+  },
+  {
+    "id": "c2",
+    "input": {"action": "dashboard", "payload": {"clients": 47, "revenue_mtd": 125000}},
+    "expected": {"required_fields": ["top_problems", "active_offers", "client_health_summary"]}
+  },
+  {
+    "id": "c3",
+    "input": {"action": "prioritize", "payload": {"problems": ["Estate planning gap"], "offers": ["Estate Planning Bundle"]}},
+    "expected": {"is_list": true, "min_items": 1, "item_required_fields": ["problem_name", "weighted_score"]}
+  },
+  {
+    "id": "c4",
+    "input": {"action": "daily_brief", "payload": {"date": "2026-04-03"}},
+    "expected": {"required_fields": ["date", "recommended_actions", "alerts"]}
+  },
+  {
+    "id": "c5",
+    "input": {"action": "next_best_action", "payload": {"stale_prospects": 3, "renewal_due_days": 5}},
+    "expected": {"required_fields": ["action_title", "priority", "estimated_impact"], "priority_in": ["critical", "high", "medium", "low"]}
+  }
+]
