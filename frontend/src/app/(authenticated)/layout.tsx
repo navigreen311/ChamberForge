@@ -8,6 +8,7 @@ import AppShell from '@/components/layout/AppShell';
 import OnboardingBanner from '@/components/modules/OnboardingBanner';
 import GlobalSearch from '@/components/modules/GlobalSearch';
 import KeyboardShortcutsHelp from '@/components/modules/KeyboardShortcutsHelp';
+import InstallPrompt from '@/components/modules/InstallPrompt';
 
 export default function AuthenticatedLayout({
   children,
