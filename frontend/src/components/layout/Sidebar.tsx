@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
@@ -17,6 +17,7 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeft,
+  X,
 } from 'lucide-react';
 
 // ─── Navigation structure matching ChamberForge 10 layers ────────────────────
@@ -132,11 +133,18 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   isAdmin?: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle, isAdmin = false }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, isAdmin = false, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    onMobileClose?.();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (label: string) => {
     setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -149,25 +157,47 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false }: Sideba
   );
 
   return (
-    <aside
-      className={clsx(
-        'flex h-screen flex-col border-r border-chamber-800 bg-chamber-950 transition-all duration-200',
-        collapsed ? 'w-16' : 'w-[260px]',
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={onMobileClose}
+        />
       )}
-    >
-      {/* Logo area */}
-      <div className="flex h-16 items-center border-b border-chamber-800 px-4">
-        {!collapsed && (
-          <span className="font-display text-lg font-bold text-gold-400">
-            ChamberForge
-          </span>
+      <aside
+        className={clsx(
+          'flex h-screen flex-col border-r border-chamber-800 bg-chamber-950 transition-all duration-200',
+          collapsed ? 'w-16' : 'w-[260px]',
+          // Mobile: fixed overlay
+          'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-[280px]',
+          mobileOpen ? 'max-md:translate-x-0' : 'max-md:-translate-x-full',
+          'max-md:transition-transform max-md:duration-300 max-md:ease-in-out',
         )}
-        {collapsed && (
-          <span className="mx-auto font-display text-lg font-bold text-gold-400">
-            CF
-          </span>
-        )}
-      </div>
+      >
+        {/* Logo area */}
+        <div className="flex h-16 items-center justify-between border-b border-chamber-800 px-4">
+          <div>
+            {!collapsed && (
+              <span className="font-display text-lg font-bold text-gold-400">
+                ChamberForge
+              </span>
+            )}
+            {collapsed && (
+              <span className="mx-auto font-display text-lg font-bold text-gold-400">
+                CF
+              </span>
+            )}
+          </div>
+          {/* Close button on mobile */}
+          <button
+            onClick={onMobileClose}
+            className="rounded-md p-1.5 text-chamber-400 hover:bg-chamber-800 hover:text-white md:hidden"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 py-4">
@@ -249,8 +279,8 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false }: Sideba
         </ul>
       </nav>
 
-      {/* Collapse toggle */}
-      <div className="border-t border-chamber-800 p-2">
+      {/* Collapse toggle — hidden on mobile */}
+      <div className="hidden border-t border-chamber-800 p-2 md:block">
         <button
           onClick={onToggle}
           className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-chamber-400 hover:bg-chamber-900 hover:text-white"
@@ -267,5 +297,6 @@ export default function Sidebar({ collapsed, onToggle, isAdmin = false }: Sideba
         </button>
       </div>
     </aside>
+    </>
   );
 }

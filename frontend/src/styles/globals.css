@@ -6,3 +6,16 @@ html,
 body {
   @apply bg-chamber-950 text-white;
 }
+
+@layer utilities {
+  .container-responsive {
+    @apply w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

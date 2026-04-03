@@ -43,8 +43,8 @@ export default function Table<T extends Record<string, unknown>>({
   };
 
   return (
-    <div className={clsx('overflow-x-auto', className)}>
-      <table className="w-full text-left text-sm">
+    <div className={clsx('overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0', className)}>
+      <table className="w-full min-w-[600px] text-left text-sm">
         <thead>
           <tr className="border-b border-chamber-800">
             {columns.map((col) => (

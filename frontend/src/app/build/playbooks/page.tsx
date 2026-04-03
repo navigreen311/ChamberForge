@@ -39,10 +39,10 @@ export default function PlaybooksPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-chamber-950 p-8">
+      <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
         <Skeleton className="h-10 w-64 mb-2" />
         <Skeleton className="h-5 w-96 mb-8" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(9)].map((_, i) => <Skeleton key={i} className="h-44" />)}
         </div>
       </div>
@@ -51,7 +51,7 @@ export default function PlaybooksPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-chamber-950 p-8">
+      <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
         <a href="/build" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Build</a>
         <h1 className="text-3xl font-display font-bold text-white mb-4">Playbook Gallery</h1>
         <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
@@ -62,10 +62,10 @@ export default function PlaybooksPage() {
   return (
     <div className="min-h-screen bg-chamber-950 p-8">
       <a href="/build" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Build</a>
-      <h1 className="text-3xl font-display font-bold text-white mb-1">Playbook Gallery</h1>
-      <p className="text-chamber-400 mb-8">Proven frameworks for every stage of premium service delivery</p>
+      <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-1">Playbook Gallery</h1>
+      <p className="text-chamber-400 mb-6 sm:mb-8">Proven frameworks for every stage of premium service delivery</p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {playbooks.map((p) => (
           <a key={p.slug} href={`/build/playbooks/${p.slug}`} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800 hover:border-gold-400/50 transition group">
             <div className="flex items-center justify-between mb-3">
