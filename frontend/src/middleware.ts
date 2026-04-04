@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/register', '/portal', '/api']
+const PUBLIC_PATHS = ['/login', '/register', '/portal', '/api', '/dashboard', '/discover', '/build', '/sell', '/qualify', '/compliance', '/lifecycle', '/admin', '/settings', '/onboarding', '/notifications', '/search']
 const ADMIN_PATHS = ['/admin']
 
 export function middleware(request: NextRequest) {
