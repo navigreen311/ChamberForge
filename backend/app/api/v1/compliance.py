@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/v1/compliance", tags=["Trust & Compliance"])
 
 
 class GrantConsentRequest(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     client_id: UUID
     consent_type: str = Field(..., pattern="^(data_processing|nda|marketing|third_party_sharing)$")
     nda_url: str | None = None
@@ -39,7 +39,7 @@ class ExplainabilityRequest(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     sender_id: UUID
     recipient_id: UUID
     content: str
@@ -47,7 +47,7 @@ class SendMessageRequest(BaseModel):
 
 
 class ContributeMetricsRequest(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     metrics: dict
 
 

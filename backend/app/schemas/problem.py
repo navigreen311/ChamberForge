@@ -24,7 +24,7 @@ from app.models.enums import (
 class ProblemCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
-    workspace_id: str
+    workspace_id: Optional[str] = None
 
     wealth_tier: Optional[WealthTier] = None
     buyer_type: Optional[BuyerType] = None

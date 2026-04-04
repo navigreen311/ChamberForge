@@ -94,6 +94,7 @@ def update_evidence(
 @router.delete("/{evidence_id}", status_code=204)
 def delete_evidence(
     evidence_id: UUID,
+    background_tasks: BackgroundTasks,
     workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):

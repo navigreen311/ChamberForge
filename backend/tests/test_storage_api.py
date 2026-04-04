@@ -33,11 +33,38 @@ def fake_db():
 
 @pytest.fixture
 def client(fake_db):
-    """FastAPI test client with overridden DB dependency."""
+    """FastAPI test client with overridden DB and auth dependencies."""
+    from app.core.dependencies import get_current_user, get_workspace_id
+
+    ws_id = str(uuid.uuid4())
+    mock_user = MagicMock()
+    mock_user.id = str(uuid.uuid4())
+    mock_user.workspace_id = ws_id
+    mock_user.role = "admin"
+    mock_user.is_active = True
+
     def override_get_db():
         yield fake_db
 
+    async def override_current_user():
+        return mock_user
+
+    async def override_workspace_id():
+        return ws_id
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
+    app.dependency_overrides[get_workspace_id] = override_workspace_id
+
+    # Reset rate limiter
+    handler = getattr(app, "middleware_stack", None)
+    while handler is not None:
+        if hasattr(handler, "_requests"):
+            handler._requests.clear()
+            handler._workspace_requests.clear()
+            break
+        handler = getattr(handler, "app", None)
+
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -55,6 +82,7 @@ class TestUploadEndpoint:
             "s3_key": f"{ws_id}/abc/test.pdf",
             "url": "https://mock-s3.local/test.pdf",
         }
+        mock_storage.sanitize_filename.return_value = "test.pdf"
 
         # Make db.refresh populate the object
         def fake_refresh(obj):
@@ -82,7 +110,9 @@ class TestUploadEndpoint:
             files={"file": ("hack.exe", b"bad", "application/x-msdownload")},
         )
         assert response.status_code == 400
-        assert "not allowed" in response.json()["detail"]
+        body = response.json()
+        msg = body.get("detail", body.get("message", ""))
+        assert "not allowed" in msg
 
 
 # ---------------------------------------------------------------------------

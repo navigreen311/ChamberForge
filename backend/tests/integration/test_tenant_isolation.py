@@ -19,6 +19,17 @@ from app.main import app
 # Fixtures
 # ---------------------------------------------------------------------------
 
+def _reset_rate_limiter():
+    """Clear in-memory rate-limiter state so tests are not throttled."""
+    handler = getattr(app, "middleware_stack", None)
+    while handler is not None:
+        if hasattr(handler, "_requests"):
+            handler._requests.clear()
+            handler._workspace_requests.clear()
+            break
+        handler = getattr(handler, "app", None)
+
+
 @pytest.fixture()
 def isolated_client():
     """TestClient with a fresh in-memory database for isolation tests."""
@@ -39,6 +50,7 @@ def isolated_client():
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    _reset_rate_limiter()
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

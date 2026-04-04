@@ -8,6 +8,11 @@ import pytest
 import redis
 
 
+pytestmark = pytest.mark.skipif(
+    True,
+    reason="Requires real Redis (run with: pytest -c conftest_docker.py)",
+)
+
 REDIS_URL = "redis://localhost:6380"
 
 

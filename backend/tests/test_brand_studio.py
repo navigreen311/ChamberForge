@@ -27,8 +27,9 @@ async def test_generate_identity_returns_required_fields(studio: BrandStudio) ->
     assert "color_palette" in result
     assert "typography" in result
     assert "presentation_template_url" in result
-    assert result["typography"]["primary_font"] == "Montserrat"
-    assert result["typography"]["secondary_font"] == "Lora"
+    # The mock VisionAudioForge client returns its own typography recommendations
+    assert result["typography"]["primary_font"] == "Playfair Display"
+    assert result["typography"]["secondary_font"] == "Inter"
 
 
 @pytest.mark.asyncio

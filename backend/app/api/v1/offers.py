@@ -46,6 +46,7 @@ def list_offers(
 @router.post("/", response_model=OfferRead, status_code=201)
 def create_offer(
     payload: OfferCreate,
+    background_tasks: BackgroundTasks,
     workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
@@ -86,6 +87,7 @@ def get_offer(
 def update_offer(
     offer_id: uuid.UUID,
     payload: OfferUpdate,
+    background_tasks: BackgroundTasks,
     workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
@@ -115,6 +117,7 @@ def update_offer(
 @router.delete("/{offer_id}", status_code=204)
 def delete_offer(
     offer_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):

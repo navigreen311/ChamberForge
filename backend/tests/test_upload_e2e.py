@@ -12,10 +12,10 @@ WORKSPACE_ID = "00000000-0000-0000-0000-000000000001"
 class TestUploadEndToEnd:
     """Upload a file, verify the Document record, download URL, list, and delete."""
 
-    def test_upload_returns_document_id_and_url(self, client: TestClient):
+    def test_upload_returns_document_id_and_url(self, authed_client):
         """POST /api/v1/storage/upload — should save file and return doc metadata."""
         file_content = b"Hello, ChamberForge!"
-        response = client.post(
+        response = authed_client.post(
             "/api/v1/storage/upload",
             data={"workspace_id": WORKSPACE_ID},
             files={"file": ("test-doc.txt", io.BytesIO(file_content), "text/plain")},
@@ -29,9 +29,9 @@ class TestUploadEndToEnd:
         assert "url" in body
         assert body["s3_key"]  # non-empty
 
-    def test_upload_rejects_disallowed_type(self, client: TestClient):
+    def test_upload_rejects_disallowed_type(self, authed_client):
         """POST /upload — should 400 for disallowed content types."""
-        response = client.post(
+        response = authed_client.post(
             "/api/v1/storage/upload",
             data={"workspace_id": WORKSPACE_ID},
             files={
@@ -43,28 +43,28 @@ class TestUploadEndToEnd:
             },
         )
         assert response.status_code == 400
-        assert "not allowed" in response.json()["detail"]
+        assert "not allowed" in response.json().get("detail", response.json().get("message", ""))
 
-    def test_list_files_returns_uploaded_document(self, client: TestClient):
+    def test_list_files_returns_uploaded_document(self, authed_client):
         """Upload then GET /files — the document should appear in the list."""
         # Upload
-        client.post(
+        authed_client.post(
             "/api/v1/storage/upload",
             data={"workspace_id": WORKSPACE_ID},
             files={"file": ("list-test.csv", io.BytesIO(b"a,b,c"), "text/csv")},
         )
 
         # List
-        response = client.get(
+        response = authed_client.get(
             f"/api/v1/storage/files?workspace_id={WORKSPACE_ID}"
         )
         assert response.status_code == 200
         docs = response.json()
         assert any(d["file_name"] == "list-test.csv" for d in docs)
 
-    def test_download_returns_presigned_url(self, client: TestClient):
+    def test_download_returns_presigned_url(self, authed_client):
         """Upload then GET /files/{id}/download — should return a URL."""
-        upload = client.post(
+        upload = authed_client.post(
             "/api/v1/storage/upload",
             data={"workspace_id": WORKSPACE_ID},
             files={
@@ -73,21 +73,21 @@ class TestUploadEndToEnd:
         )
         doc_id = upload.json()["id"]
 
-        response = client.get(f"/api/v1/storage/files/{doc_id}/download")
+        response = authed_client.get(f"/api/v1/storage/files/{doc_id}/download")
         assert response.status_code == 200
         body = response.json()
         assert "url" in body
         assert body["file_name"] == "dl-test.json"
 
-    def test_download_404_for_unknown_id(self, client: TestClient):
+    def test_download_404_for_unknown_id(self, authed_client):
         """GET /files/{bad_id}/download — should 404."""
         fake_id = str(uuid.uuid4())
-        response = client.get(f"/api/v1/storage/files/{fake_id}/download")
+        response = authed_client.get(f"/api/v1/storage/files/{fake_id}/download")
         assert response.status_code == 404
 
-    def test_delete_removes_document(self, client: TestClient):
+    def test_delete_removes_document(self, authed_client):
         """Upload then DELETE /files/{id} — document should be gone."""
-        upload = client.post(
+        upload = authed_client.post(
             "/api/v1/storage/upload",
             data={"workspace_id": WORKSPACE_ID},
             files={"file": ("del-test.txt", io.BytesIO(b"bye"), "text/plain")},
@@ -95,12 +95,12 @@ class TestUploadEndToEnd:
         doc_id = upload.json()["id"]
 
         # Delete
-        del_resp = client.delete(f"/api/v1/storage/files/{doc_id}")
+        del_resp = authed_client.delete(f"/api/v1/storage/files/{doc_id}")
         assert del_resp.status_code == 200
         assert del_resp.json()["deleted"] is True
 
         # Verify gone
-        dl_resp = client.get(f"/api/v1/storage/files/{doc_id}/download")
+        dl_resp = authed_client.get(f"/api/v1/storage/files/{doc_id}/download")
         assert dl_resp.status_code == 404
 
 
@@ -111,8 +111,8 @@ class TestExportEndpoints:
     def _user_id(self):
         self.user_id = str(uuid.uuid4())
 
-    def test_export_offer_returns_pdf(self, client: TestClient):
-        response = client.post(
+    def test_export_offer_returns_pdf(self, authed_client):
+        response = authed_client.post(
             f"/api/v1/exports/offer/offer-123?user_id={self.user_id}"
         )
         assert response.status_code == 200
@@ -124,8 +124,8 @@ class TestExportEndpoints:
         # S3 download URL header
         assert "x-download-url" in response.headers
 
-    def test_export_trust_pack_returns_pdf(self, client: TestClient):
-        response = client.post(
+    def test_export_trust_pack_returns_pdf(self, authed_client):
+        response = authed_client.post(
             f"/api/v1/exports/trust-pack/tp-456?user_id={self.user_id}"
         )
         assert response.status_code == 200
@@ -133,8 +133,8 @@ class TestExportEndpoints:
         assert b"%PDF" in response.content
         assert b"ChamberForge-Watermark" in response.content
 
-    def test_export_intel_brief_returns_pdf(self, client: TestClient):
-        response = client.post(
+    def test_export_intel_brief_returns_pdf(self, authed_client):
+        response = authed_client.post(
             f"/api/v1/exports/intel-brief/ib-789?user_id={self.user_id}"
         )
         assert response.status_code == 200

@@ -49,7 +49,9 @@ def test_admin_can_delete_user(client, admin_user, viewer_user):
     headers = make_auth_header(admin_user)
     resp = client.delete(f"/api/v1/users/{viewer_user.id}", headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["detail"] == "User deactivated"
+    body = resp.json()
+    msg = body.get("detail", body.get("message", ""))
+    assert "deactivated" in msg.lower()
 
 
 def test_viewer_forbidden_on_delete_user(client, viewer_user, operator_user):

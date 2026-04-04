@@ -16,6 +16,11 @@ from app.services.backbone.search_indices import (
 )
 
 
+pytestmark = pytest.mark.skipif(
+    True,
+    reason="Requires real Elasticsearch (run with: pytest -c conftest_docker.py)",
+)
+
 ES_URL = "http://localhost:9201"
 TEST_INDEX = f"test_integration_{uuid.uuid4().hex[:8]}"
 

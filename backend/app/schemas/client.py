@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ClientCreate(BaseModel):
-    workspace_id: uuid.UUID
+    workspace_id: uuid.UUID | None = None
     name: str
     company: Optional[str] = None
     wealth_tier: Optional[str] = None

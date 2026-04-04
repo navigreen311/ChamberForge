@@ -157,6 +157,46 @@ def db_session():
     session.close()
 
 
+def _reset_rate_limiter():
+    """Clear in-memory rate-limiter state so tests are not throttled."""
+    # Walk the middleware stack on the built app
+    handler = getattr(app, "middleware_stack", None)
+    while handler is not None:
+        if hasattr(handler, "_requests"):
+            handler._requests.clear()
+            handler._workspace_requests.clear()
+            # Also increase limits to prevent throttling in tests
+            handler.default_limit = 100000
+            handler.workspace_limit = 100000
+            # Update endpoint overrides with high limits
+            for key in handler.endpoint_overrides:
+                handler.endpoint_overrides[key] = (100000, 60)
+            break
+        handler = getattr(handler, "app", None)
+
+
+def _ensure_middleware_built():
+    """Force-build the ASGI middleware stack if not yet built."""
+    if getattr(app, "middleware_stack", None) is None:
+        with TestClient(app, raise_server_exceptions=False) as _c:
+            _c.get("/api/health")
+
+
+# Build middleware stack once at conftest import time so rate limiter is accessible
+_ensure_middleware_built()
+# Bump rate limits immediately
+_reset_rate_limiter()
+
+
+@pytest.fixture(autouse=True)
+def _auto_reset_state():
+    """Reset app state around every test."""
+    _reset_rate_limiter()
+    yield
+    # Clear stale dependency overrides left by tests that don't clean up
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture()
 def client(db_session):
     """TestClient wired to the in-memory db_session."""
@@ -164,6 +204,7 @@ def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    _reset_rate_limiter()
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -172,7 +213,8 @@ def client(db_session):
 @pytest.fixture()
 def auth_headers(client):
     """Register a user and return auth headers."""
-    client.post(
+    _reset_rate_limiter()
+    resp = client.post(
         "/api/v1/auth/register",
         json={
             "email": "test@test.com",
@@ -181,12 +223,68 @@ def auth_headers(client):
             "workspace_name": "Test Workspace",
         },
     )
-    resp = client.post(
-        "/api/v1/auth/login",
-        json={"email": "test@test.com", "password": "Test1234!"},
-    )
-    token = resp.json()["access_token"]
+    data = resp.json()
+    # Registration returns tokens directly
+    if "access_token" in data:
+        token = data["access_token"]
+    else:
+        # Fallback: login if register didn't return token
+        login = client.post(
+            "/api/v1/auth/login",
+            json={"email": "test@test.com", "password": "Test1234!"},
+        )
+        token = login.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def authed_client(db_session):
+    """TestClient with auth dependencies overridden — no JWT needed.
+
+    Provides a pre-authenticated admin user whose ``workspace_id`` is a
+    deterministic value so tests can assert on it.
+    """
+    from app.models.user import User
+    from app.models.workspace import Workspace
+    from app.core.security import get_password_hash
+    from app.core.dependencies import get_current_user, get_workspace_id
+
+    ws_id = str(uuid.uuid4())
+    ws = Workspace(id=ws_id, name="Auto Workspace", slug="auto-ws", plan="core", settings={})
+    db_session.add(ws)
+    db_session.flush()
+
+    user = User(
+        id=str(uuid.uuid4()),
+        email="auto@test.com",
+        name="Auto User",
+        hashed_password=get_password_hash("Test1234!"),
+        role="admin",
+        workspace_id=ws_id,
+    )
+    db_session.add(user)
+    ws.owner_id = user.id
+    db_session.commit()
+    db_session.refresh(user)
+
+    def override_get_db():
+        yield db_session
+
+    async def override_current_user():
+        return user
+
+    async def override_workspace_id():
+        return ws_id
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_current_user
+    app.dependency_overrides[get_workspace_id] = override_workspace_id
+    _reset_rate_limiter()
+    with TestClient(app) as c:
+        c._test_user = user
+        c._test_workspace_id = ws_id
+        yield c
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture()
