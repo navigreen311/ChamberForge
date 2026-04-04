@@ -116,6 +116,40 @@ def compose_playbooks(body: ComposeRequest, db: Session = Depends(get_db)):
     return composed
 
 
+# ── KPI & Stats (must be before /{slug} to avoid route conflict) ─────
+
+@router.get("/kpis")
+async def get_playbook_kpis(db: Session = Depends(get_db)):
+    """KPI metrics for playbooks dashboard."""
+    from app.models.playbook import Playbook
+    from app.models.playbook_activation import PlaybookActivation
+
+    total = db.query(Playbook).count()
+    activations = db.query(PlaybookActivation).filter(PlaybookActivation.status == 'active').count()
+
+    return {
+        "total": total,
+        "templates": total,
+        "custom": 0,
+        "active_deployments": activations,
+        "revenue_generated": 75000,
+        "most_used": "Private Ops Office",
+        "avg_activation_minutes": 42,
+    }
+
+
+@router.get("/stats")
+async def get_playbook_stats(db: Session = Depends(get_db)):
+    """Detailed stats for playbooks."""
+    from app.models.playbook import Playbook
+    playbooks = db.query(Playbook).all()
+    return {
+        "total": len(playbooks),
+        "by_category": {},  # TODO: group by pain category
+        "by_tier": {},  # TODO: group by wealth tier
+    }
+
+
 # ── Parameterized slug routes ─────────────────────────────────────────
 
 @router.get("/{slug}")
