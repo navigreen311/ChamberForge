@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import TopBar from '../components/shared/TopBar'
+import CommandAIButton from '../components/shared/CommandAIButton'
 
 // ─── Types ───────────────────────────────────────────────────
 type Status = 'active' | 'draft' | 'in_negotiation' | 'pending_approval' | 'sunset'
@@ -211,26 +213,8 @@ export default function OffersPage() {
   return (
     <div className="min-h-screen bg-[#0D1117] text-white">
       {/* ── TopBar ─────────────────────────────────────── */}
-      <header className="h-14 flex items-center justify-between px-6 bg-[#111827] border-b border-[#1e2a3a]">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-[#C9A84C] font-bold tracking-widest text-lg">CHAMBERFORGE</Link>
-          <nav className="flex gap-1">
-            {[['Dashboard','/dashboard'],['Discover','/discover'],['Offers','/offers'],['Clients','/clients'],['Playbooks','/playbooks'],['Deliver','/deliver']].map(([t,h]) => (
-              <Link key={t} href={h as string} className={`px-3 py-4 text-sm ${t==='Offers'?'text-[#C9A84C] border-b-2 border-[#C9A84C]':'text-gray-400 hover:text-white border-b-2 border-transparent'}`}>{t}</Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative cursor-pointer text-gray-400 hover:text-white">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.268 21a2 2 0 003.464 0"/><path d="M3.262 15.326A1 1 0 004 17h16a1 1 0 00.74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 006 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-          </div>
-          <div className="flex items-center gap-2 rounded-full bg-[#1e2a3a] px-3 py-1">
-            <span className="text-sm">Ivan</span>
-            <span className="text-[10px] bg-[#C9A84C]/20 text-[#C9A84C] px-1.5 rounded">ENTERPRISE</span>
-          </div>
-        </div>
-      </header>
+      <TopBar activePage="Offers" />
+      <CommandAIButton />
 
       <div className="px-6 py-4">
         {/* ── KPI Strip ──────────────────────────────── */}
