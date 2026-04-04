@@ -33,6 +33,7 @@ from app.api.v1.metrics import router as metrics_router
 from app.api.v1.security import router as security_router
 from app.api.v1.profile import router as profile_router
 from app.api.v1.workspace_settings import router as workspace_settings_router
+from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router
 
 router = APIRouter()
@@ -69,4 +70,5 @@ router.include_router(metrics_router)
 router.include_router(security_router)
 router.include_router(profile_router)
 router.include_router(workspace_settings_router)
+router.include_router(dashboard_router)
 router.include_router(stripe_webhook_router)
