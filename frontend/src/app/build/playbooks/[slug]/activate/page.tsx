@@ -48,6 +48,7 @@ export default function ActivatePlaybookPage() {
   // Customization state
   const [icpOverrides, setIcpOverrides] = useState<Record<string, string>>({});
   const [pricingOverrides, setPricingOverrides] = useState<Record<string, string>>({});
+  const [creatingOffer, setCreatingOffer] = useState(false);
 
   useEffect(() => {
     async function fetchPlaybook() {
@@ -136,8 +137,6 @@ export default function ActivatePlaybookPage() {
       </div>
     );
   }
-
-  const [creatingOffer, setCreatingOffer] = useState(false);
 
   async function handleCreateOffer() {
     if (!activation || !playbook) return;
