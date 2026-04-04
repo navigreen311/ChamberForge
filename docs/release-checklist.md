@@ -1,14 +1,14 @@
 # Release Checklist — ChamberForge v1.0.0
 
 ## Pre-Release
-- [ ] All backend tests pass (`make test`)
-- [ ] Frontend builds clean (`cd frontend && npm run build`)
+- [x] All backend tests pass (`make test`)
+- [x] Frontend builds clean (`cd frontend && npm run build`)
 - [ ] Smoke test passes (`make smoke-test`)
 - [ ] Security scan clean (`make security-test`)
-- [ ] CHANGELOG updated
-- [ ] README version badge updated
-- [ ] API docs reviewed
-- [ ] SOC2 checklist reviewed
+- [x] CHANGELOG updated
+- [x] README version badge updated
+- [x] API docs reviewed
+- [x] SOC2 checklist reviewed
 
 ## Deployment
 - [ ] Tag release: `git tag -a v1.0.0 -m "ChamberForge v1.0.0"`

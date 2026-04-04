@@ -1,0 +1,24 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## ChamberForge ${{ github.ref_name }}
+
+            See [CHANGELOG.md](CHANGELOG.md) and [Release Notes](docs/release-notes-v1.0.md) for details.
+
+            ### Quick Start
+            ```bash
+            git clone https://github.com/navigreen311/ChamberForge.git
+            cd ChamberForge
+            docker compose -f docker-compose.dev.yml up
+            ```
