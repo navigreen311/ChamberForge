@@ -3,13 +3,20 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
+interface HealthCheckEntry {
+  status: string;
+  latency_ms?: number;
+  error?: string;
+}
+
 interface HealthChecks {
-  [key: string]: boolean;
+  [key: string]: HealthCheckEntry;
 }
 
 interface HealthData {
   status: string;
   checks: HealthChecks;
+  timestamp?: string;
 }
 
 interface MetricsData {
@@ -207,39 +214,51 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {/* Fallback: basic health status if detailed not available */}
-      {!detailed?.health && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-chamber-900 rounded-lg p-6 border border-chamber-800">
-            <h2 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
-              System Status
-            </h2>
-            <p
-              className={`text-2xl font-bold ${
-                health?.status === "ready" ? "text-green-400" : "text-yellow-400"
-              }`}
-            >
-              {health?.status ?? "Unknown"}
-            </p>
-          </div>
-
-          {health?.checks &&
-            Object.entries(health.checks).map(([service, ok]) => (
-              <div
-                key={service}
-                className="bg-chamber-900 rounded-lg p-6 border border-chamber-800"
+      {/* Fallback: health/ready status if detailed metrics not available */}
+      {!detailed?.health && health && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-3 text-white">Service Dependencies</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-chamber-900 rounded-lg p-6 border border-chamber-800">
+              <h3 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
+                Overall
+              </h3>
+              <p
+                className={`text-2xl font-bold ${
+                  health.status === "ready" ? "text-green-400" : "text-red-400"
+                }`}
               >
-                <h2 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
-                  {service}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <StatusBadge ok={ok as boolean} />
-                  <span className="text-lg font-semibold text-white">
-                    {ok ? "Connected" : "Down"}
-                  </span>
-                </div>
-              </div>
-            ))}
+                {health.status}
+              </p>
+              {health.timestamp && (
+                <p className="text-xs text-chamber-500 mt-1">{new Date(health.timestamp).toLocaleTimeString()}</p>
+              )}
+            </div>
+
+            {health.checks &&
+              Object.entries(health.checks).map(([service, check]) => {
+                const isUp = check.status === "up" || check.status === "configured";
+                const isDown = check.status === "down" || check.status === "not_configured";
+                return (
+                  <div
+                    key={service}
+                    className="bg-chamber-900 rounded-lg p-6 border border-chamber-800"
+                  >
+                    <h3 className="text-sm font-medium text-chamber-400 uppercase tracking-wider mb-2">
+                      {service}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <StatusBadge ok={!isDown} />
+                      <span className="text-lg font-semibold text-white">
+                        {isUp ? "OK" : isDown ? "Down" : check.status}
+                      </span>
+                    </div>
+                    {check.latency_ms !== undefined && <LatencyBadge ms={check.latency_ms} />}
+                    {check.error && <p className="text-xs text-red-400 mt-1 truncate">{check.error}</p>}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
 
