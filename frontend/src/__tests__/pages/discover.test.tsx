@@ -84,7 +84,7 @@ describe('Discover Page', () => {
     render(<DiscoverPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/no problems match/i)).toBeInTheDocument()
+      expect(screen.getByText(/no problems discovered yet/i)).toBeInTheDocument()
     })
   })
 })
