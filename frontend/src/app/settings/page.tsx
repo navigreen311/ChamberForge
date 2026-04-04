@@ -1,65 +1,96 @@
 'use client';
 
-import { useRouter, usePathname } from 'next/navigation';
-import { User, Building2, Users, BarChart3, AlertTriangle } from 'lucide-react';
-import clsx from 'clsx';
+import { useRouter } from 'next/navigation';
+import {
+  Puzzle,
+  CreditCard,
+  Users,
+  Shield,
+  Cpu,
+  Palette,
+  MessageSquare,
+  Bell,
+} from 'lucide-react';
 
-const tabs = [
-  { label: 'Profile', href: '/settings/profile', icon: User },
-  { label: 'Workspace', href: '/settings/workspace', icon: Building2 },
-  { label: 'Members', href: '/settings/members', icon: Users },
-  { label: 'Usage', href: '/settings/usage', icon: BarChart3 },
-  { label: 'Danger Zone', href: '/settings/danger', icon: AlertTriangle },
+const cards = [
+  {
+    label: 'Integrations',
+    href: '/settings/integrations',
+    icon: Puzzle,
+    description: 'Connect CRMs, APIs, and third-party tools',
+  },
+  {
+    label: 'Billing',
+    href: '/settings/billing',
+    icon: CreditCard,
+    description: 'Plans, invoices, and payment methods',
+  },
+  {
+    label: 'Team',
+    href: '/settings/team',
+    icon: Users,
+    description: 'Invite members, assign roles',
+  },
+  {
+    label: 'Security',
+    href: '/settings/security',
+    icon: Shield,
+    description: 'MFA, sessions, and access controls',
+  },
+  {
+    label: 'AI Runtime',
+    href: '/settings/ai-runtime',
+    icon: Cpu,
+    description: 'Model selection, token limits, fallback chains',
+  },
+  {
+    label: 'White-Label',
+    href: '/settings/white-label',
+    icon: Palette,
+    description: 'Branding, colors, logos, and custom domains',
+  },
+  {
+    label: 'AI Feedback',
+    href: '/settings/ai-feedback',
+    icon: MessageSquare,
+    description: 'Review AI outputs, thumbs up/down, retraining',
+  },
+  {
+    label: 'Notifications',
+    href: '/settings/notifications',
+    icon: Bell,
+    description: 'Email, in-app, and webhook alert preferences',
+  },
 ] as const;
 
 export default function SettingsPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-chamber-950 p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl sm:text-3xl font-display font-bold text-white mb-2">Settings</h1>
-      <p className="text-chamber-400 mb-6 sm:mb-8">
-        Manage your profile, workspace, team members, and account.
+    <div>
+      <h1 className="text-2xl font-display font-bold text-white mb-1">
+        Settings Overview
+      </h1>
+      <p className="text-gray-400 mb-8">
+        Manage your workspace configuration, integrations, and preferences.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isDanger = tab.label === 'Danger Zone';
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {cards.map((card) => {
+          const Icon = card.icon;
           return (
             <button
-              key={tab.href}
-              onClick={() => router.push(tab.href)}
-              className={clsx(
-                'flex items-center gap-4 rounded-xl border p-6 text-left transition-colors',
-                isDanger
-                  ? 'border-red-800/50 bg-red-950/20 hover:border-red-600 hover:bg-red-950/40'
-                  : 'border-chamber-800 bg-chamber-900 hover:border-gold-400/50 hover:bg-chamber-800',
-              )}
+              key={card.href}
+              onClick={() => router.push(card.href)}
+              className="flex flex-col gap-3 rounded-xl border border-chamber-800 bg-chamber-900 p-5 text-left transition-colors hover:border-[#C9A84C]/50 hover:bg-chamber-800"
             >
-              <div
-                className={clsx(
-                  'flex h-10 w-10 items-center justify-center rounded-lg',
-                  isDanger ? 'bg-red-900/50 text-red-400' : 'bg-chamber-800 text-gold-400',
-                )}
-              >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-chamber-800 text-[#C9A84C]">
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p
-                  className={clsx(
-                    'font-semibold',
-                    isDanger ? 'text-red-400' : 'text-white',
-                  )}
-                >
-                  {tab.label}
-                </p>
-                <p className="text-sm text-chamber-400">
-                  {tab.label === 'Profile' && 'Name, email, password'}
-                  {tab.label === 'Workspace' && 'Name, slug, configuration'}
-                  {tab.label === 'Members' && 'Invite, roles, manage team'}
-                  {tab.label === 'Usage' && 'Stats, AI calls, storage'}
-                  {tab.label === 'Danger Zone' && 'Delete account, export data'}
+                <p className="font-semibold text-white">{card.label}</p>
+                <p className="mt-1 text-sm text-gray-400">
+                  {card.description}
                 </p>
               </div>
             </button>
