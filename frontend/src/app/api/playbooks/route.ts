@@ -1,0 +1,391 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// TODO: Replace mock data with Prisma queries
+// e.g. prisma.playbook.findMany({ where: filters, orderBy, skip, take })
+
+const playbooks = [
+  {
+    id: 'pb-001',
+    name: 'Private Ops Office',
+    slug: 'private-ops-office',
+    category: 'Operations',
+    category_color: '#6366F1',
+    target_buyer: 'Family Office Principal',
+    core_pain: 'Operational complexity across multiple entities',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'retainer',
+    price_min: 15000,
+    price_max: 45000,
+    lifecycle_stage: 'mature',
+    evidence_score: 92,
+    wtp_score: 88,
+    activation_minutes: 35,
+    red_team_status: 'passed',
+    readiness_pct: 95,
+    voiceforge_ready: true,
+    visionaudio_ready: true,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 8,
+    kpi_total: 10,
+    compliance_risk: 'low',
+    active_deployments: 3,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 5,
+  },
+  {
+    id: 'pb-002',
+    name: 'Estate Shield Pro',
+    slug: 'estate-shield-pro',
+    category: 'Estate Planning',
+    category_color: '#10B981',
+    target_buyer: 'HNW Individual',
+    core_pain: 'Multi-generational wealth transfer risk',
+    wealth_tier: 'hnw',
+    delivery_model: 'hybrid',
+    pricing_model: 'project',
+    price_min: 8000,
+    price_max: 25000,
+    lifecycle_stage: 'growth',
+    evidence_score: 85,
+    wtp_score: 79,
+    activation_minutes: 50,
+    red_team_status: 'passed',
+    readiness_pct: 88,
+    voiceforge_ready: true,
+    visionaudio_ready: false,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 6,
+    kpi_total: 8,
+    compliance_risk: 'medium',
+    active_deployments: 1,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 3,
+  },
+  {
+    id: 'pb-003',
+    name: 'Tax Alpha Engine',
+    slug: 'tax-alpha-engine',
+    category: 'Tax Optimization',
+    category_color: '#F59E0B',
+    target_buyer: 'CFO / Tax Advisor',
+    core_pain: 'Suboptimal tax harvesting across jurisdictions',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'performance',
+    price_min: 20000,
+    price_max: 60000,
+    lifecycle_stage: 'mature',
+    evidence_score: 94,
+    wtp_score: 91,
+    activation_minutes: 28,
+    red_team_status: 'passed',
+    readiness_pct: 98,
+    voiceforge_ready: true,
+    visionaudio_ready: true,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 10,
+    kpi_total: 10,
+    compliance_risk: 'high',
+    active_deployments: 0,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 7,
+  },
+  {
+    id: 'pb-004',
+    name: 'Philanthropy Impact Suite',
+    slug: 'philanthropy-impact-suite',
+    category: 'Philanthropy',
+    category_color: '#EC4899',
+    target_buyer: 'Foundation Director',
+    core_pain: 'Measuring and maximizing charitable impact',
+    wealth_tier: 'hnw',
+    delivery_model: 'hybrid',
+    pricing_model: 'retainer',
+    price_min: 10000,
+    price_max: 30000,
+    lifecycle_stage: 'growth',
+    evidence_score: 78,
+    wtp_score: 72,
+    activation_minutes: 45,
+    red_team_status: 'in-progress',
+    readiness_pct: 72,
+    voiceforge_ready: true,
+    visionaudio_ready: false,
+    deal_desk_ready: true,
+    trust_pack_ready: false,
+    kpi_count: 5,
+    kpi_total: 8,
+    compliance_risk: 'low',
+    active_deployments: 1,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 4,
+  },
+  {
+    id: 'pb-005',
+    name: 'Digital Asset Vault',
+    slug: 'digital-asset-vault',
+    category: 'Digital Assets',
+    category_color: '#8B5CF6',
+    target_buyer: 'Tech-Forward Family Office',
+    core_pain: 'Secure custody and compliance for crypto holdings',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'self-serve',
+    pricing_model: 'subscription',
+    price_min: 5000,
+    price_max: 15000,
+    lifecycle_stage: 'early',
+    evidence_score: 65,
+    wtp_score: 70,
+    activation_minutes: 60,
+    red_team_status: 'failed',
+    readiness_pct: 55,
+    voiceforge_ready: false,
+    visionaudio_ready: false,
+    deal_desk_ready: false,
+    trust_pack_ready: false,
+    kpi_count: 3,
+    kpi_total: 10,
+    compliance_risk: 'high',
+    active_deployments: 0,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 2,
+  },
+  {
+    id: 'pb-006',
+    name: 'Risk Parity Framework',
+    slug: 'risk-parity-framework',
+    category: 'Risk Management',
+    category_color: '#EF4444',
+    target_buyer: 'CIO / Portfolio Manager',
+    core_pain: 'Portfolio concentration and downside exposure',
+    wealth_tier: 'hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'retainer',
+    price_min: 18000,
+    price_max: 50000,
+    lifecycle_stage: 'mature',
+    evidence_score: 90,
+    wtp_score: 85,
+    activation_minutes: 40,
+    red_team_status: 'passed',
+    readiness_pct: 92,
+    voiceforge_ready: true,
+    visionaudio_ready: true,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 9,
+    kpi_total: 10,
+    compliance_risk: 'medium',
+    active_deployments: 0,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 6,
+  },
+  {
+    id: 'pb-007',
+    name: 'Next-Gen Wealth Academy',
+    slug: 'next-gen-wealth-academy',
+    category: 'Education',
+    category_color: '#14B8A6',
+    target_buyer: 'Wealth Inheritor (Next Gen)',
+    core_pain: 'Financial literacy gap for wealth heirs',
+    wealth_tier: 'hnw',
+    delivery_model: 'hybrid',
+    pricing_model: 'project',
+    price_min: 6000,
+    price_max: 18000,
+    lifecycle_stage: 'growth',
+    evidence_score: 74,
+    wtp_score: 68,
+    activation_minutes: 55,
+    red_team_status: 'pending',
+    readiness_pct: 65,
+    voiceforge_ready: true,
+    visionaudio_ready: false,
+    deal_desk_ready: true,
+    trust_pack_ready: false,
+    kpi_count: 4,
+    kpi_total: 6,
+    compliance_risk: 'low',
+    active_deployments: 0,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 2,
+  },
+  {
+    id: 'pb-008',
+    name: 'Concierge Compliance',
+    slug: 'concierge-compliance',
+    category: 'Compliance',
+    category_color: '#F97316',
+    target_buyer: 'General Counsel / CCO',
+    core_pain: 'Cross-border regulatory burden',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'retainer',
+    price_min: 25000,
+    price_max: 70000,
+    lifecycle_stage: 'mature',
+    evidence_score: 96,
+    wtp_score: 93,
+    activation_minutes: 30,
+    red_team_status: 'passed',
+    readiness_pct: 97,
+    voiceforge_ready: true,
+    visionaudio_ready: true,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 10,
+    kpi_total: 10,
+    compliance_risk: 'high',
+    active_deployments: 0,
+    is_template: true,
+    is_custom: false,
+    is_composite: false,
+    citations_count: 9,
+  },
+  {
+    id: 'pb-009',
+    name: 'Meridian Custom Strategy',
+    slug: 'meridian-custom-strategy',
+    category: 'Custom',
+    category_color: '#64748B',
+    target_buyer: 'Meridian Capital Group',
+    core_pain: 'Bespoke advisory for multi-entity structure',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'retainer',
+    price_min: 30000,
+    price_max: 80000,
+    lifecycle_stage: 'growth',
+    evidence_score: 82,
+    wtp_score: 90,
+    activation_minutes: 25,
+    red_team_status: 'passed',
+    readiness_pct: 85,
+    voiceforge_ready: true,
+    visionaudio_ready: true,
+    deal_desk_ready: true,
+    trust_pack_ready: true,
+    kpi_count: 7,
+    kpi_total: 8,
+    compliance_risk: 'medium',
+    active_deployments: 0,
+    is_template: false,
+    is_custom: true,
+    is_composite: false,
+    citations_count: 4,
+  },
+  {
+    id: 'pb-010',
+    name: 'Fortress Wealth Bundle',
+    slug: 'fortress-wealth-bundle',
+    category: 'Composite',
+    category_color: '#A855F7',
+    target_buyer: 'Multi-Family Office',
+    core_pain: 'Fragmented service delivery across capabilities',
+    wealth_tier: 'ultra-hnw',
+    delivery_model: 'dedicated',
+    pricing_model: 'retainer',
+    price_min: 40000,
+    price_max: 120000,
+    lifecycle_stage: 'early',
+    evidence_score: 70,
+    wtp_score: 82,
+    activation_minutes: 42,
+    red_team_status: 'in-progress',
+    readiness_pct: 60,
+    voiceforge_ready: false,
+    visionaudio_ready: false,
+    deal_desk_ready: true,
+    trust_pack_ready: false,
+    kpi_count: 6,
+    kpi_total: 14,
+    compliance_risk: 'high',
+    active_deployments: 0,
+    is_template: false,
+    is_custom: true,
+    is_composite: true,
+    citations_count: 3,
+  },
+];
+
+export async function GET(request: NextRequest) {
+  // TODO: Replace with Prisma query with dynamic where/orderBy/pagination
+  const { searchParams } = new URL(request.url);
+
+  const category = searchParams.get('category');
+  const wealth_tier = searchParams.get('wealth_tier');
+  const delivery_model = searchParams.get('delivery_model');
+  const red_team_status = searchParams.get('red_team_status');
+  const is_template = searchParams.get('is_template');
+  const q = searchParams.get('q');
+  const sort = searchParams.get('sort') || 'evidence_score';
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const limit = parseInt(searchParams.get('limit') || '20', 10);
+
+  let filtered = [...playbooks];
+
+  if (category) {
+    filtered = filtered.filter((p) => p.category === category);
+  }
+  if (wealth_tier) {
+    filtered = filtered.filter((p) => p.wealth_tier === wealth_tier);
+  }
+  if (delivery_model) {
+    filtered = filtered.filter((p) => p.delivery_model === delivery_model);
+  }
+  if (red_team_status) {
+    filtered = filtered.filter((p) => p.red_team_status === red_team_status);
+  }
+  if (is_template !== null && is_template !== undefined) {
+    filtered = filtered.filter((p) => p.is_template === (is_template === 'true'));
+  }
+  if (q) {
+    const query = q.toLowerCase();
+    filtered = filtered.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
+        p.target_buyer.toLowerCase().includes(query) ||
+        p.core_pain.toLowerCase().includes(query)
+    );
+  }
+
+  // Basic sort
+  filtered.sort((a, b) => {
+    const aVal = a[sort as keyof typeof a];
+    const bVal = b[sort as keyof typeof b];
+    if (aVal === null || aVal === undefined) return 1;
+    if (bVal === null || bVal === undefined) return -1;
+    if (typeof aVal === 'string' && typeof bVal === 'string') return aVal.localeCompare(bVal);
+    if (typeof aVal === 'number' && typeof bVal === 'number') return bVal - aVal;
+    return 0;
+  });
+
+  const start = (page - 1) * limit;
+  const paginated = filtered.slice(start, start + limit);
+
+  return NextResponse.json({
+    data: paginated,
+    total: filtered.length,
+    page,
+    limit,
+  });
+}
