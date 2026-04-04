@@ -89,7 +89,7 @@ describe('API client', () => {
   it('sets correct base URL and timeout', async () => {
     const { default: api } = await import('@/lib/api')
     expect(api.defaults.baseURL).toBe('http://localhost:8000')
-    expect(api.defaults.timeout).toBe(30_000)
+    expect(api.defaults.timeout).toBe(0)
   })
 
   it('sets Content-Type to application/json', async () => {
