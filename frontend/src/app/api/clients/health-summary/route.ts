@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   return NextResponse.json([
-    { id: 'sc-001', name: 'Sarah Chen', score: 87, status: 'Stable — all KPIs on track', category: 'healthy' },
-    { id: 'wt-001', name: 'Wellington Trust', score: 62, status: 'At risk — missed last review', category: 'warning' },
-    { id: 'hd-001', name: 'Harrington Dynasty', score: 94, status: 'Thriving — upsell opportunity', category: 'healthy' },
-    { id: 'nw-001', name: 'New Prospect', score: 0, status: 'Onboarding — day 12 of 90', category: 'new' },
+    { id: 'c-001', name: 'Johnson Family Trust', score: 92, tier: 'platinum', trend: 'stable' },
+    { id: 'c-002', name: 'Nakamura Holdings', score: 78, tier: 'gold', trend: 'declining' },
+    { id: 'c-003', name: 'Rivera Foundation', score: 85, tier: 'platinum', trend: 'improving' },
   ])
 }

@@ -2,7 +2,17 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   return NextResponse.json({
-    voiceforge: { connected: true, modules_active: 6, name: 'VoiceForge' },
-    visionaudioforge: { connected: true, modules_active: 8, name: 'VisionAudioForge' },
+    voiceforge: {
+      status: 'connected',
+      latency: 45,
+      lastSync: new Date().toISOString(),
+      version: '2.1.0',
+    },
+    visionaudioforge: {
+      status: 'connected',
+      latency: 62,
+      lastSync: new Date().toISOString(),
+      version: '1.8.3',
+    },
   })
 }
