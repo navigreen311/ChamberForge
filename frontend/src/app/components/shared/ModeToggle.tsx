@@ -1,56 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useMode } from '@/lib/context/ModeContext';
+import { useSimpleMode } from '@/hooks/useSimpleMode';
 
 export default function ModeToggle() {
-  const { mode, toggleMode, isSimple } = useMode();
-  const [toast, setToast] = useState<string | null>(null);
-
-  const handleToggle = () => {
-    toggleMode();
-    const next = isSimple ? 'Expert' : 'Simple';
-    setToast(`Switched to ${next} Mode`);
-    setTimeout(() => setToast(null), 2500);
-  };
+  const { isSimple, toggle } = useSimpleMode();
 
   return (
-    <div className="relative flex items-center gap-3">
-      <span
-        className={`text-sm font-medium transition-colors ${
-          !isSimple ? 'text-[#C9A84C]' : 'text-gray-400'
-        }`}
-      >
-        Expert
-      </span>
-
-      <button
-        onClick={handleToggle}
-        aria-label={`Switch to ${isSimple ? 'expert' : 'simple'} mode`}
-        className="relative h-7 w-12 rounded-full transition-colors duration-300"
-        style={{ backgroundColor: isSimple ? '#1D9E75' : '#C9A84C' }}
-      >
-        <span
-          className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-300"
-          style={{
-            transform: isSimple ? 'translateX(22px)' : 'translateX(2px)',
-          }}
+    <button
+      onClick={toggle}
+      className="flex items-center gap-2 rounded-full border border-[#1e2a3a] bg-[#0f1520] px-3 py-1 text-xs transition-colors hover:border-[#C9A84C]/40"
+      aria-label={isSimple ? 'Switch to Pro mode' : 'Switch to Simple mode'}
+    >
+      <span className={isSimple ? 'text-gray-500' : 'text-white font-medium'}>Pro</span>
+      <div className="relative h-4 w-8 rounded-full bg-[#1e2a3a]">
+        <div
+          className={`absolute top-0.5 h-3 w-3 rounded-full transition-all duration-200 ${
+            isSimple
+              ? 'left-[18px] bg-emerald-400'
+              : 'left-0.5 bg-[#C9A84C]'
+          }`}
         />
-      </button>
-
-      <span
-        className={`text-sm font-medium transition-colors ${
-          isSimple ? 'text-[#1D9E75]' : 'text-gray-400'
-        }`}
-      >
-        Simple
-      </span>
-
-      {toast && (
-        <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-chamber-800 px-3 py-1 text-xs text-white shadow-lg animate-fade-in">
-          {toast}
-        </div>
-      )}
-    </div>
+      </div>
+      <span className={isSimple ? 'text-white font-medium' : 'text-gray-500'}>Simple</span>
+    </button>
   );
 }

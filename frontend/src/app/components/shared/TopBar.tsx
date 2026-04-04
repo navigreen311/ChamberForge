@@ -4,18 +4,21 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell, Search, Settings, Sparkles } from 'lucide-react'
+import ModeToggle from './ModeToggle'
+import SimpleBanner from './SimpleBanner'
+import { useSimpleMode } from '@/hooks/useSimpleMode'
 
 interface TopBarProps {
   activePage?: string
 }
 
 const primaryTabs = [
-  { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Discover', href: '/discover' },
-  { label: 'Offers', href: '/offers' },
-  { label: 'Clients', href: '/clients' },
-  { label: 'Playbooks', href: '/playbooks' },
-  { label: 'Deliver', href: '/deliver' },
+  { label: 'Dashboard', href: '/dashboard', simpleLabel: 'Home' },
+  { label: 'Discover', href: '/discover', simpleLabel: 'Find opportunities' },
+  { label: 'Offers', href: '/offers', simpleLabel: 'My services' },
+  { label: 'Clients', href: '/clients', simpleLabel: 'My people' },
+  { label: 'Playbooks', href: '/playbooks', simpleLabel: 'Templates' },
+  { label: 'Deliver', href: '/deliver', simpleLabel: 'Getting things done' },
 ]
 
 const secondaryTabs = [
@@ -30,6 +33,7 @@ const secondaryTabs = [
 export default function TopBar({ activePage }: TopBarProps) {
   const pathname = usePathname()
   const [showSecondary, setShowSecondary] = useState(false)
+  const { isSimple } = useSimpleMode()
 
   const active = activePage || primaryTabs.find(t => pathname.startsWith(t.href))?.label || ''
 
@@ -52,17 +56,18 @@ export default function TopBar({ activePage }: TopBarProps) {
           <nav className="flex gap-1">
             {primaryTabs.map(tab => {
               const isActive = tab.label === active
+              const displayLabel = isSimple ? tab.simpleLabel : tab.label
               return (
                 <Link
                   key={tab.label}
                   href={tab.href}
-                  className={`px-3 py-4 text-sm transition-colors ${
+                  className={`px-3 py-4 text-sm transition-colors whitespace-nowrap ${
                     isActive
                       ? 'text-[#C9A84C] border-b-2 border-[#C9A84C]'
                       : 'text-gray-400 hover:text-white border-b-2 border-transparent'
                   }`}
                 >
-                  {tab.label}
+                  {displayLabel}
                 </Link>
               )
             })}
@@ -82,6 +87,7 @@ export default function TopBar({ activePage }: TopBarProps) {
             <Bell className="w-5 h-5" />
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
           </Link>
+          <ModeToggle />
           <Link href="/search" className="text-gray-400 hover:text-white transition-colors">
             <Search className="w-5 h-5" />
           </Link>
