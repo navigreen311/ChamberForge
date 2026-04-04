@@ -43,8 +43,10 @@ def test_search_empty_query_returns_422(client, auth_headers):
     resp = client.get("/api/v1/problems/search?q=", headers=auth_headers)
     assert resp.status_code == 422
     data = resp.json()
-    detail = data.get("detail", {})
-    msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
+    msg = data.get("message", "") or ""
+    if not msg:
+        detail = data.get("detail", {})
+        msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
     assert "query" in msg.lower() or "required" in msg.lower()
 
 
@@ -61,8 +63,10 @@ def test_generate_offer_without_problem_id(client, auth_headers):
     )
     assert resp.status_code == 422
     data = resp.json()
-    detail = data.get("detail", {})
-    msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
+    msg = data.get("message", "") or ""
+    if not msg:
+        detail = data.get("detail", {})
+        msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
     assert "problem" in msg.lower() or "required" in msg.lower()
 
 
@@ -161,6 +165,8 @@ def test_unified_search_empty_query_returns_422(client):
     resp = client.get("/api/v1/search/?q=")
     assert resp.status_code == 422
     data = resp.json()
-    detail = data.get("detail", {})
-    msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
+    msg = data.get("message", "") or ""
+    if not msg:
+        detail = data.get("detail", {})
+        msg = detail.get("message", "") if isinstance(detail, dict) else str(detail)
     assert "query" in msg.lower() or "required" in msg.lower()
