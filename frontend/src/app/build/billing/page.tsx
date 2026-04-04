@@ -59,18 +59,11 @@ export default function BillingPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-chamber-950 p-8">
-        <a href="/build" className="text-gold-400 text-sm hover:underline mb-4 inline-block">&larr; Back to Build</a>
-        <h1 className="text-3xl font-display font-bold text-white mb-4">Billing Dashboard</h1>
-        <div className="bg-red-400/10 border border-red-400/30 rounded-xl p-6 text-red-400">{error}</div>
-      </div>
-    );
-  }
+  // Fallback to zeros when no revenue data
+  const safeRevenue: RevenueData = revenue ?? { mrr: 0, arr: 0, active_subscriptions: 0, past_due: 0 };
 
-  const mrrHistory = revenue?.mrr_history ?? [];
-  const subscriptions = revenue?.subscriptions ?? [];
+  const mrrHistory = safeRevenue.mrr_history ?? [];
+  const subscriptions = safeRevenue.subscriptions ?? [];
   const maxVal = mrrHistory.length > 0 ? Math.max(...mrrHistory.map((m) => m.value)) : 1;
 
   const fmtMoney = (n: number) => {
@@ -85,22 +78,23 @@ export default function BillingPage() {
       <h1 className="text-3xl font-display font-bold text-white mb-1">Billing Dashboard</h1>
       <p className="text-chamber-400 mb-8">Revenue metrics, subscriptions, and invoice management</p>
 
-      {/* Metrics */}
-      {revenue && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[
-            ["MRR", fmtMoney(revenue.mrr), "text-gold-400"],
-            ["ARR", fmtMoney(revenue.arr), "text-green-400"],
-            ["Active Subscriptions", revenue.active_subscriptions, "text-blue-400"],
-            ["Past Due", revenue.past_due, "text-red-400"],
-          ].map(([l, v, c]) => (
-            <div key={String(l)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
-              <p className="text-chamber-400 text-sm">{String(l)}</p>
-              <p className={`text-2xl font-bold ${c}`}>{String(v)}</p>
-            </div>
-          ))}
-        </div>
+      {/* Metrics — always render, show zeros gracefully */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-400/10 border border-red-400/30 rounded-lg text-red-400 text-sm">{error}</div>
       )}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          ["MRR", fmtMoney(safeRevenue.mrr), "text-gold-400"],
+          ["ARR", fmtMoney(safeRevenue.arr), "text-green-400"],
+          ["Active Subscriptions", safeRevenue.active_subscriptions, "text-blue-400"],
+          ["Past Due", safeRevenue.past_due, "text-red-400"],
+        ].map(([l, v, c]) => (
+          <div key={String(l)} className="bg-chamber-900 rounded-xl p-5 border border-chamber-800">
+            <p className="text-chamber-400 text-sm">{String(l)}</p>
+            <p className={`text-2xl font-bold ${c}`}>{String(v)}</p>
+          </div>
+        ))}
+      </div>
 
       {/* MRR Chart */}
       {mrrHistory.length > 0 && (

@@ -24,7 +24,7 @@ def create_household_graph(client_id: str, data: dict = Body(...), workspace_id:
 def get_household_graph(client_id: str, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
     graph = svc.get(db, client_id)
     if not graph:
-        raise HTTPException(status_code=404, detail="Household graph not found")
+        raise HTTPException(status_code=404, detail="No household graph found for this client. Create one first via POST /api/v1/household/{client_id}.")
     return _serialize(graph)
 
 
@@ -38,6 +38,16 @@ def update_household_graph(client_id: str, data: dict = Body(...), workspace_id:
 
 @router.post("/{client_id}/members")
 def add_member(client_id: str, member_data: dict = Body(...), db: Session = Depends(get_db)):
+    # Check for duplicate member name
+    existing_graph = svc.get(db, client_id)
+    if not existing_graph:
+        raise HTTPException(status_code=404, detail="Household graph not found")
+    new_name = member_data.get("name", "")
+    if new_name and existing_graph.members:
+        for m in existing_graph.members:
+            existing_name = m.get("name", "") if isinstance(m, dict) else ""
+            if existing_name and existing_name.lower() == new_name.lower():
+                raise HTTPException(status_code=409, detail=f"Member '{new_name}' already exists in this household")
     graph = svc.add_member(db, client_id, member_data)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")

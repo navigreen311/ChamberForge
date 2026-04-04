@@ -123,13 +123,22 @@ def get_playbook(slug: str, db: Session = Depends(get_db)):
     """Get detailed playbook by slug."""
     playbook = PlaybookEngine.get_playbook(db, slug)
     if not playbook:
-        raise HTTPException(status_code=404, detail=f"Playbook '{slug}' not found")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Playbook '{slug}' not found. Use GET /api/v1/playbooks/ to list available playbooks.",
+        )
     return playbook.to_dict()
 
 
 @router.post("/{slug}/activate")
 def activate_playbook(slug: str, body: ActivateRequest, db: Session = Depends(get_db)):
     """Activate a playbook for a workspace."""
+    # Check if already activated
+    existing = PlaybookEngine.get_activated_playbooks(db, body.workspace_id)
+    for act in existing:
+        act_dict = act if isinstance(act, dict) else act.to_dict() if hasattr(act, "to_dict") else {}
+        if act_dict.get("slug") == slug or act_dict.get("playbook_slug") == slug:
+            raise HTTPException(status_code=409, detail="Playbook already activated")
     activation = PlaybookEngine.activate_playbook(db, body.workspace_id, slug)
     if not activation:
         raise HTTPException(status_code=404, detail=f"Playbook '{slug}' not found")

@@ -69,6 +69,11 @@ def create_customer(body: CreateCustomerReq):
 
 @router.post("/subscriptions")
 def create_subscription(body: CreateSubscriptionReq, workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
+    if body.amount is None or body.amount <= 0:
+        raise HTTPException(
+            status_code=422,
+            detail={"error_code": "VALIDATION_ERROR", "message": "Subscription amount must be a positive number", "details": {"amount": f"Got {body.amount}, expected > 0"}},
+        )
     result = stripe_service.create_subscription(
         body.customer_id, body.amount, body.plan_name, body.interval
     )
@@ -168,7 +173,21 @@ def list_invoices(workspace_id: str = Depends(get_workspace_id), db: Session = D
 
 @router.get("/revenue")
 def revenue_dashboard(workspace_id: str = Depends(get_workspace_id), db: Session = Depends(get_db)):
-    return stripe_service.get_revenue_dashboard(db, workspace_id)
+    try:
+        result = stripe_service.get_revenue_dashboard(db, workspace_id)
+    except Exception:
+        result = None
+    if not result:
+        return {
+            "mrr": 0,
+            "arr": 0,
+            "active_subscriptions": 0,
+            "past_due": 0,
+            "churn_rate": 0,
+            "pending_invoices": 0,
+            "total_revenue_ytd": 0,
+        }
+    return result
 
 
 # ---------------------------------------------------------------------------

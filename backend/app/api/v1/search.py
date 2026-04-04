@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query
 
 from app.core.cache import cache
 from app.core.config import settings
+from app.core.exceptions import ValidationError
 from app.services.backbone.search_indices import get_all_indices
 from app.services.backbone.search_service import SearchService
 
@@ -43,6 +44,9 @@ async def unified_search(
     When ``index=all`` the query fans out to every registered index and
     results are merged by descending relevance score.
     """
+    if not q or not q.strip():
+        raise ValidationError("Search query required", {"q": "Search query must not be empty"})
+
     key = cache.make_key("search:unified", q=q, index=index, filters=filters, page=page, size=size)
     hit = cache.get(key)
     if hit is not None:
