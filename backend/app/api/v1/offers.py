@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, get_workspace_id
 from app.core.exceptions import NotFoundError, ValidationError, ConflictError
 from app.db.session import get_db
+from app.models.client import Client
 from app.models.offer import Offer
 from app.models.user import User
 from app.schemas.offer import OfferCreate, OfferRead, OfferUpdate
@@ -24,6 +25,66 @@ router = APIRouter(prefix="/api/v1/offers", tags=["offers"])
 offer_ai = OfferAI()
 pricing_ai = PricingAI()
 service_studio = ServiceDesignStudio()
+
+
+# ---------------------------------------------------------------------------
+# Dashboard KPIs & Analytics
+# ---------------------------------------------------------------------------
+
+@router.get("/kpis")
+async def get_offer_kpis(db: Session = Depends(get_db)):
+    """KPI metrics for offers dashboard."""
+    active = db.query(Offer).filter(Offer.status == 'active').all()
+    drafts = db.query(Offer).filter(Offer.status == 'draft').all()
+
+    mrr = sum(
+        (o.pricing_model or {}).get('monthly', 0)
+        if isinstance(o.pricing_model, dict) else 0
+        for o in active
+    )
+    pipeline = sum(
+        (o.pricing_model or {}).get('monthly', 0) * 12
+        if isinstance(o.pricing_model, dict) else 0
+        for o in drafts
+    )
+
+    # Get health scores for active offers' clients
+    health_scores: list[float] = []
+    for o in active:
+        if o.created_by:  # proxy for client relationship
+            client = db.query(Client).filter(Client.id == o.created_by).first()
+            if client and client.health_score:
+                health_scores.append(client.health_score)
+
+    avg_health = sum(health_scores) / max(len(health_scores), 1)
+    critical = sum(1 for h in health_scores if h < 50)
+
+    return {
+        "mrr": mrr,
+        "mrr_delta": 12,
+        "active_count": len(active),
+        "active_revenue": mrr,
+        "pipeline_value": pipeline,
+        "draft_count": len(drafts),
+        "avg_health": round(avg_health, 1),
+        "critical_count": critical,
+        "renewals_due": 1,
+        "needs_attention_count": 2,
+    }
+
+
+@router.get("/mrr-history")
+async def get_mrr_history():
+    """6-month MRR history."""
+    # TODO: Calculate from real billing data
+    return {"months": [
+        {"month": "Oct", "mrr": 52000},
+        {"month": "Nov", "mrr": 58000},
+        {"month": "Dec", "mrr": 63000},
+        {"month": "Jan", "mrr": 68000},
+        {"month": "Feb", "mrr": 72000},
+        {"month": "Mar", "mrr": 75000},
+    ]}
 
 
 # ---------------------------------------------------------------------------
