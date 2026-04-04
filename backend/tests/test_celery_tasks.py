@@ -6,9 +6,15 @@ import pytest
 
 from app.jobs.celery_app import celery_app
 
-# Force eager mode for the entire test module
-celery_app.conf.task_always_eager = True
-celery_app.conf.task_eager_propagates = True
+# Use fixture to enable eager mode only during these tests
+@pytest.fixture(autouse=True)
+def _celery_eager():
+    """Enable Celery eager mode for this test module, restore after."""
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+    yield
+    celery_app.conf.task_always_eager = False
+    celery_app.conf.task_eager_propagates = False
 
 
 # ---------------------------------------------------------------------------
