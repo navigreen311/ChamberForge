@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, Float, Integer, String
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -14,8 +14,8 @@ class AIUsageLog(Base):
 
     __tablename__ = "ai_usage_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     agent_name = Column(String(255), nullable=False, index=True)
     tokens_in = Column(Integer, nullable=False, default=0)
     tokens_out = Column(Integer, nullable=False, default=0)

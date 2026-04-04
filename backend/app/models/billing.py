@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Column, Date, DateTime, Float, JSON, String, func
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,9 +12,9 @@ from app.db.session import Base
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    client_id = Column(sa.String(36), nullable=False, index=True)
     stripe_subscription_id = Column(String, unique=True, nullable=True)
     stripe_customer_id = Column(String, nullable=True, index=True)
     plan_name = Column(String, nullable=False)
@@ -33,9 +33,9 @@ class Subscription(Base):
 class Invoice(Base):
     __tablename__ = "invoices"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    client_id = Column(sa.String(36), nullable=False, index=True)
     stripe_invoice_id = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
     status = Column(String, default="draft")  # draft | sent | paid | overdue
@@ -52,10 +52,10 @@ class Invoice(Base):
 class Referral(Base):
     __tablename__ = "referrals"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    referrer_id = Column(UUID(as_uuid=True), nullable=False)
-    referred_client_id = Column(UUID(as_uuid=True), nullable=False)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    referrer_id = Column(sa.String(36), nullable=False)
+    referred_client_id = Column(sa.String(36), nullable=False)
     deal_value = Column(Float, nullable=False)
     commission_pct = Column(Float, default=10.0)
     commission_amount = Column(Float, nullable=False)

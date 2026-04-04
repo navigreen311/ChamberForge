@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,9 +12,9 @@ from app.db.session import Base
 class ConsentRecord(Base):
     __tablename__ = "consent_records"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    client_id = Column(sa.String(36), nullable=False, index=True)
     consent_type = Column(
         String(50),
         nullable=False,

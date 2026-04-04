@@ -14,10 +14,10 @@ from app.db.session import Base
 class DeletionRequest(Base):
     __tablename__ = "deletion_requests"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    requested_by = Column(UUID(as_uuid=True), nullable=False)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    client_id = Column(sa.String(36), nullable=False, index=True)
+    requested_by = Column(sa.String(36), nullable=False)
     status = Column(
         String(20),
         nullable=False,

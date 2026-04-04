@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, String, Boolean, DateTime, JSON
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -11,8 +11,8 @@ from app.db.session import Base
 class ClientPortalAccess(Base):
     __tablename__ = "client_portal_access"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    client_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
+    client_id = Column(String(36), nullable=False, index=True)
     portal_token = Column(String(128), unique=True, nullable=False, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     last_accessed_at = Column(DateTime(timezone=True), nullable=True)

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -14,10 +14,10 @@ from app.db.session import Base
 class LegalHold(Base):
     __tablename__ = "legal_holds"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     resource_type = Column(String(100), nullable=False)
-    resource_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    resource_id = Column(sa.String(36), nullable=False, index=True)
     reason = Column(Text, nullable=False)
     status = Column(
         String(20),
@@ -25,8 +25,8 @@ class LegalHold(Base):
         default="active",
         comment="active | released",
     )
-    created_by = Column(UUID(as_uuid=True), nullable=False)
-    released_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by = Column(sa.String(36), nullable=False)
+    released_by = Column(sa.String(36), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,

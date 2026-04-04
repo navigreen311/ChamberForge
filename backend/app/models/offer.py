@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, String, DateTime, JSON, Text
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 from app.models.enums import OfferStatus, DeliveryModel
@@ -13,9 +13,9 @@ from app.models.enums import OfferStatus, DeliveryModel
 class Offer(Base):
     __tablename__ = "offers"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    problem_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    problem_id = Column(sa.String(36), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     value_stack = Column(JSON, nullable=True, default=list)
@@ -25,7 +25,7 @@ class Offer(Base):
     sop_bundle = Column(JSON, nullable=True, default=dict)
     journey_map = Column(JSON, nullable=True, default=dict)
     status = Column(String(20), nullable=False, default=OfferStatus.DRAFT.value, index=True)
-    created_by = Column(UUID(as_uuid=True), nullable=True)
+    created_by = Column(sa.String(36), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(
         DateTime(timezone=True),

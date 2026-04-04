@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,9 +12,9 @@ from app.db.session import Base
 class Notification(Base):
     __tablename__ = "notifications"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    user_id = Column(sa.String(36), nullable=False, index=True)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     type = Column(String(20), nullable=False, default="info")  # info|warning|critical|crisis
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=False)

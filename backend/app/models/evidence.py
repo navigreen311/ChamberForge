@@ -3,7 +3,7 @@ import uuid
 from datetime import date, datetime
 
 from sqlalchemy import Column, Date, DateTime, Float, Index, JSON, String, func
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -11,9 +11,9 @@ from app.db.session import Base
 class Evidence(Base):
     __tablename__ = "evidence"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    problem_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
+    problem_id = Column(String(36), nullable=True, index=True)
+    workspace_id = Column(String(36), nullable=False, index=True)
     source_url = Column(String, nullable=False, index=True)
     source_type = Column(String, nullable=False, index=True)
     publication_date = Column(Date, nullable=False)

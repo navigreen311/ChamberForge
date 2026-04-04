@@ -14,8 +14,8 @@ class EmailLog(Base):
 
     __tablename__ = "email_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     to_email = Column(String(320), nullable=False, index=True)
     template = Column(String(100), nullable=True)
     subject = Column(String(500), nullable=False)

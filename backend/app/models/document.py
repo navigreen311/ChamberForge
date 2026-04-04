@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, String, Integer, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,13 +12,13 @@ from app.db.session import Base
 class Document(Base):
     __tablename__ = "documents"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     file_name = Column(String(512), nullable=False)
     file_type = Column(String(128), nullable=False, index=True)
     s3_key = Column(String(1024), nullable=False, unique=True)
     size_bytes = Column(Integer, nullable=False)
-    uploaded_by = Column(UUID(as_uuid=True), nullable=True)
+    uploaded_by = Column(sa.String(36), nullable=True)
     watermark_id = Column(String(256), nullable=True)
     created_at = Column(
         DateTime(timezone=True),

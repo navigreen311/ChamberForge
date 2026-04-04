@@ -12,15 +12,15 @@ from app.db.session import Base
 class CrisisIncident(Base):
     __tablename__ = "crisis_incidents"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     title = Column(String(500), nullable=False)
     severity = Column(String(20), nullable=False, index=True)  # "low", "medium", "high", "critical"
     status = Column(String(20), nullable=False, default="active", index=True)  # "active", "contained", "resolved"
     timeline = Column(JSON, default=list, nullable=False)
     escalation_tree = Column(JSON, default=list, nullable=False)
     lockdown_actions = Column(JSON, default=list, nullable=False)
-    reported_by = Column(UUID(as_uuid=True), nullable=True)
+    reported_by = Column(sa.String(36), nullable=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True),

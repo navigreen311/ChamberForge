@@ -2,8 +2,8 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, JSON, ForeignKey
+
 
 from app.db.session import Base
 
@@ -11,9 +11,9 @@ from app.db.session import Base
 class HouseholdGraph(Base):
     __tablename__ = "household_graphs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
     client_id = Column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,

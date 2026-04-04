@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, String, DateTime, Float
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 from app.models.enums import WealthTier, ClientStatus
@@ -13,8 +13,8 @@ from app.models.enums import WealthTier, ClientStatus
 class Client(Base):
     __tablename__ = "clients"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     company = Column(String(255), nullable=True)
     wealth_tier = Column(String(30), nullable=False, default=WealthTier.HNW.value)

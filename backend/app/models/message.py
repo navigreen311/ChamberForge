@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,10 +12,10 @@ from app.db.session import Base
 class SecureMessage(Base):
     __tablename__ = "secure_messages"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    sender_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    recipient_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
+    sender_id = Column(sa.String(36), nullable=False, index=True)
+    recipient_id = Column(sa.String(36), nullable=False, index=True)
     content = Column(Text, nullable=False)
     is_encrypted = Column(Boolean, nullable=False, default=True)
     read_at = Column(DateTime, nullable=True)

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Column, String, Text, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -12,14 +12,14 @@ from app.db.session import Base
 class RiskReview(Base):
     __tablename__ = "risk_reviews"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(sa.String(36), nullable=False, index=True)
     item_type = Column(String(50), nullable=False)       # "offer", "problem", "output"
-    item_id = Column(UUID(as_uuid=True), nullable=False)
+    item_id = Column(sa.String(36), nullable=False)
     risk_level = Column(String(20), nullable=False)       # low/medium/high/critical
     reason = Column(Text, nullable=False)
     status = Column(String(20), nullable=False, default="pending", index=True)
-    reviewer_id = Column(UUID(as_uuid=True), nullable=True)
+    reviewer_id = Column(sa.String(36), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(

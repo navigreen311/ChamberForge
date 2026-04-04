@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, String, Boolean, DateTime
-from sqlalchemy.dialects.postgresql import UUID
+
 
 from app.db.session import Base
 
@@ -11,8 +11,8 @@ from app.db.session import Base
 class WhiteLabelConfig(Base):
     __tablename__ = "white_label_configs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(UUID(as_uuid=True), unique=True, nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=uuid.uuid4)
+    workspace_id = Column(String(36), unique=True, nullable=False, index=True)
     brand_name = Column(String(255), nullable=False, default="ChamberForge")
     logo_url = Column(String(1024), nullable=True)
     primary_color = Column(String(7), nullable=False, default="#fbbf24")
