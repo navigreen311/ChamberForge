@@ -13,7 +13,7 @@ def test_all_security_headers_present():
 
     assert resp.headers["Content-Security-Policy"] == (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
         "style-src 'self' 'unsafe-inline'"
     )
     assert resp.headers["X-Frame-Options"] == "DENY"

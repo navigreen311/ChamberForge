@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.problem import ProblemCreate, ProblemList, ProblemRead, ProblemUpdate
 from app.services.backbone.problem_library import ProblemLibrary
 from app.services.backbone.search_indices import PROBLEM_INDEX
+from app.core.cache import cache
 from app.services.backbone.search_sync import remove_from_index, sync_problem
 
 router = APIRouter(prefix="/api/v1/problems", tags=["problems"])

@@ -21,7 +21,7 @@ class ContradictionFlag(BaseModel):
 
 
 class EvidenceCreate(BaseModel):
-    workspace_id: UUID
+    workspace_id: Optional[UUID] = None
     source_url: str
     source_type: str
     publication_date: date

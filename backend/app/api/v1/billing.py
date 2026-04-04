@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from app.core.cache import cache
 from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.models.billing import Invoice, Subscription
@@ -29,7 +30,7 @@ class CreateCustomerReq(BaseModel):
 
 
 class CreateSubscriptionReq(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     client_id: UUID
     customer_id: str
     amount: float
@@ -38,7 +39,7 @@ class CreateSubscriptionReq(BaseModel):
 
 
 class CreateInvoiceReq(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     client_id: UUID
     customer_id: str
     line_items: list[dict]
@@ -46,7 +47,7 @@ class CreateInvoiceReq(BaseModel):
 
 
 class CreateReferralReq(BaseModel):
-    workspace_id: UUID
+    workspace_id: UUID | None = None
     referrer_id: UUID
     referred_client_id: UUID
     deal_value: float

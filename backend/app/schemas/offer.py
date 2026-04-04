@@ -36,7 +36,7 @@ class MarginSimulation(BaseModel):
 # --- CRUD schemas ---
 
 class OfferCreate(BaseModel):
-    workspace_id: uuid.UUID
+    workspace_id: uuid.UUID | None = None
     problem_id: uuid.UUID | None = None
     name: str = Field(..., max_length=255)
     description: str | None = None

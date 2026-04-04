@@ -5,9 +5,9 @@ import pytest
 
 
 class TestIntelBrief:
-    def test_generate_intel_brief(self, client):
+    def test_generate_intel_brief(self, authed_client):
         client_id = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             f"/api/v1/lifecycle/intel-brief/{client_id}",
             json={
                 "client_data": {
@@ -22,8 +22,8 @@ class TestIntelBrief:
         data = resp.json()
         assert isinstance(data, dict)
 
-    def test_intel_brief_minimal(self, client):
-        resp = client.post(
+    def test_intel_brief_minimal(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/intel-brief/test-client",
             json={"client_data": {}, "meeting_context": ""},
         )
@@ -59,8 +59,8 @@ class TestClientHealth:
         assert resp.status_code == 200
         assert resp.json()["score"] < 50
 
-    def test_get_client_health(self, client):
-        resp = client.get("/api/v1/lifecycle/health/test-client-123")
+    def test_get_client_health(self, authed_client):
+        resp = authed_client.get("/api/v1/lifecycle/health/test-client-123")
         assert resp.status_code == 200
         data = resp.json()
         assert data["client_id"] == "test-client-123"
@@ -135,10 +135,10 @@ class TestOfferBrand:
 
 
 class TestMobileAccess:
-    def test_get_pending_approvals(self, client):
-        resp = client.get("/api/v1/lifecycle/mobile/approvals")
+    def test_get_pending_approvals(self, authed_client):
+        resp = authed_client.get("/api/v1/lifecycle/mobile/approvals")
         assert resp.status_code == 200
 
-    def test_get_active_alerts(self, client):
-        resp = client.get("/api/v1/lifecycle/mobile/alerts")
+    def test_get_active_alerts(self, authed_client):
+        resp = authed_client.get("/api/v1/lifecycle/mobile/alerts")
         assert resp.status_code == 200

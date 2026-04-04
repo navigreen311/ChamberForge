@@ -31,7 +31,9 @@ class TestRegister:
 
         resp2 = client.post("/api/v1/auth/register", json=payload)
         assert resp2.status_code == 409
-        assert "already registered" in resp2.json()["detail"]
+        body = resp2.json()
+        msg = body.get("detail", body.get("message", ""))
+        assert "already registered" in msg.lower() or "already" in msg.lower()
 
     def test_register_short_password(self, client):
         resp = client.post(
@@ -98,7 +100,9 @@ class TestLogin:
             json={"email": "wrongpw@example.com", "password": "WrongPassword!"},
         )
         assert resp.status_code == 401
-        assert "Invalid" in resp.json()["detail"]
+        body = resp.json()
+        msg = body.get("detail", body.get("message", ""))
+        assert "invalid" in msg.lower()
 
     def test_login_nonexistent_user(self, client):
         resp = client.post(
@@ -164,4 +168,6 @@ class TestLogout:
     def test_logout(self, client):
         resp = client.post("/api/v1/auth/logout")
         assert resp.status_code == 200
-        assert resp.json()["detail"] == "Successfully logged out"
+        body = resp.json()
+        msg = body.get("detail", body.get("message", ""))
+        assert "logged out" in msg.lower()

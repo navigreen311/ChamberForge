@@ -100,13 +100,13 @@ class TestListActivations:
     def test_list_activations_with_data(self, client):
         ws = str(uuid.uuid4())
 
-        # Activate two playbooks
+        # Activate two different playbooks
         client.post(
             "/api/v1/playbooks/private-ops-office/activate",
             json={"workspace_id": ws},
         )
         client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
+            "/api/v1/playbooks/ecosystem-orchestrator/activate",
             json={"workspace_id": ws},
         )
 
