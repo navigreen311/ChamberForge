@@ -37,6 +37,7 @@ from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.clients_dashboard import router as clients_dashboard_router
 from app.api.v1.deliver import router as deliver_router
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router
+from app.api.v1.problem_detail import router as problem_detail_router
 
 router = APIRouter()
 
@@ -76,3 +77,4 @@ router.include_router(dashboard_router)
 router.include_router(clients_dashboard_router)
 router.include_router(deliver_router)
 router.include_router(stripe_webhook_router)
+router.include_router(problem_detail_router)
