@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { Providers } from "./providers";
+import { ModeProvider } from "@/lib/context/ModeContext";
 
 export const metadata: Metadata = {
   title: "ChamberForge",
@@ -32,7 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-chamber-950 text-white antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          <ModeProvider>{children}</ModeProvider>
+        </Providers>
       </body>
     </html>
   );
