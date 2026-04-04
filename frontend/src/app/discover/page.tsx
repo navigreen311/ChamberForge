@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import ProblemOfferDrawer from '@/app/components/discover/ProblemOfferDrawer'
 
 // ─── Inline Data ──────────────────────────────────────────────
 const KPIS = [
@@ -30,6 +31,8 @@ interface Problem {
   citations: number
   timestamp: string
   wtpSignal: number
+  offerId: string
+  offerTeaser: { name: string; price: string }
 }
 
 const PROBLEMS: Problem[] = [
@@ -46,6 +49,8 @@ const PROBLEMS: Problem[] = [
     citations: 7,
     timestamp: '2h ago',
     wtpSignal: 8.4,
+    offerId: 'family-cyber-command',
+    offerTeaser: { name: 'Family Cybersecurity & Identity Command Center', price: '$10-25K/mo' },
   },
   {
     id: 2,
@@ -60,6 +65,8 @@ const PROBLEMS: Problem[] = [
     citations: 5,
     timestamp: '4h ago',
     wtpSignal: 7.2,
+    offerId: 'private-ops-office',
+    offerTeaser: { name: 'Private Operations Office', price: '$15-30K/mo' },
   },
   {
     id: 3,
@@ -74,6 +81,8 @@ const PROBLEMS: Problem[] = [
     citations: 8,
     timestamp: '6h ago',
     wtpSignal: 6.8,
+    offerId: 'footprint-reduction',
+    offerTeaser: { name: 'Private Footprint Reduction Program', price: '$8-18K/mo' },
   },
   {
     id: 4,
@@ -88,6 +97,8 @@ const PROBLEMS: Problem[] = [
     citations: 4,
     timestamp: '1d ago',
     wtpSignal: 6.2,
+    offerId: 'family-risk-council',
+    offerTeaser: { name: 'Family Risk Council', price: '$15-35K/qtr' },
   },
   {
     id: 5,
@@ -102,6 +113,8 @@ const PROBLEMS: Problem[] = [
     citations: 3,
     timestamp: '1d ago',
     wtpSignal: 5.5,
+    offerId: 'medical-navigation',
+    offerTeaser: { name: 'Medical Navigation & Longevity Desk', price: '$8-20K/mo' },
   },
 ]
 
@@ -207,6 +220,8 @@ export default function DiscoverPage() {
   const [painCategory, setPainCategory] = useState('All Categories')
   const [urgencyFilter, setUrgencyFilter] = useState('Any Urgency')
   const [drawerProblemId, setDrawerProblemId] = useState<number | null>(null)
+  const [selectedProblem, setSelectedProblem] = useState<string | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const toggleTier = (t: string) => {
     const next = new Set(selectedTiers)
@@ -476,7 +491,10 @@ export default function DiscoverPage() {
                     <span>{p.timestamp}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors">
+                    <button
+                      onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }}
+                      className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors"
+                    >
                       Build offer →
                     </button>
                     <button
@@ -489,6 +507,14 @@ export default function DiscoverPage() {
                       Validate
                     </button>
                   </div>
+                </div>
+
+                {/* Offer Teaser */}
+                <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">What you'd sell:</div>
+                  <div className="text-sm font-medium text-white">{p.offerTeaser.name}</div>
+                  <div className="text-sm text-emerald-400 font-semibold">{p.offerTeaser.price}</div>
+                  <button onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }} className="text-[11px] text-[#C9A84C] hover:underline mt-1">See the full opportunity →</button>
                 </div>
               </div>
             ))}
@@ -650,6 +676,10 @@ export default function DiscoverPage() {
           animation: slideIn 0.25s ease-out;
         }
       `}</style>
+
+      {drawerOpen && selectedProblem && (
+        <ProblemOfferDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} problemId={selectedProblem} />
+      )}
     </div>
   )
 }
