@@ -193,8 +193,15 @@ def _auto_reset_state():
     """Reset app state around every test."""
     _reset_rate_limiter()
     yield
-    # Clear stale dependency overrides left by tests that don't clean up
-    app.dependency_overrides.clear()
+    # Ensure Celery eager mode is disabled so tasks don't run synchronously
+    # and pollute subsequent tests with DB connection attempts
+    try:
+        from app.jobs.celery_app import celery_app as _celery
+        if _celery is not None:
+            _celery.conf.task_always_eager = False
+            _celery.conf.task_eager_propagates = False
+    except Exception:
+        pass
 
 
 @pytest.fixture()
