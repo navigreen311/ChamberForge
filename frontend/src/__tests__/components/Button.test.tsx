@@ -16,7 +16,7 @@ describe('Button', () => {
   it('applies secondary variant styles', () => {
     render(<Button variant="secondary">Secondary</Button>)
     const btn = screen.getByRole('button')
-    expect(btn.className).toContain('bg-chamber-700')
+    expect(btn.className).toContain('border-chamber-600')
   })
 
   it('applies danger variant styles', () => {
@@ -28,7 +28,7 @@ describe('Button', () => {
   it('applies ghost variant styles', () => {
     render(<Button variant="ghost">Ghost</Button>)
     const btn = screen.getByRole('button')
-    expect(btn.className).toContain('bg-transparent')
+    expect(btn.className).toContain('text-chamber-300')
   })
 
   it('shows spinner when loading', () => {

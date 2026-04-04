@@ -4,6 +4,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 const mockPush = jest.fn()
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }))
 
 // Mock useAuth
@@ -18,6 +21,31 @@ jest.mock('@/hooks/useAuth', () => ({
     logout: jest.fn(),
     register: jest.fn(),
   }),
+}))
+
+// Mock useFormValidation — always passes validation
+jest.mock('@/hooks/useFormValidation', () => ({
+  useFormValidation: () => ({
+    validate: () => true,
+    getError: () => undefined,
+    clearErrors: jest.fn(),
+    errors: {},
+  }),
+}))
+
+// Mock api
+const mockPost = jest.fn()
+jest.mock('@/lib/api', () => ({
+  __esModule: true,
+  default: {
+    post: (...args: any[]) => mockPost(...args),
+    get: jest.fn(),
+    interceptors: {
+      request: { use: jest.fn() },
+      response: { use: jest.fn() },
+    },
+    defaults: { headers: {} },
+  },
 }))
 
 // Mock the UI components to simplify
@@ -80,6 +108,7 @@ import LoginPage from '@/app/login/page'
 describe('Login Page', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    localStorage.clear()
   })
 
   it('renders sign-in form', () => {
@@ -96,7 +125,9 @@ describe('Login Page', () => {
   })
 
   it('calls login on form submit', async () => {
-    mockLogin.mockResolvedValue({ id: '1', name: 'Test' })
+    mockPost.mockResolvedValue({
+      data: { access_token: 'tok', refresh_token: 'ref', user: { id: '1', name: 'Test' } },
+    })
 
     render(<LoginPage />)
 
@@ -110,12 +141,17 @@ describe('Login Page', () => {
     fireEvent.submit(screen.getByRole('heading', { name: /sign in/i }).closest('form')!)
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('user@test.com', 'password123')
+      expect(mockPost).toHaveBeenCalledWith('/api/v1/auth/login', {
+        email: 'user@test.com',
+        password: 'password123',
+      })
     })
   })
 
   it('navigates to dashboard on success', async () => {
-    mockLogin.mockResolvedValue({ id: '1', name: 'Test' })
+    mockPost.mockResolvedValue({
+      data: { access_token: 'tok', refresh_token: 'ref', user: { id: '1', name: 'Test' } },
+    })
 
     render(<LoginPage />)
 
@@ -133,7 +169,7 @@ describe('Login Page', () => {
   })
 
   it('shows error message on login failure', async () => {
-    mockLogin.mockRejectedValue(new Error('Invalid credentials'))
+    mockPost.mockRejectedValue(new Error('Invalid credentials'))
 
     render(<LoginPage />)
 
@@ -151,7 +187,7 @@ describe('Login Page', () => {
   })
 
   it('shows fallback error for non-Error rejections', async () => {
-    mockLogin.mockRejectedValue('some string error')
+    mockPost.mockRejectedValue('some string error')
 
     render(<LoginPage />)
 
