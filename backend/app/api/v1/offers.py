@@ -4,11 +4,11 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user, get_workspace_id
-from app.core.exceptions import NotFoundError, ValidationError
+from app.core.exceptions import NotFoundError, ValidationError, ConflictError
 from app.db.session import get_db
 from app.models.offer import Offer
 from app.models.user import User
@@ -93,6 +93,8 @@ def update_offer(
     offer = db.query(Offer).filter(Offer.id == offer_id, Offer.workspace_id == workspace_id).first()
     if not offer:
         raise NotFoundError("Offer", str(offer_id))
+    if offer.status == "sunset":
+        raise HTTPException(status_code=400, detail="Cannot modify sunset offers")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(offer, field, value)
     db.commit()
@@ -146,6 +148,9 @@ async def generate_offer(
     workspace_id: str = Depends(get_workspace_id),
 ):
     """AI-generate an offer draft from problem data and optional buyer profile."""
+    problem_id = body.get("problem_id")
+    if not problem_id:
+        raise ValidationError("Problem ID required for offer generation", {"problem_id": "Field is required"})
     problem_data = body.get("problem_data")
     if not problem_data:
         raise ValidationError("problem_data is required", {"problem_data": "Field is required"})

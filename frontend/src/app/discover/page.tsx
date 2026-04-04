@@ -187,8 +187,20 @@ export default function DiscoverPage() {
             </a>
           ))}
           {!loading && problems.length === 0 && (
-            <div className="col-span-2 text-center py-16 text-chamber-500">
-              No problems match your filters. Try adjusting your criteria.
+            <div className="col-span-2 flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 mb-4 rounded-full bg-chamber-800 flex items-center justify-center">
+                <svg className="w-8 h-8 text-chamber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">No problems discovered yet</h3>
+              <p className="text-chamber-400 mb-6 max-w-sm">Run an AI scan to get started. ChamberForge will analyze market signals to find high-value problems.</p>
+              <button
+                onClick={handleScan}
+                disabled={scanning}
+                className="px-5 py-2.5 bg-gold-400 text-chamber-950 font-semibold rounded-lg hover:bg-gold-300 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {scanning && <span className="w-4 h-4 border-2 border-chamber-950 border-t-transparent rounded-full animate-spin" />}
+                {scanning ? "Scanning..." : "Run AI Scan"}
+              </button>
             </div>
           )}
         </div>

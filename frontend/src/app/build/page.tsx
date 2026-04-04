@@ -114,7 +114,15 @@ export default function BuildPage() {
             <a href="/build/offer/new" className="text-gold-400 text-sm hover:underline">Create new &rarr;</a>
           </div>
           <div className="space-y-3">
-            {offers.length === 0 && <p className="text-chamber-500 text-sm">No offers yet. Create your first offer to get started.</p>}
+            {offers.length === 0 && (
+              <div className="flex flex-col items-center py-8 text-center">
+                <div className="w-12 h-12 mb-3 rounded-full bg-chamber-800 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-chamber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg>
+                </div>
+                <p className="text-chamber-400 text-sm mb-3">No offers yet. Create one from a discovered problem or activate a playbook.</p>
+                <a href="/build/offer/new" className="text-gold-400 text-sm font-medium hover:underline">Create your first offer &rarr;</a>
+              </div>
+            )}
             {offers.map((o) => (
               <a key={o.id} href={`/build/offer/${o.id}`} className="flex items-center justify-between p-3 rounded-lg bg-chamber-800/50 hover:bg-chamber-800 transition">
                 <div>

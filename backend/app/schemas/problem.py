@@ -100,3 +100,4 @@ class ProblemList(BaseModel):
     total: int
     skip: int
     limit: int
+    message: Optional[str] = None

@@ -127,7 +127,15 @@ export default function HealthMonitorPage() {
           </thead>
           <tbody>
             {clients.length === 0 ? (
-              <tr><td colSpan={6} className="px-5 py-8 text-center text-chamber-500">No client health data found.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-12 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 mb-3 rounded-full bg-chamber-800 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-chamber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  </div>
+                  <p className="text-white font-medium mb-1">No health data available</p>
+                  <p className="text-chamber-500 text-sm">Health scores will appear here once clients are onboarded and monitored.</p>
+                </div>
+              </td></tr>
             ) : clients.sort((a, b) => a.health - b.health).map((c) => {
               const trendDir = c.trend.length >= 2 ? c.trend[c.trend.length - 1] - c.trend[0] : 0;
               return (
