@@ -1,29 +1,28 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-interface SimpleModeContextValue {
-  isSimple: boolean;
-  toggle: () => void;
-}
-
-const SimpleModeContext = createContext<SimpleModeContextValue>({
-  isSimple: false,
-  toggle: () => {},
-});
-
-export function SimpleModeProvider({ children }: { children: ReactNode }) {
-  const [isSimple, setIsSimple] = useState(false);
-  const toggle = useCallback(() => setIsSimple((v) => !v), []);
-
-  return React.createElement(
-    SimpleModeContext.Provider,
-    { value: { isSimple, toggle } },
-    children,
-  );
-}
+const STORAGE_KEY = 'cf-mode';
 
 export function useSimpleMode() {
-  return useContext(SimpleModeContext);
+  const [isSimple, setIsSimple] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === 'simple') setIsSimple(true);
+    } catch {}
+  }, []);
+
+  const toggle = useCallback(() => {
+    setIsSimple((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(STORAGE_KEY, next ? 'simple' : 'expert'); } catch {}
+      return next;
+    });
+  }, []);
+
+  return { isSimple: mounted ? isSimple : false, toggle, mounted };
 }
