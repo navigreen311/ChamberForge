@@ -10,6 +10,15 @@ NARRATIVES = {
         "why_wealthy": ["Higher-value targets justify sophisticated AI cloning costs", "More weak links: staff, vendors, older relatives, board members", "68% of family offices lack formal incident response plans"],
         "roi_proof": "One prevented wire fraud pays for 2+ years of fees",
         "client_trigger": "Near-miss incident or peer's security breach",
+        "current_solutions": [
+            {"approach": "IT managed service provider", "why_it_fails": "Handles corporate infrastructure, not family."},
+            {"approach": "Consumer-grade password managers", "why_it_fails": "Solves one vector but not voice cloning or social engineering."},
+            {"approach": "Ad hoc training sessions", "why_it_fails": "One-time sessions don't build lasting habits."}
+        ],
+        "compliance_risk": "none",
+        "compliance_risk_note": "",
+        "trend_data": [12, 15, 18, 22, 28, 35, 42, 50, 58, 65, 72, 80],
+        "competitor_count": 3,
     },
     "coordination-overload": {
         "narrative": "Newly wealthy founders who exit with $10-50M face an immediate lifestyle complexity explosion. Within months, they acquire multiple properties, hire staff, join boards, and begin family travel — all without structures to manage it. The result: missed deadlines, double-booked travel, vendor chaos, and constant anxiety.",
@@ -19,6 +28,15 @@ NARRATIVES = {
         "why_wealthy": ["Every additional property and staff member multiplies coordination", "Founder's time opportunity cost makes DIY management expensive", "No corporate infrastructure — they went from a company with an EA to solo chaos"],
         "roi_proof": "Clients report saving 15-20 hours per week of personal time",
         "client_trigger": "Exit or IPO within 12 months",
+        "current_solutions": [
+            {"approach": "Executive assistant", "why_it_fails": "One person can't cover 3 properties, 10 vendors, and travel logistics."},
+            {"approach": "House manager per property", "why_it_fails": "No coordination between properties. Each manager is siloed."},
+            {"approach": "DIY with apps and spreadsheets", "why_it_fails": "Founders don't have time. The system breaks when they travel."}
+        ],
+        "compliance_risk": "none",
+        "compliance_risk_note": "",
+        "trend_data": [20, 22, 25, 28, 32, 36, 40, 44, 48, 52, 55, 58],
+        "competitor_count": 5,
     },
 }
 
@@ -29,6 +47,18 @@ OFFER_PREVIEWS = {
         "price_min": 10000, "price_max": 25000,
         "pricing_model": "Monthly retainer", "delivery_model": "Team",
         "matched_playbook": "family-cyber-command",
+        "first_client_path": [
+            "Contact 3 estate attorneys or private bankers you know.",
+            "Offer a free 30-minute assessment.",
+            "Present the retainer with the ROI argument."
+        ],
+        "objections": [
+            {"objection": "We already have IT support", "response": "IT handles your company. This handles your family."},
+            {"objection": "We have cyber insurance", "response": "Insurance pays after. This prevents the loss."},
+            {"objection": "How do we know you're trustworthy?", "response": "Background checks, NDA, referral-only."}
+        ],
+        "weekly_hours": 8,
+        "startup_cost": "$200-500 in tools and setup",
     },
     "coordination-overload": {
         "offer_name": "Private Operations Office",
@@ -36,6 +66,18 @@ OFFER_PREVIEWS = {
         "price_min": 15000, "price_max": 30000,
         "pricing_model": "Monthly retainer", "delivery_model": "Orchestrated",
         "matched_playbook": "private-ops-office",
+        "first_client_path": [
+            "Contact 3 estate attorneys or private bankers you know.",
+            "Offer a free 30-minute assessment.",
+            "Present the retainer with the ROI argument."
+        ],
+        "objections": [
+            {"objection": "We already have IT support", "response": "IT handles your company. This handles your family."},
+            {"objection": "We have cyber insurance", "response": "Insurance pays after. This prevents the loss."},
+            {"objection": "How do we know you're trustworthy?", "response": "Background checks, NDA, referral-only."}
+        ],
+        "weekly_hours": 8,
+        "startup_cost": "$200-500 in tools and setup",
     },
 }
 
