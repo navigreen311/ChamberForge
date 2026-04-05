@@ -39,6 +39,12 @@ export async function POST(
       userFitScore: number
       weeklyHours: number
       startupCost: string
+      timeToFirstClient: string
+      licenseRequired: string
+      pitchOpener: string
+      beginnerFriendly: boolean
+      competitionLabel: string
+      competitionColor: string
     }
   > = {
     'ai-voice-fraud': {
@@ -99,7 +105,13 @@ export async function POST(
       competitorCount: 3,
       userFitScore: 75,
       weeklyHours: 8,
-      startupCost: '$200-500 in tools and setup',
+      startupCost: '$200-500',
+      timeToFirstClient: '4-8 wks',
+      licenseRequired: 'None',
+      pitchOpener: 'Have any of your clients mentioned concerns about AI voice scams lately? We\'ve seen a huge spike.',
+      beginnerFriendly: true,
+      competitionLabel: 'Blue ocean',
+      competitionColor: '#1D9E75',
     },
     'coordination-overload': {
       offerName: 'Wealth Coordination Hub',
@@ -158,7 +170,13 @@ export async function POST(
       competitorCount: 5,
       userFitScore: 80,
       weeklyHours: 12,
-      startupCost: '$500-1,000 in software and onboarding',
+      startupCost: '$500-1000',
+      timeToFirstClient: '6-10 wks',
+      licenseRequired: 'None',
+      pitchOpener: 'How are your newly exited founders handling the lifestyle complexity? We keep hearing about dropped balls.',
+      beginnerFriendly: false,
+      competitionLabel: 'Low competition',
+      competitionColor: '#85B7EB',
     },
     'data-broker-exposure': {
       offerName: 'Digital Privacy & Data Shield Program',
@@ -217,7 +235,13 @@ export async function POST(
       competitorCount: 8,
       userFitScore: 70,
       weeklyHours: 6,
-      startupCost: '$300-800 in scanning tools and subscriptions',
+      startupCost: '$100-300',
+      timeToFirstClient: '3-6 wks',
+      licenseRequired: 'None',
+      pitchOpener: 'Have you seen the FTC actions on data brokers? Some of your clients may be more exposed than they realize.',
+      beginnerFriendly: true,
+      competitionLabel: 'Competitive',
+      competitionColor: '#BA7517',
     },
     'risk-governance-gaps': {
       offerName: 'Family Office Risk & Governance Framework',
@@ -277,7 +301,13 @@ export async function POST(
       competitorCount: 6,
       userFitScore: 72,
       weeklyHours: 10,
-      startupCost: '$1,000-2,500 in assessment tools and templates',
+      startupCost: '$300-600',
+      timeToFirstClient: '8-12 wks',
+      licenseRequired: 'State-dependent',
+      pitchOpener: 'When was the last time your family office clients stress-tested anything besides their investments?',
+      beginnerFriendly: false,
+      competitionLabel: 'Moderate',
+      competitionColor: '#85B7EB',
     },
     'healthcare-navigation': {
       offerName: 'Elite Health Navigation & Advocacy Program',
@@ -336,7 +366,13 @@ export async function POST(
       competitorCount: 4,
       userFitScore: 78,
       weeklyHours: 10,
-      startupCost: '$500-1,500 in HIPAA-compliant tools and setup',
+      startupCost: '$200-400',
+      timeToFirstClient: '4-6 wks',
+      licenseRequired: 'Must partner with physicians',
+      pitchOpener: 'Are any of your clients frustrated by fragmented healthcare — too many specialists, nobody connecting the dots?',
+      beginnerFriendly: true,
+      competitionLabel: 'Low competition',
+      competitionColor: '#1D9E75',
     },
   }
 
