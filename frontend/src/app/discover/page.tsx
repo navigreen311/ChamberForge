@@ -529,12 +529,21 @@ export default function DiscoverPage() {
                   </div>
                 </div>
 
-                {/* Offer Teaser */}
+                {/* Offer Teaser + PRIMARY CTA */}
                 <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">What you'd sell:</div>
-                  <div className="text-sm font-medium text-white">{p.offerTeaser.name}</div>
-                  <div className="text-sm text-emerald-400 font-semibold">{p.offerTeaser.price}</div>
-                  <button onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }} className="text-[11px] text-[#C9A84C] hover:underline mt-1">See the full opportunity →</button>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">What you'd sell:</div>
+                      <div className="text-sm font-medium text-white">{p.offerTeaser.name}</div>
+                    </div>
+                    <div className="text-sm text-emerald-400 font-semibold">{p.offerTeaser.price}</div>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }}
+                    className="w-full py-2.5 bg-[#C9A84C] text-[#0D1117] font-semibold text-[13px] rounded-lg hover:bg-[#B8973B] transition-colors flex items-center justify-center gap-2"
+                  >
+                    See the full opportunity <span>→</span>
+                  </button>
                 </div>
               </div>
             ))}
