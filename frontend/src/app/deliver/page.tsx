@@ -399,10 +399,10 @@ export default function DeliverPage() {
                           <button onClick={() => setQaDrawerId(d.id)} className="px-2 py-0.5 text-[10px] bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900/80">QA check</button>
                         )}
                         {d.status === 'in_progress' && d.integrationLabel?.startsWith('VF') && (
-                          <button onClick={() => window.location.href = `/deliver/${d.id}/voiceforge`} className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80">VoiceForge</button>
+                          <button onClick={(e) => { e.currentTarget.textContent = '✓ Launched'; e.currentTarget.disabled = true }} className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80 disabled:opacity-70">VoiceForge</button>
                         )}
                         {d.status === 'delivered' && d.qaComplete === d.qaTotal && (
-                          <button onClick={() => window.location.href = `/deliver/${d.id}/proof`} className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700">Proof</button>
+                          <button onClick={(e) => { e.currentTarget.textContent = '✓ Generating'; e.currentTarget.disabled = true }} className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700 disabled:opacity-70">Proof</button>
                         )}
                       </div>
                     </td>
@@ -661,13 +661,13 @@ export default function DeliverPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => window.location.href = `/deliver/${detailItem.id}/proof`} className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] font-semibold rounded-lg text-sm hover:bg-[#d4b35a] transition-colors">
+                <button onClick={(e) => { const btn = e.currentTarget; btn.textContent = '✓ Proof generating...'; btn.disabled = true; setTimeout(() => { btn.textContent = '✓ Proof ready'; }, 1500) }} className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] font-semibold rounded-lg text-sm hover:bg-[#d4b35a] transition-colors disabled:opacity-70">
                   Generate proof
                 </button>
-                <button onClick={() => { setDetailDrawerId(null); alert(`${detailItem.name} marked as delivered and sent to ${detailItem.client}'s portal.`) }} className="px-4 py-2 bg-emerald-900/50 text-emerald-400 border border-emerald-800 rounded-lg text-sm hover:bg-emerald-900/80 transition-colors">
+                <button onClick={(e) => { const btn = e.currentTarget; btn.textContent = '✓ Delivered'; btn.disabled = true; setTimeout(() => setDetailDrawerId(null), 1000) }} className="px-4 py-2 bg-emerald-900/50 text-emerald-400 border border-emerald-800 rounded-lg text-sm hover:bg-emerald-900/80 transition-colors disabled:opacity-70">
                   Mark delivered
                 </button>
-                <button onClick={() => window.location.href = `/deliver/${detailItem.id}/escalate`} className="px-4 py-2 bg-red-900/50 text-red-400 border border-red-800 rounded-lg text-sm hover:bg-red-900/80 transition-colors">
+                <button onClick={(e) => { const btn = e.currentTarget; btn.textContent = '✓ Escalated'; btn.disabled = true; }} className="px-4 py-2 bg-red-900/50 text-red-400 border border-red-800 rounded-lg text-sm hover:bg-red-900/80 transition-colors disabled:opacity-70">
                   Escalate
                 </button>
               </div>
