@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // ─── Types ───────────────────────────────────────────────────
 type Tier = 'HNW' | 'UHNW'
@@ -723,13 +724,13 @@ function PlaybookCard({ playbook: p, selected, onSelect, onActivate, composerMod
         {/* Actions */}
         <div className="flex gap-2">
           {p.redTeam === 'Failed' ? (
-            <button onClick={e => { e.stopPropagation() }} className="text-[11px] bg-red-900/50 text-red-400 border border-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-900/70 transition">Fix issues</button>
+            <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/red-team?mode=fix` }} className="text-[11px] bg-red-900/50 text-red-400 border border-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-900/70 transition">Fix issues</button>
           ) : (
             <button onClick={e => { e.stopPropagation(); onActivate() }} className="text-[11px] bg-[#C9A84C] text-[#0D1117] font-medium px-3 py-1.5 rounded hover:bg-[#C9A84C]/90 transition">Activate</button>
           )}
           <button onClick={e => { e.stopPropagation(); onSelect() }} className="text-[11px] border border-gray-600 text-gray-300 px-3 py-1.5 rounded hover:border-gray-400 transition">View details</button>
-          <button onClick={e => e.stopPropagation()} className="text-[11px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded hover:bg-[#C9A84C]/10 transition">Customize</button>
-          <button onClick={e => e.stopPropagation()} className="text-[11px] border border-purple-700 text-purple-400 px-3 py-1.5 rounded hover:bg-purple-900/30 transition">Red-team</button>
+          <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/customize` }} className="text-[11px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded hover:bg-[#C9A84C]/10 transition">Customize</button>
+          <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/red-team` }} className="text-[11px] border border-purple-700 text-purple-400 px-3 py-1.5 rounded hover:bg-purple-900/30 transition">Red-team</button>
         </div>
       </div>
     </div>
@@ -859,12 +860,12 @@ function DetailPanel({ playbook: p, onActivate }: { playbook: Playbook; onActiva
         {/* Action buttons */}
         <div className="space-y-2">
           {p.redTeam === 'Failed' ? (
-            <button onClick={() => alert(`Red-team issues for ${p.name}:\n\n1. Compliance risk — regulated domain detected\n2. Delivery fragility — single point of failure\n3. Vague guarantees — needs specific outcome language\n\nFix these before activating.`)} className="w-full text-xs bg-red-900/50 text-red-400 border border-red-700 font-medium py-2 rounded-lg hover:bg-red-900/70 transition">Fix Red-team Issues</button>
+            <button onClick={() => window.location.href = `/playbooks/${p.slug}/red-team?mode=fix`} className="w-full text-xs bg-red-900/50 text-red-400 border border-red-700 font-medium py-2 rounded-lg hover:bg-red-900/70 transition">Fix Red-team Issues</button>
           ) : (
             <button onClick={onActivate} className="w-full text-xs bg-[#C9A84C] text-[#0D1117] font-medium py-2 rounded-lg hover:bg-[#C9A84C]/90 transition">Activate Playbook</button>
           )}
-          <button onClick={() => alert(`Customizing "${p.name}" — creating a copy you can modify with your own pricing, SOPs, and branding.`)} className="w-full text-xs border border-[#C9A84C]/40 text-[#C9A84C] py-2 rounded-lg hover:bg-[#C9A84C]/10 transition">Customize</button>
-          <button onClick={() => alert(`Running Red-team Audit on "${p.name}"...\n\nChecking: compliance risk, delivery fragility, margin stress, competitive vulnerability, reputation risk.\n\nResults will appear in the detail panel.`)} className="w-full text-xs border border-purple-700 text-purple-400 py-2 rounded-lg hover:bg-purple-900/30 transition">Run Red-team Audit</button>
+          <button onClick={() => window.location.href = `/playbooks/${p.slug}/customize`} className="w-full text-xs border border-[#C9A84C]/40 text-[#C9A84C] py-2 rounded-lg hover:bg-[#C9A84C]/10 transition">Customize</button>
+          <button onClick={() => window.location.href = `/playbooks/${p.slug}/red-team`} className="w-full text-xs border border-purple-700 text-purple-400 py-2 rounded-lg hover:bg-purple-900/30 transition">Run Red-team Audit</button>
         </div>
       </div>
     </div>

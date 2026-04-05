@@ -387,22 +387,22 @@ export default function DeliverPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button onClick={() => setDetailDrawerId(d.id)} className="px-2 py-0.5 text-[10px] bg-[#1e2a3a] text-gray-300 rounded hover:bg-[#263345]">View</button>
                         {d.status === 'overdue' && (
-                          <button className="px-2 py-0.5 text-[10px] bg-red-900/50 text-red-400 rounded hover:bg-red-900/80">Escalate</button>
+                          <button onClick={() => alert(`Escalated: ${d.name} for ${d.client}\n\nNotification sent to team. Added to escalation log.`)} className="px-2 py-0.5 text-[10px] bg-red-900/50 text-red-400 rounded hover:bg-red-900/80">Escalate</button>
                         )}
                         {d.status === 'under_review' && (
                           <>
-                            <button className="px-2 py-0.5 text-[10px] bg-emerald-900/50 text-emerald-400 rounded hover:bg-emerald-900/80">Approve</button>
-                            <button className="px-2 py-0.5 text-[10px] bg-amber-900/50 text-amber-400 rounded hover:bg-amber-900/80">Revise</button>
+                            <button onClick={() => alert(`Approved: ${d.name}\n\nDeliverable marked as approved and ready for client portal.`)} className="px-2 py-0.5 text-[10px] bg-emerald-900/50 text-emerald-400 rounded hover:bg-emerald-900/80">Approve</button>
+                            <button onClick={() => alert(`Revision requested: ${d.name}\n\nAssignee notified. Deliverable moved back to In Progress.`)} className="px-2 py-0.5 text-[10px] bg-amber-900/50 text-amber-400 rounded hover:bg-amber-900/80">Revise</button>
                           </>
                         )}
                         {d.status === 'in_progress' && d.type === 'Assessment' && (
-                          <button className="px-2 py-0.5 text-[10px] bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900/80">QA check</button>
+                          <button onClick={() => setQaDrawerId(d.id)} className="px-2 py-0.5 text-[10px] bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900/80">QA check</button>
                         )}
                         {d.status === 'in_progress' && d.integrationLabel?.startsWith('VF') && (
-                          <button className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80">VoiceForge</button>
+                          <button onClick={() => alert(`VoiceForge session for ${d.name}:\n\nOpening voice training module for ${d.client}.\nSession type: ${d.type}`)} className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80">VoiceForge</button>
                         )}
                         {d.status === 'delivered' && d.qaComplete === d.qaTotal && (
-                          <button className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700">Proof</button>
+                          <button onClick={() => alert(`Generating proof asset for ${d.name}:\n\nCreating before/after scorecard with KPI results for ${d.client}.`)} className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700">Proof</button>
                         )}
                       </div>
                     </td>
