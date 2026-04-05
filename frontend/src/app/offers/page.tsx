@@ -364,7 +364,7 @@ export default function OffersPage() {
                           <span className={`text-[11px] ${o.actionColor}`}>{o.nextAction}</span>
                         </td>
                         <td className="p-3">
-                          <button className="text-gray-500 hover:text-[#C9A84C] text-sm">View →</button>
+                          <button onClick={() => setSelectedOffer(o)} className="text-gray-500 hover:text-[#C9A84C] text-sm">View →</button>
                         </td>
                       </tr>
                     ))}
@@ -476,8 +476,8 @@ export default function OffersPage() {
 
                 {/* Actions */}
                 <div className="border-t border-[#1e2a3a] pt-3 mt-3 flex gap-2">
-                  <button className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
-                  <button className="flex-1 bg-[#1e2a3a] text-gray-300 text-xs py-2 rounded-lg hover:bg-[#1e2a3a]/80">View Full</button>
+                  <button onClick={() => alert(`Editing offer: ${selectedOffer?.name}`)} className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
+                  <button onClick={() => alert(`Full view: ${selectedOffer?.name}\n\nClient: ${selectedOffer?.client}\nMonthly: $${selectedOffer?.monthly ? (selectedOffer.monthly/1000).toFixed(0) + 'K' : '—'}\nDelivery: ${selectedOffer?.delivery}\nStatus: ${selectedOffer?.status}`)} className="flex-1 bg-[#1e2a3a] text-gray-300 text-xs py-2 rounded-lg hover:bg-[#1e2a3a]/80">View Full</button>
                 </div>
               </div>
             ) : (
