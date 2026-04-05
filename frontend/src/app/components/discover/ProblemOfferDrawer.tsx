@@ -51,6 +51,14 @@ interface ProblemData {
   lifecycle: string;
   sourceQuote?: string;
   sourceAttribution?: string;
+  /* LEFT — Extended */
+  trendData: number[];
+  trendGrowth: string;
+  weeklyHours: string;
+  startupCost: string;
+  timeToFirstClient: string;
+  pitchOpener: string;
+  quickFacts: { label: string; value: string }[];
   /* RIGHT — The Offer */
   offerName: string;
   offerTagline: string;
@@ -96,6 +104,19 @@ const PROBLEMS: Record<string, ProblemData> = {
     lifecycle: 'Emerging',
     complianceRisk: 'none',
     complianceRiskNote: '',
+    trendData: [12, 15, 18, 22, 28, 35, 42, 50, 58, 65, 72, 80],
+    trendGrowth: '340%',
+    weeklyHours: '8h',
+    startupCost: '$300–600',
+    timeToFirstClient: '4–8 wks',
+    pitchOpener: "Have any of your clients mentioned concerns about AI voice scams lately? We\u2019ve been seeing a huge spike \u2014 I\u2019d love to share what we\u2019re doing about it.",
+    quickFacts: [
+      { label: 'Evidence credibility', value: 'High (FBI, Deloitte)' },
+      { label: 'Competition level', value: 'Low \u2014 few specialists' },
+      { label: 'Regulation risk', value: 'None' },
+      { label: 'Fit for beginners', value: 'Moderate \u2014 needs security background' },
+      { label: 'Related playbook', value: 'Incident Response Retainer' },
+    ],
     currentSolutions: [
       { approach: 'IT managed service provider', whyItFails: 'Handles corporate infrastructure, not family. Doesn\'t train household staff or verify personal calls.' },
       { approach: 'Consumer-grade password managers', whyItFails: 'Solves one vector but not voice cloning, SIM swaps, or social engineering of family members.' },
@@ -205,6 +226,19 @@ const PROBLEMS: Record<string, ProblemData> = {
     lifecycle: 'Accelerating',
     complianceRisk: 'none',
     complianceRiskNote: '',
+    trendData: [20, 22, 25, 28, 32, 36, 40, 44, 48, 52, 55, 58],
+    trendGrowth: '190%',
+    weeklyHours: '10h',
+    startupCost: '$200–400',
+    timeToFirstClient: '3–6 wks',
+    pitchOpener: "Do any of your recently-exited founders mention feeling overwhelmed managing their new lifestyle? We help them build an operating system for their household so nothing falls through the cracks.",
+    quickFacts: [
+      { label: 'Evidence credibility', value: 'Strong (wealth manager surveys)' },
+      { label: 'Competition level', value: 'Low \u2014 fragmented market' },
+      { label: 'Regulation risk', value: 'None' },
+      { label: 'Fit for beginners', value: 'High \u2014 ops background sufficient' },
+      { label: 'Related playbook', value: 'Estate Management SOP' },
+    ],
     currentSolutions: [
       { approach: 'Executive assistant from their old company', whyItFails: 'Corporate EAs manage one executive\'s calendar, not a multi-property household with staff, vendors, and family logistics.' },
       { approach: 'Property management companies', whyItFails: 'Manages buildings, not lives. No coordination across properties, staff schedules, or family calendars.' },
