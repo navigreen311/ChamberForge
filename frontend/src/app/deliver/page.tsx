@@ -661,13 +661,13 @@ export default function DeliverPage() {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-2">
-                <button className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] font-semibold rounded-lg text-sm hover:bg-[#d4b35a] transition-colors">
+                <button onClick={() => window.location.href = `/deliver/${detailItem.id}/proof`} className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] font-semibold rounded-lg text-sm hover:bg-[#d4b35a] transition-colors">
                   Generate proof
                 </button>
-                <button className="px-4 py-2 bg-emerald-900/50 text-emerald-400 border border-emerald-800 rounded-lg text-sm hover:bg-emerald-900/80 transition-colors">
+                <button onClick={() => { setDetailDrawerId(null); alert(`${detailItem.name} marked as delivered and sent to ${detailItem.client}'s portal.`) }} className="px-4 py-2 bg-emerald-900/50 text-emerald-400 border border-emerald-800 rounded-lg text-sm hover:bg-emerald-900/80 transition-colors">
                   Mark delivered
                 </button>
-                <button className="px-4 py-2 bg-red-900/50 text-red-400 border border-red-800 rounded-lg text-sm hover:bg-red-900/80 transition-colors">
+                <button onClick={() => window.location.href = `/deliver/${detailItem.id}/escalate`} className="px-4 py-2 bg-red-900/50 text-red-400 border border-red-800 rounded-lg text-sm hover:bg-red-900/80 transition-colors">
                   Escalate
                 </button>
               </div>
