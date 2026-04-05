@@ -138,8 +138,8 @@ export default function DashboardPage() {
               </div>
               <div className="text-emerald-400 text-sm font-medium mt-3">Est. impact: $18,000/mo retainer</div>
               <div className="flex gap-3 mt-4">
-                <button className="bg-[#C9A84C] text-[#0D1117] font-semibold px-4 py-2 rounded-lg hover:bg-[#C9A84C]/90">Execute</button>
-                <button className="border border-gray-600 text-gray-300 px-4 py-2 rounded-lg hover:border-gray-400">Dismiss</button>
+                <button onClick={(e) => { e.currentTarget.textContent = '✓ Executing...'; e.currentTarget.disabled = true; setTimeout(() => { e.currentTarget.textContent = '✓ Action executed' }, 1500) }} className="bg-[#C9A84C] text-[#0D1117] font-semibold px-4 py-2 rounded-lg hover:bg-[#C9A84C]/90 disabled:opacity-70">Execute</button>
+                <button onClick={(e) => { e.currentTarget.textContent = '✓ Dismissed'; e.currentTarget.disabled = true }} className="border border-gray-600 text-gray-300 px-4 py-2 rounded-lg hover:border-gray-400 disabled:opacity-70">Dismiss</button>
                 <button onClick={() => setShowEvidence(true)} className="border border-gray-600 text-gray-300 px-4 py-2 rounded-lg hover:border-[#C9A84C]">View evidence chain</button>
               </div>
             </div>
