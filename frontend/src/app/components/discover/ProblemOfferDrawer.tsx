@@ -1084,6 +1084,16 @@ export default function ProblemOfferDrawer({
                 <p className="text-xl font-bold text-emerald-400">${annualRevenue.toLocaleString()}</p>
               </div>
             </div>
+            <button
+              onClick={(e) => {
+                e.currentTarget.textContent = '✓ Saved to Revenue Dashboard';
+                e.currentTarget.disabled = true;
+                e.currentTarget.className = e.currentTarget.className.replace('border-[#C9A84C]/40 text-[#C9A84C]', 'border-emerald-700 text-emerald-400');
+              }}
+              className="w-full mt-3 py-2 text-[10px] border border-[#C9A84C]/40 text-[#C9A84C] rounded-md hover:bg-[#C9A84C]/10 transition disabled:opacity-70"
+            >
+              Save this projection to Revenue Dashboard →
+            </button>
           </div>
 
           {/* What you actually do */}
