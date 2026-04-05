@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 /* ───────────────────────────── Types ───────────────────────────── */
 
@@ -32,6 +32,11 @@ interface WeekSchedule {
   [key: string]: string;
 }
 
+interface Objection {
+  objection: string;
+  response: string;
+}
+
 interface ProblemData {
   /* LEFT — The Problem */
   title: string;
@@ -50,15 +55,15 @@ interface ProblemData {
   offerName: string;
   offerTagline: string;
   price: string;
+  priceMin: number;
+  priceMax: number;
   delivery: string;
   steps: OfferStep[];
   week: WeekSchedule;
   deliverables: string[];
   idealClient: IdealClient;
-  /* Compliance & current solutions */
-  complianceRisk: 'none' | 'low' | 'medium' | 'high';
-  complianceRiskNote: string;
-  currentSolutions: CurrentSolution[];
+  firstClientPath: string[];
+  objections: Objection[];
   /* Simple-mode extras */
   simpleStory: string;
   simpleExample: string;
@@ -102,6 +107,8 @@ const PROBLEMS: Record<string, ProblemData> = {
     offerName: 'Family Cybersecurity & Identity Command Center',
     offerTagline: "24/7 protection for your family\u2019s digital identity and financial communications",
     price: '$10,000 \u2013 $25,000/month',
+    priceMin: 10000,
+    priceMax: 25000,
     delivery: 'Team (you + 2 specialists)',
     steps: [
       {
@@ -147,6 +154,16 @@ const PROBLEMS: Record<string, ProblemData> = {
       question: "How do we know our staff won\u2019t fall for the next call?",
       roi: 'One prevented wire fraud pays for 2+ years of fees',
     },
+    firstClientPath: [
+      'Contact 3 estate attorneys or private bankers you know. Ask: \u2018Any clients nervous about AI scams lately?\u2019',
+      'Offer a free 30-minute \u2018Household Security Assessment\u2019 \u2014 no pitch, just show them their gaps',
+      'Present the retainer with the ROI: one prevented fraud covers 2 years of fees',
+    ],
+    objections: [
+      { objection: 'We already have IT support', response: 'IT handles your company. This handles your family \u2014 different people, different risks.' },
+      { objection: 'We have cyber insurance', response: 'Insurance pays after a loss. This prevents the loss and the recovery nightmare.' },
+      { objection: 'How do we know you\u2019re trustworthy?', response: 'We provide background checks, NDA before engagement, work only through trusted referrals.' },
+    ],
     simpleStory:
       "Criminals can now copy anyone\u2019s voice with AI. They call your family office pretending to be you \u2014 same voice, same phrases \u2014 and request a wire transfer. The FBI says these attacks are up 300% this year, and most families have zero defense against them.\n\nThis isn\u2019t science fiction. It\u2019s happening right now to families just like your clients. One successful call can cost $2 million or more.",
     simpleExample:
@@ -196,6 +213,8 @@ const PROBLEMS: Record<string, ProblemData> = {
     offerName: 'Private Operations Office',
     offerTagline: 'One command center for your entire household and lifestyle',
     price: '$15,000 \u2013 $30,000/month',
+    priceMin: 15000,
+    priceMax: 30000,
     delivery: 'Orchestrated delivery',
     steps: [
       {
@@ -240,6 +259,16 @@ const PROBLEMS: Record<string, ProblemData> = {
       question: 'Can you guarantee nothing falls through the cracks?',
       roi: 'Clients report saving 15-20 hours per week of personal time',
     },
+    firstClientPath: [
+      'Reach out to 3 wealth managers who advise recently-exited founders. Ask: \u2018Any clients drowning in lifestyle complexity?\u2019',
+      'Offer a free \u2018Household Chaos Audit\u2019 \u2014 map their properties, staff, and vendors in one session',
+      'Show the ROI: 15-20 hours/week of reclaimed personal time at their opportunity cost',
+    ],
+    objections: [
+      { objection: 'I already have a personal assistant', response: 'A PA handles tasks. This is an operating system for your entire household \u2014 people, properties, vendors, all connected.' },
+      { objection: 'This feels like an expensive luxury', response: 'Your time is worth $2,000+/hour. Every hour you spend coordinating vendors costs more than a month of this service.' },
+      { objection: 'Can\u2019t I just hire a house manager?', response: 'A house manager handles one property. You need someone who orchestrates across all properties, staff, and travel simultaneously.' },
+    ],
     simpleStory:
       "After selling a company, founders suddenly have three homes, a team of household staff, board commitments, and family travel \u2014 but zero systems to manage any of it. Things start falling through the cracks almost immediately.\n\nThe result is chaos disguised as success: double-booked flights, missed school events, vendor invoices piling up, and the nagging feeling that you\u2019re dropping balls everywhere.",
     simpleExample:
@@ -292,6 +321,8 @@ const PROBLEMS: Record<string, ProblemData> = {
     offerName: 'Digital Footprint Erasure & Monitoring Service',
     offerTagline: 'Continuously remove your family from data brokers and monitor for new exposure',
     price: '$8,000 \u2013 $20,000/month',
+    priceMin: 8000,
+    priceMax: 20000,
     delivery: 'Team (you + 1 privacy analyst)',
     steps: [
       {
@@ -337,6 +368,16 @@ const PROBLEMS: Record<string, ProblemData> = {
       question: 'How much of our personal information is out there right now?',
       roi: 'Peace of mind is priceless, but one prevented incident justifies years of fees',
     },
+    firstClientPath: [
+      'Connect with 3 physical security firms or family office advisors. Ask: \u2018Have any clients been spooked by how much of their info is online?\u2019',
+      'Offer a free \u2018Digital Exposure Snapshot\u2019 \u2014 scan 10 brokers for one family member and show them the results',
+      'Present the ongoing service: brokers re-list every 60-90 days, so this requires continuous protection',
+    ],
+    objections: [
+      { objection: 'We already use a privacy service', response: 'Most services scan 20-30 brokers. We scan 200+ and re-check monthly because brokers re-list within 60 days.' },
+      { objection: 'Can\u2019t we just do this ourselves?', response: 'You could \u2014 it takes about 40 hours per family member per quarter. And it never stops because brokers constantly re-add you.' },
+      { objection: 'Is our data really that exposed?', response: 'Let us show you. We\u2019ll run a free scan on one family member right now \u2014 most clients are shocked by what we find.' },
+    ],
     simpleStory:
       "Right now, anyone can go online and find your client\u2019s home address, their children\u2019s school, daily schedules, and estimated net worth \u2014 all for about $20 on a data broker site. There are hundreds of these sites, and they re-list people every few months.\n\nFor ultra-wealthy families, this isn\u2019t just a privacy annoyance \u2014 it\u2019s a physical safety risk. Criminals use this data to plan targeted attacks, fraud, and social engineering.",
     simpleExample:
@@ -389,6 +430,8 @@ const PROBLEMS: Record<string, ProblemData> = {
     offerName: 'Family Office Risk & Governance Audit Practice',
     offerTagline: 'Identify and close the non-investment risks that destroy multi-generational wealth',
     price: '$12,000 \u2013 $28,000/month',
+    priceMin: 12000,
+    priceMax: 28000,
     delivery: 'Advisory (you + governance specialist)',
     steps: [
       {
@@ -434,6 +477,16 @@ const PROBLEMS: Record<string, ProblemData> = {
       question: 'What happens to our structures if [key person] is gone tomorrow?',
       roi: 'Avoiding one governance crisis saves $5-10M+ in legal fees and family fracture',
     },
+    firstClientPath: [
+      'Reach out to 3 family office attorneys or trust companies. Ask: \u2018Any clients worried about what happens if their key person is gone tomorrow?\u2019',
+      'Offer a free \u2018Governance Gap Assessment\u2019 \u2014 a 1-hour session to identify the top 3 non-investment risks',
+      'Present the engagement with the ROI: one governance crisis costs $5-10M+ in legal fees and family fracture',
+    ],
+    objections: [
+      { objection: 'We already have an attorney for this', response: 'Attorneys draft documents. This is ongoing operational risk management \u2014 who reviews your compliance calendar every month?' },
+      { objection: 'Our family gets along fine', response: 'Most families say that until there\u2019s a transition event. The best time to build governance is when things are calm.' },
+      { objection: 'This seems like overhead we don\u2019t need', response: 'The average governance crisis costs $5-10M in legal fees. This is insurance that also makes your operations run better.' },
+    ],
     simpleStory:
       "Family offices obsess over investment risk but ignore the risks that actually destroy families: what happens when the patriarch dies and nobody knows how the trusts work? What happens when a regulatory audit hits and there\u2019s no compliance calendar?\n\nThese non-investment risks \u2014 key-person dependency, succession gaps, regulatory exposure \u2014 are the silent killers of multi-generational wealth. And 72% of family offices have zero framework to address them.",
     simpleExample:
@@ -486,6 +539,8 @@ const PROBLEMS: Record<string, ProblemData> = {
     offerName: 'Family Health Concierge & Care Coordination',
     offerTagline: 'One trusted advisor who manages your family\u2019s complete health picture across every provider',
     price: '$10,000 \u2013 $22,000/month',
+    priceMin: 10000,
+    priceMax: 22000,
     delivery: 'Concierge (you + medical coordinator)',
     steps: [
       {
@@ -531,6 +586,16 @@ const PROBLEMS: Record<string, ProblemData> = {
       question: 'Who is making sure all my doctors are talking to each other?',
       roi: 'Better outcomes, faster treatment, and reclaimed personal time during the hardest moments',
     },
+    firstClientPath: [
+      'Connect with 3 concierge physicians or family office advisors. Ask: \u2018Any clients frustrated with coordinating care across multiple specialists?\u2019',
+      'Offer a free \u2018Care Coordination Assessment\u2019 \u2014 review one family member\u2019s provider landscape and show the gaps',
+      'Present the service with the value: better outcomes and reclaimed weeks of personal time during health crises',
+    ],
+    objections: [
+      { objection: 'We already have a concierge doctor', response: 'Concierge medicine solves access. This solves coordination across all your specialists \u2014 the gap your concierge doctor can\u2019t fill.' },
+      { objection: 'We\u2019re healthy, we don\u2019t need this', response: 'The best time to build your care network is before a crisis. When a diagnosis hits, you don\u2019t want to start from scratch.' },
+      { objection: 'This feels too personal to outsource', response: 'We don\u2019t make medical decisions \u2014 we make sure your doctors talk to each other and you have the full picture to decide.' },
+    ],
     simpleStory:
       "Wealthy families can see the best doctors in the world, but nobody is connecting the dots between them. When five specialists at three hospitals give conflicting treatment plans, who decides? When mom\u2019s cardiologist doesn\u2019t know what dad\u2019s oncologist prescribed, who catches the conflict?\n\nThe real gap isn\u2019t access to healthcare \u2014 it\u2019s someone who manages the full picture and coordinates everything so the family doesn\u2019t have to.",
     simpleExample:
@@ -586,6 +651,12 @@ export default function ProblemOfferDrawer({
   problemId,
 }: ProblemOfferDrawerProps) {
   const [isSimple, setIsSimple] = useState(false);
+  const [calcClients, setCalcClients] = useState(3);
+  const [calcRate, setCalcRate] = useState(17500);
+  const [readinessChecked, setReadinessChecked] = useState(false);
+  const [readinessItems, setReadinessItems] = useState([false, false, false]);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const rightColRef = useRef<HTMLDivElement>(null);
   const data = PROBLEMS[problemId];
 
   const handleKeyDown = useCallback(
@@ -606,7 +677,27 @@ export default function ProblemOfferDrawer({
     };
   }, [isOpen, handleKeyDown]);
 
+  const handleScroll = useCallback(() => {
+    const el = rightColRef.current;
+    if (!el) return;
+    const scrollable = el.scrollHeight - el.clientHeight;
+    if (scrollable > 0) {
+      setScrollProgress(Math.min((el.scrollTop / scrollable) * 100, 100));
+    }
+  }, []);
+
+  const toggleReadinessItem = (index: number) => {
+    const next = [...readinessItems];
+    next[index] = !next[index];
+    setReadinessItems(next);
+  };
+
+  const allChecked = readinessItems.every(Boolean);
+
   if (!isOpen || !data) return null;
+
+  const monthlyRevenue = calcClients * calcRate;
+  const annualRevenue = monthlyRevenue * 12;
 
   /* ── Simple Mode ── */
   if (isSimple) {
@@ -869,7 +960,15 @@ export default function ProblemOfferDrawer({
         </div>
 
         {/* ═══ RIGHT COLUMN: The Offer ═══ */}
-        <div className="p-6 lg:p-8 space-y-6 overflow-y-auto">
+        <div ref={rightColRef} onScroll={handleScroll} className="relative p-6 lg:p-8 space-y-6 overflow-y-auto">
+          {/* Scroll Progress Bar */}
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gray-800 z-10">
+            <div
+              className="h-full bg-[#C9A84C] transition-all duration-150"
+              style={{ width: `${scrollProgress}%` }}
+            />
+          </div>
+
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
               The Offer You Build
@@ -879,7 +978,7 @@ export default function ProblemOfferDrawer({
           </div>
 
           {/* Price & delivery */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-lg px-4 py-2">
               <p className="text-xs text-[#C9A84C]/70">Price</p>
               <p className="text-lg font-bold text-[#C9A84C]">{data.price}</p>
@@ -887,6 +986,69 @@ export default function ProblemOfferDrawer({
             <div className="bg-[#1a1f2e] border border-[#2a3040] rounded-lg px-4 py-2">
               <p className="text-xs text-gray-500">Delivery</p>
               <p className="text-sm font-semibold text-white">{data.delivery}</p>
+            </div>
+            {/* Integration Badges */}
+            <div className="flex gap-2 w-full">
+              <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/40">
+                VoiceForge &mdash; Persona sim + verified comms
+              </span>
+              <span className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-800/40">
+                VisionAudio &mdash; Branded deliverables
+              </span>
+            </div>
+          </div>
+
+          {/* Revenue Calculator */}
+          <div className="bg-[#161b22] border border-[#1e2a3a] rounded-lg p-5 space-y-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Revenue Calculator</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400">Clients</label>
+                  <span className="text-xs font-semibold text-white">{calcClients}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={calcClients}
+                  onChange={(e) => setCalcClients(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-[#C9A84C]"
+                />
+                <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
+                  <span>1</span>
+                  <span>10</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400">Rate / mo</label>
+                  <span className="text-xs font-semibold text-white">${calcRate.toLocaleString()}</span>
+                </div>
+                <input
+                  type="range"
+                  min={data.priceMin}
+                  max={data.priceMax}
+                  step={500}
+                  value={calcRate}
+                  onChange={(e) => setCalcRate(Number(e.target.value))}
+                  className="w-full h-1.5 bg-gray-700 rounded-full appearance-none cursor-pointer accent-[#C9A84C]"
+                />
+                <div className="flex justify-between text-[10px] text-gray-600 mt-0.5">
+                  <span>${data.priceMin.toLocaleString()}</span>
+                  <span>${data.priceMax.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-[#1e2a3a] pt-3 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Monthly</p>
+                <p className="text-xl font-bold text-[#C9A84C]">${monthlyRevenue.toLocaleString()}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Annual</p>
+                <p className="text-xl font-bold text-emerald-400">${annualRevenue.toLocaleString()}</p>
+              </div>
             </div>
           </div>
 
@@ -957,17 +1119,76 @@ export default function ProblemOfferDrawer({
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-3 pt-2 pb-8">
-            <button className="px-6 py-2.5 bg-[#C9A84C] hover:bg-[#d4b65c] text-black font-semibold text-sm rounded-lg transition-colors">
-              Build this offer now &rarr;
-            </button>
-            <button className="px-5 py-2.5 border border-[#2a3040] text-gray-400 hover:text-white hover:border-[#3a4050] text-sm rounded-lg transition-colors">
-              Save for later
-            </button>
-            <button className="px-5 py-2.5 border border-[#2a3040] text-gray-400 hover:text-white hover:border-[#3a4050] text-sm rounded-lg transition-colors">
-              Validate first
-            </button>
+          {/* First Client Pathway */}
+          <div className="border border-emerald-800/40 rounded-lg p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-emerald-400 mb-3">First client pathway</h3>
+            {data.firstClientPath.map((step, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <span className="shrink-0 w-6 h-6 rounded-full bg-emerald-900/60 text-emerald-400 text-xs font-bold flex items-center justify-center border border-emerald-800/50">
+                  {i + 1}
+                </span>
+                <p className="text-xs text-gray-300 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Objection Handling */}
+          <div className="bg-[#161b22] border border-[#1e2a3a] rounded-lg p-5 space-y-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Objection Handling</p>
+            {data.objections.map((obj, i) => (
+              <div key={i} className="space-y-1.5">
+                <p className="text-xs text-gray-400 italic">&ldquo;{obj.objection}&rdquo;</p>
+                <div className="bg-emerald-900/10 border border-emerald-800/30 rounded px-3 py-2">
+                  <p className="text-xs text-emerald-300">{obj.response}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Readiness Gate */}
+          <div className="pt-2 pb-8 space-y-4">
+            {!readinessChecked ? (
+              <>
+                <div className="bg-[#161b22] border border-[#1e2a3a] rounded-lg p-5 space-y-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Before you build</p>
+                  {[
+                    'I have at least 5 hours/week available',
+                    'I can access estate attorneys or private bankers',
+                    'I understand the compliance notes above',
+                  ].map((label, i) => (
+                    <label key={i} className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={readinessItems[i]}
+                        onChange={() => toggleReadinessItem(i)}
+                        className="w-4 h-4 rounded border-gray-600 bg-[#0D1117] text-[#C9A84C] accent-[#C9A84C] cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-400 group-hover:text-gray-200 transition-colors">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                {allChecked && (
+                  <button
+                    onClick={() => setReadinessChecked(true)}
+                    className="w-full px-6 py-3 bg-[#C9A84C] hover:bg-[#d4b65c] text-black font-semibold text-sm rounded-lg transition-colors"
+                  >
+                    I&apos;m ready &mdash; Build this offer &rarr;
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                <button className="px-6 py-2.5 bg-[#C9A84C] hover:bg-[#d4b65c] text-black font-semibold text-sm rounded-lg transition-colors">
+                  Build this offer now &rarr;
+                </button>
+                <button className="px-5 py-2.5 border border-[#2a3040] text-gray-400 hover:text-white hover:border-[#3a4050] text-sm rounded-lg transition-colors">
+                  Save for later
+                </button>
+                <button className="px-5 py-2.5 border border-[#2a3040] text-gray-400 hover:text-white hover:border-[#3a4050] text-sm rounded-lg transition-colors">
+                  Validate first
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
