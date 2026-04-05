@@ -182,7 +182,7 @@ export default function DashboardPage() {
                         </td>
                         <td className={`px-4 py-3 text-sm ${o.impact>8?'text-red-400':o.impact>6?'text-amber-400':'text-gray-400'}`}>{o.impact}</td>
                         <td className="px-4 py-3 text-sm font-semibold text-[#C9A84C]">{o.composite}</td>
-                        <td className="px-4 py-3"><span className="text-[11px] text-[#C9A84C] hover:underline cursor-pointer">{o.action}</span></td>
+                        <td className="px-4 py-3"><button onClick={(e) => { e.currentTarget.textContent = '✓ Done'; e.currentTarget.disabled = true; e.currentTarget.className = 'text-[11px] text-emerald-400' }} className="text-[11px] text-[#C9A84C] hover:underline cursor-pointer">{o.action}</button></td>
                       </tr>
                     ))}
                   </tbody>
