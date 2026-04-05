@@ -29,6 +29,16 @@ export async function POST(
         roiProof: string
       }
       matchedPlaybookId: string
+      firstClientPath: string[]
+      objections: { objection: string; response: string }[]
+      currentSolutions: { approach: string; whyItFails: string }[]
+      complianceRisk: string
+      complianceRiskNote: string
+      trendData: number[]
+      competitorCount: number
+      userFitScore: number
+      weeklyHours: number
+      startupCost: string
     }
   > = {
     'ai-voice-fraud': {
@@ -68,6 +78,28 @@ export async function POST(
         roiProof: 'One prevented wire fraud pays for 2+ years of fees',
       },
       matchedPlaybookId: 'family-cyber-command',
+      firstClientPath: [
+        "Contact 3 estate attorneys or private bankers you already know. Ask: 'Any clients nervous about AI scams lately?'",
+        "Offer a free 30-minute 'Household Security Assessment' — no pitch, just show them their gaps",
+        "After the assessment, present the retainer with the ROI argument: one prevented fraud covers 2 years of fees",
+      ],
+      objections: [
+        { objection: 'We already have IT support', response: 'IT handles your company infrastructure. This handles your family — different people, different risks, different protocols.' },
+        { objection: 'We have cyber insurance', response: 'Insurance pays after a loss. This prevents the loss — and the embarrassment, legal exposure, and months of recovery.' },
+        { objection: 'How do we know you\'re trustworthy?', response: 'We provide full background checks, client references, NDA before any engagement, and work only through referrals from attorneys and bankers you already trust.' },
+      ],
+      currentSolutions: [
+        { approach: 'IT managed service provider', whyItFails: 'Handles corporate infrastructure, not family. Doesn\'t train household staff or verify personal calls.' },
+        { approach: 'Consumer-grade password managers', whyItFails: 'Solves one vector but not voice cloning, SIM swaps, or social engineering of family members.' },
+        { approach: 'Ad hoc training sessions', whyItFails: 'One-time awareness sessions don\'t build lasting habits. Staff turnover means constant re-training.' },
+      ],
+      complianceRisk: 'none',
+      complianceRiskNote: '',
+      trendData: [12, 15, 18, 22, 28, 35, 42, 50, 58, 65, 72, 80],
+      competitorCount: 3,
+      userFitScore: 75,
+      weeklyHours: 8,
+      startupCost: '$200-500 in tools and setup',
     },
     'coordination-overload': {
       offerName: 'Wealth Coordination Hub',
@@ -105,6 +137,28 @@ export async function POST(
         roiProof: 'Families report 15-30% reduction in advisory friction costs within first year',
       },
       matchedPlaybookId: 'wealth-coordination-hub',
+      firstClientPath: [
+        "Reach out to 3 wealth managers or multi-family office heads you know. Ask: 'Do your clients ever complain about advisor coordination?'",
+        "Offer a free 'Household Advisory Audit' — map their entire advisory ecosystem and show the gaps",
+        "After the audit, present the retainer with the value argument: eliminating advisory friction saves 15-30% in hidden costs",
+      ],
+      objections: [
+        { objection: 'I have an assistant who handles that', response: 'Assistants manage calendars and logistics. This is strategic coordination — making sure your tax attorney, estate planner, and investment manager aren\'t working at cross purposes.' },
+        { objection: 'This seems expensive', response: 'One missed coordination — a tax strategy that conflicts with an estate plan — can cost 10x our annual fee. This pays for itself with the first prevented conflict.' },
+        { objection: 'How is this different from a concierge service?', response: 'Concierge services handle lifestyle logistics. We handle advisory strategy — ensuring every professional serving your family is aligned on goals, timing, and execution.' },
+      ],
+      currentSolutions: [
+        { approach: 'Executive assistants', whyItFails: 'Great at scheduling and logistics but lack the financial and legal expertise to spot advisory conflicts or strategic gaps.' },
+        { approach: 'House managers', whyItFails: 'Handle property and household operations, not the complex interplay between investment, tax, estate, and insurance advisors.' },
+        { approach: 'Informal tribal knowledge', whyItFails: 'Key coordination details live in one person\'s head. When they leave or get busy, things fall through the cracks.' },
+      ],
+      complianceRisk: 'none',
+      complianceRiskNote: '',
+      trendData: [20, 24, 28, 33, 38, 44, 50, 55, 60, 66, 71, 78],
+      competitorCount: 5,
+      userFitScore: 80,
+      weeklyHours: 12,
+      startupCost: '$500-1,000 in software and onboarding',
     },
     'data-broker-exposure': {
       offerName: 'Digital Privacy & Data Shield Program',
@@ -142,6 +196,28 @@ export async function POST(
         roiProof: 'Comprehensive data removal reduces social engineering attempts by 60% within 90 days',
       },
       matchedPlaybookId: 'digital-privacy-shield',
+      firstClientPath: [
+        "Connect with 3 physical security consultants or family office advisors. Ask: 'Have any clients been surprised by what\'s findable about them online?'",
+        "Offer a free 'Digital Exposure Snapshot' — run a quick scan and show them what data brokers already have",
+        "After the snapshot, present the retainer: comprehensive removal and ongoing monitoring to keep them invisible",
+      ],
+      objections: [
+        { objection: 'I\'m not famous, nobody is looking for me', response: 'Data brokers don\'t care about fame — they collect everyone. Your net worth makes you a premium target for social engineering, kidnap-for-ransom research, and investment scams.' },
+        { objection: 'Can\'t I just do this myself?', response: 'You can submit opt-outs one by one across 4,000+ brokers. Most re-list you within 90 days. We automate the process and ensure it sticks.' },
+        { objection: 'We already use a privacy service', response: 'Consumer privacy tools cover the basics. We handle dark web monitoring, public records suppression, social media hardening, and staff data hygiene — the full attack surface.' },
+      ],
+      currentSolutions: [
+        { approach: 'Consumer privacy tools (DeleteMe, etc.)', whyItFails: 'Cover mainstream data brokers but miss niche people-search sites, public records, and dark web exposure.' },
+        { approach: 'Google alerts on your name', whyItFails: 'Only catches indexed public mentions. Misses data broker listings, dark web sales, and social engineering reconnaissance.' },
+        { approach: 'Ignoring the problem', whyItFails: 'Exposed data compounds over time. Each new breach adds to your profile, making targeting easier and more precise.' },
+      ],
+      complianceRisk: 'low',
+      complianceRiskNote: 'Some jurisdictions have specific data removal request requirements under GDPR/CCPA that must be followed precisely.',
+      trendData: [25, 30, 35, 40, 46, 52, 58, 63, 68, 74, 79, 85],
+      competitorCount: 8,
+      userFitScore: 70,
+      weeklyHours: 6,
+      startupCost: '$300-800 in scanning tools and subscriptions',
     },
     'risk-governance-gaps': {
       offerName: 'Family Office Risk & Governance Framework',
@@ -180,6 +256,28 @@ export async function POST(
         roiProof: 'Formal risk governance reduces operational loss incidents by 45% and cuts insurance premiums 20-30%',
       },
       matchedPlaybookId: 'fo-risk-governance',
+      firstClientPath: [
+        "Talk to 3 family office network contacts or insurance brokers. Ask: 'Any clients struggling to pass an operational audit or worried about key-person risk?'",
+        "Offer a free 'Governance Maturity Snapshot' — score them across 8 domains and show where they rank vs. peers",
+        "After the snapshot, present the retainer: full governance buildout that protects the family and satisfies regulators and insurers",
+      ],
+      objections: [
+        { objection: 'We\'re a family, not a corporation — we don\'t need governance', response: 'Governance isn\'t bureaucracy. It\'s knowing who makes decisions, how risks are tracked, and what happens when key people are unavailable. Families with $100M+ have corporate-level complexity.' },
+        { objection: 'Our attorney handles compliance', response: 'Attorneys handle legal compliance. This covers operational risk — cybersecurity, key-person dependency, vendor management, and insurance gaps that attorneys don\'t monitor day-to-day.' },
+        { objection: 'We\'ve operated fine without this for years', response: 'Most families say that until a key person leaves, a regulator asks questions, or an insurance claim gets denied. This is about being proactive, not reactive.' },
+      ],
+      currentSolutions: [
+        { approach: 'Relying on the family office head for everything', whyItFails: 'Creates single point of failure. If that person is unavailable, no one knows the full picture of risks, vendors, or protocols.' },
+        { approach: 'Annual attorney review', whyItFails: 'Covers legal compliance but not operational risks like cybersecurity, staff dependencies, or insurance adequacy.' },
+        { approach: 'Ad hoc risk discussions at family meetings', whyItFails: 'No systematic tracking, no risk register, no follow-through. Issues get discussed but not resolved or monitored.' },
+      ],
+      complianceRisk: 'medium',
+      complianceRiskNote: 'Family offices with investment advisory activities may fall under SEC/state regulatory requirements. Governance frameworks must align with applicable fiduciary standards.',
+      trendData: [18, 22, 25, 30, 34, 39, 44, 48, 53, 58, 62, 68],
+      competitorCount: 6,
+      userFitScore: 72,
+      weeklyHours: 10,
+      startupCost: '$1,000-2,500 in assessment tools and templates',
     },
     'healthcare-navigation': {
       offerName: 'Elite Health Navigation & Advocacy Program',
@@ -217,6 +315,28 @@ export async function POST(
         roiProof: 'Navigated patients report 35% faster specialist access and 28% reduction in diagnostic errors',
       },
       matchedPlaybookId: 'elite-health-navigation',
+      firstClientPath: [
+        "Reach out to 3 concierge physicians or family office advisors. Ask: 'Do any of your clients struggle coordinating care across multiple specialists?'",
+        "Offer a free 'Care Coordination Assessment' — map their current provider ecosystem and identify gaps in communication",
+        "After the assessment, present the retainer: a personal medical chief of staff who ensures nothing falls through the cracks",
+      ],
+      objections: [
+        { objection: 'We already have a concierge doctor', response: 'Concierge doctors provide excellent primary care, but they don\'t coordinate across your cardiologist, orthopedist, dermatologist, and aging parent\'s specialists. That\'s what we do.' },
+        { objection: 'We can just call the doctor ourselves', response: 'You can — but are you tracking medication interactions across providers, ensuring test results reach every specialist, and monitoring clinical trial opportunities? Care coordination is a full-time function.' },
+        { objection: 'How do you handle medical privacy?', response: 'We operate under strict HIPAA-compliant protocols, use encrypted platforms, and every team member signs confidentiality agreements. Your family\'s health data is treated with the same rigor as financial data.' },
+      ],
+      currentSolutions: [
+        { approach: 'Concierge medicine memberships', whyItFails: 'Provides primary care access but doesn\'t coordinate across specialists, manage second opinions, or track preventive care compliance for the whole family.' },
+        { approach: 'Family members managing their own care', whyItFails: 'Each person navigates independently, leading to missed follow-ups, unshared test results between providers, and no unified health strategy.' },
+        { approach: 'Insurance-provided nurse lines', whyItFails: 'Generic triage services with no knowledge of your family\'s history, providers, or preferences. No proactive coordination or advocacy.' },
+      ],
+      complianceRisk: 'medium',
+      complianceRiskNote: 'Health navigation services must comply with HIPAA privacy and security rules. Any handling of protected health information requires BAA agreements with all technology vendors.',
+      trendData: [15, 19, 23, 28, 33, 39, 45, 51, 56, 62, 68, 75],
+      competitorCount: 4,
+      userFitScore: 78,
+      weeklyHours: 10,
+      startupCost: '$500-1,500 in HIPAA-compliant tools and setup',
     },
   }
 
