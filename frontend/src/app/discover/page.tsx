@@ -473,24 +473,27 @@ export default function DiscoverPage() {
                       <span className="rounded-full bg-gray-500/20 px-2 py-0.5 text-[10px] font-medium text-gray-400">
                         First client: {p.timeToFirstClient}
                       </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium border ${p.composite >= 8.5 ? 'bg-[#0F2E1A] text-[#1D9E75] border-[#1D9E75]/30' : p.composite >= 7 ? 'bg-[#1f1500] text-[#BA7517] border-[#BA7517]/30' : 'bg-[#0a1a2e] text-[#85B7EB] border-[#185FA5]/30'}`}>
+                        {p.composite >= 8.5 ? 'Great fit' : p.composite >= 7 ? 'Good match' : 'Stretch goal'}
+                      </span>
                     </div>
                   </div>
                   <div className="ml-3 shrink-0 text-right">
                     <div className="text-2xl font-bold text-[#C9A84C]">{p.composite}</div>
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider">Composite</div>
+                    <div className="text-[10px] text-gray-500 uppercase tracking-wider cursor-help" title="Overall opportunity score combining credibility, urgency, and payment likelihood">Composite</div>
                   </div>
                 </div>
 
                 {/* Evidence bars */}
                 <div className="mt-3 grid grid-cols-3 gap-3">
                   {[
-                    { label: 'Credibility', value: p.credibility, type: 'cred' as const },
-                    { label: 'Urgency', value: p.urgency, type: 'urgency' as const },
-                    { label: 'WTP Signal', value: p.wtpSignal, type: 'wtp' as const },
+                    { label: 'Credibility', value: p.credibility, type: 'cred' as const, tip: 'How solid our research is — 10 = government/academic source, 1 = blog post' },
+                    { label: 'Urgency', value: p.urgency, type: 'urgency' as const, tip: 'How fast this problem is growing and how urgently wealthy people need it solved' },
+                    { label: 'WTP Signal', value: p.wtpSignal, type: 'wtp' as const, tip: 'Willingness To Pay — how likely wealthy clients are to pay premium prices to solve this' },
                   ].map((bar) => (
                     <div key={bar.label}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-gray-500">{bar.label}</span>
+                        <span className="text-[10px] text-gray-500 cursor-help" title={bar.tip}>{bar.label}</span>
                         <span className="text-[10px] font-medium text-gray-300">{bar.value}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-[#1e2a3a] overflow-hidden">
