@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
-import { Providers } from "./providers";
-import { ModeProvider } from "@/lib/context/ModeContext";
+
+export const viewport: Viewport = {
+  themeColor: "#fbbf24",
+};
 
 export const metadata: Metadata = {
   title: "ChamberForge",
-  description:
-    "Premium-service operating system for HNW/UHNW market",
+  description: "Premium-service operating system for HNW/UHNW market",
   manifest: "/manifest.json",
-  themeColor: "#fbbf24",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -32,10 +32,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-chamber-950 text-white antialiased">
-        <Providers>
-          <ModeProvider>{children}</ModeProvider>
-        </Providers>
+      <body className="min-h-screen bg-[#0D1117] text-white antialiased">
+        {children}
       </body>
     </html>
   );
