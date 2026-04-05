@@ -33,6 +33,8 @@ interface Problem {
   wtpSignal: number
   offerId: string
   offerTeaser: { name: string; price: string }
+  competitorCount: number
+  timeToFirstClient: string
 }
 
 const PROBLEMS: Problem[] = [
@@ -51,6 +53,7 @@ const PROBLEMS: Problem[] = [
     wtpSignal: 8.4,
     offerId: 'family-cyber-command', problemSlug: 'ai-voice-fraud',
     offerTeaser: { name: 'Family Cybersecurity & Identity Command Center', price: '$10-25K/mo' },
+    competitorCount: 3, timeToFirstClient: '4-8 wks',
   },
   {
     id: 2,
@@ -67,6 +70,7 @@ const PROBLEMS: Problem[] = [
     wtpSignal: 7.2,
     offerId: 'private-ops-office', problemSlug: 'coordination-overload',
     offerTeaser: { name: 'Private Operations Office', price: '$15-30K/mo' },
+    competitorCount: 5, timeToFirstClient: '6-10 wks',
   },
   {
     id: 3,
@@ -83,6 +87,7 @@ const PROBLEMS: Problem[] = [
     wtpSignal: 6.8,
     offerId: 'footprint-reduction', problemSlug: 'data-broker-exposure',
     offerTeaser: { name: 'Private Footprint Reduction Program', price: '$8-18K/mo' },
+    competitorCount: 8, timeToFirstClient: '3-6 wks',
   },
   {
     id: 4,
@@ -99,6 +104,7 @@ const PROBLEMS: Problem[] = [
     wtpSignal: 6.2,
     offerId: 'family-risk-council', problemSlug: 'non-investment-risk',
     offerTeaser: { name: 'Family Risk Council', price: '$15-35K/qtr' },
+    competitorCount: 6, timeToFirstClient: '8-12 wks',
   },
   {
     id: 5,
@@ -115,6 +121,7 @@ const PROBLEMS: Problem[] = [
     wtpSignal: 5.5,
     offerId: 'medical-navigation', problemSlug: 'healthcare-navigation',
     offerTeaser: { name: 'Medical Navigation & Longevity Desk', price: '$8-20K/mo' },
+    competitorCount: 4, timeToFirstClient: '4-6 wks',
   },
 ]
 
@@ -205,6 +212,12 @@ function barColor(value: number, type: 'cred' | 'urgency' | 'wtp') {
   return 'bg-[#C9A84C]'
 }
 
+function competitionBadge(count: number) {
+  if (count <= 2) return { label: 'Blue ocean', cls: 'bg-emerald-500/20 text-emerald-400' }
+  if (count <= 6) return { label: 'Low competition', cls: 'bg-blue-500/20 text-blue-400' }
+  return { label: 'Competitive', cls: 'bg-amber-500/20 text-amber-400' }
+}
+
 function statusBadge(s: string) {
   if (s === 'complete') return 'bg-emerald-500/20 text-emerald-400'
   return 'bg-amber-500/20 text-amber-400'
@@ -222,6 +235,7 @@ export default function DiscoverPage() {
   const [drawerProblemId, setDrawerProblemId] = useState<number | null>(null)
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [savedProblems, setSavedProblems] = useState<Set<number>>(new Set())
 
   const toggleTier = (t: string) => {
     const next = new Set(selectedTiers)
@@ -440,7 +454,7 @@ export default function DiscoverPage() {
           {/* Problem Cards */}
           <div className="space-y-3">
             {sorted.map((p) => (
-              <div key={p.id} className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4 hover:border-[#C9A84C]/30 transition-colors">
+              <div key={p.id} className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4 hover:border-[#C9A84C]/40 cursor-pointer transition-colors">
                 {/* Title row */}
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -452,6 +466,12 @@ export default function DiscoverPage() {
                       </span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${lifecycleColor(p.lifecycle)}`}>
                         {p.lifecycle}
+                      </span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${competitionBadge(p.competitorCount).cls}`}>
+                        {competitionBadge(p.competitorCount).label}
+                      </span>
+                      <span className="rounded-full bg-gray-500/20 px-2 py-0.5 text-[10px] font-medium text-gray-400">
+                        First client: {p.timeToFirstClient}
                       </span>
                     </div>
                   </div>
