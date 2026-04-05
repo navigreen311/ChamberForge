@@ -399,10 +399,10 @@ export default function DeliverPage() {
                           <button onClick={() => setQaDrawerId(d.id)} className="px-2 py-0.5 text-[10px] bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900/80">QA check</button>
                         )}
                         {d.status === 'in_progress' && d.integrationLabel?.startsWith('VF') && (
-                          <button onClick={() => alert(`VoiceForge session for ${d.name}:\n\nOpening voice training module for ${d.client}.\nSession type: ${d.type}`)} className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80">VoiceForge</button>
+                          <button onClick={() => window.location.href = `/deliver/${d.id}/voiceforge`} className="px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-400 rounded hover:bg-purple-900/80">VoiceForge</button>
                         )}
                         {d.status === 'delivered' && d.qaComplete === d.qaTotal && (
-                          <button onClick={() => alert(`Generating proof asset for ${d.name}:\n\nCreating before/after scorecard with KPI results for ${d.client}.`)} className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700">Proof</button>
+                          <button onClick={() => window.location.href = `/deliver/${d.id}/proof`} className="px-2 py-0.5 text-[10px] bg-gray-800 text-gray-400 rounded hover:bg-gray-700">Proof</button>
                         )}
                       </div>
                     </td>
