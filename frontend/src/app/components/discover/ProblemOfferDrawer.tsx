@@ -23,6 +23,11 @@ interface IdealClient {
   roi: string;
 }
 
+interface CurrentSolution {
+  approach: string;
+  whyItFails: string;
+}
+
 interface WeekSchedule {
   [key: string]: string;
 }
@@ -50,6 +55,10 @@ interface ProblemData {
   week: WeekSchedule;
   deliverables: string[];
   idealClient: IdealClient;
+  /* Compliance & current solutions */
+  complianceRisk: 'none' | 'low' | 'medium' | 'high';
+  complianceRiskNote: string;
+  currentSolutions: CurrentSolution[];
   /* Simple-mode extras */
   simpleStory: string;
   simpleExample: string;
@@ -80,6 +89,13 @@ const PROBLEMS: Record<string, ProblemData> = {
     credibility: 8.7,
     wtp: '$10-25K/mo',
     lifecycle: 'Emerging',
+    complianceRisk: 'none',
+    complianceRiskNote: '',
+    currentSolutions: [
+      { approach: 'IT managed service provider', whyItFails: 'Handles corporate infrastructure, not family. Doesn\'t train household staff or verify personal calls.' },
+      { approach: 'Consumer-grade password managers', whyItFails: 'Solves one vector but not voice cloning, SIM swaps, or social engineering of family members.' },
+      { approach: 'Ad hoc training sessions', whyItFails: 'One-time awareness sessions don\'t build lasting habits. Staff turnover means constant re-training needed.' },
+    ],
     sourceQuote:
       'AI is being used to increase the speed and believability of phishing and impersonation, including voice/video cloning',
     sourceAttribution: 'FBI Alert IC3-2025',
@@ -170,6 +186,13 @@ const PROBLEMS: Record<string, ProblemData> = {
     credibility: 7.9,
     wtp: '$15-30K/mo',
     lifecycle: 'Accelerating',
+    complianceRisk: 'none',
+    complianceRiskNote: '',
+    currentSolutions: [
+      { approach: 'Executive assistant from their old company', whyItFails: 'Corporate EAs manage one executive\'s calendar, not a multi-property household with staff, vendors, and family logistics.' },
+      { approach: 'Property management companies', whyItFails: 'Manages buildings, not lives. No coordination across properties, staff schedules, or family calendars.' },
+      { approach: 'Spreadsheets and shared calendars', whyItFails: 'Breaks down immediately at scale. No accountability, no escalation paths, no single owner.' },
+    ],
     offerName: 'Private Operations Office',
     offerTagline: 'One command center for your entire household and lifestyle',
     price: '$15,000 \u2013 $30,000/month',
@@ -256,6 +279,13 @@ const PROBLEMS: Record<string, ProblemData> = {
     credibility: 9.1,
     wtp: '$8-20K/mo',
     lifecycle: 'Proven',
+    complianceRisk: 'low',
+    complianceRiskNote: 'Privacy regulations vary by jurisdiction — GDPR/CCPA compliance required',
+    currentSolutions: [
+      { approach: 'Consumer privacy services (DeleteMe, etc.)', whyItFails: 'Covers ~30 brokers out of 200+. No customization for UHNW exposure. Misses family members and staff.' },
+      { approach: 'In-house IT team', whyItFails: 'IT manages infrastructure, not personal data broker exposure. Lack expertise in privacy law and opt-out processes.' },
+      { approach: 'One-time privacy audit', whyItFails: 'Brokers re-list data within 60-90 days. A one-time audit is obsolete within weeks.' },
+    ],
     sourceQuote:
       'Data broker information has been directly linked to stalking, harassment, and physical threats against high-profile individuals',
     sourceAttribution: 'Privacy Rights Clearinghouse, 2025 Report',
@@ -346,6 +376,13 @@ const PROBLEMS: Record<string, ProblemData> = {
     credibility: 8.3,
     wtp: '$12-28K/mo',
     lifecycle: 'Accelerating',
+    complianceRisk: 'medium',
+    complianceRiskNote: 'Touches regulated domains — insurance, medical. Must not position as licensed professional.',
+    currentSolutions: [
+      { approach: 'Outside legal counsel', whyItFails: 'Lawyers address specific legal risks reactively, not the full spectrum of operational, key-person, and succession risks proactively.' },
+      { approach: 'Annual board retreats', whyItFails: 'Once-a-year conversations don\'t catch fast-moving risks. No ongoing monitoring or accountability between meetings.' },
+      { approach: 'Investment risk team handles everything', whyItFails: 'Investment risk frameworks don\'t cover key-person dependency, succession gaps, or family governance breakdowns.' },
+    ],
     sourceQuote:
       '72% of family offices have no formal risk framework that addresses non-investment risks',
     sourceAttribution: 'Deloitte Family Office Risk Survey, 2025',
@@ -436,6 +473,13 @@ const PROBLEMS: Record<string, ProblemData> = {
     credibility: 8.0,
     wtp: '$10-22K/mo',
     lifecycle: 'Emerging',
+    complianceRisk: 'high',
+    complianceRiskNote: 'Medical domain \u2014 cannot provide medical advice. Must partner with licensed physicians. Guardrails Engine will flag direct medical recommendations.',
+    currentSolutions: [
+      { approach: 'Concierge medicine / direct primary care', whyItFails: 'Solves access to one doctor, not coordination across five specialists at three hospitals. No one manages the full picture.' },
+      { approach: 'Family member coordinates (spouse, adult child)', whyItFails: 'Enormous time burden on someone with no medical training. High emotional stakes make objective decision-making nearly impossible.' },
+      { approach: 'Hospital patient advocates', whyItFails: 'Only advocate within their own system. Can\'t coordinate across hospitals, resolve conflicting specialist opinions, or manage outpatient follow-up.' },
+    ],
     sourceQuote:
       'Concierge medicine addresses access but not coordination \u2014 the real gap is someone who manages the full clinical picture across providers',
     sourceAttribution: 'Journal of Private Healthcare Management, 2025',
@@ -727,6 +771,66 @@ export default function ProblemOfferDrawer({
                 </li>
               ))}
             </ul>
+          </div>
+
+          {/* Compliance risk signal */}
+          <div
+            className={`rounded-lg p-4 ${
+              data.complianceRisk === 'none' || data.complianceRisk === 'low'
+                ? 'bg-[#0F2E1A] border border-[#1D9E75]/30'
+                : data.complianceRisk === 'medium'
+                ? 'bg-[#1f1500] border border-[#BA7517]/30'
+                : 'bg-[#1f0d0d] border border-[#E24B4A]/30'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs font-semibold ${
+                data.complianceRisk === 'none' || data.complianceRisk === 'low'
+                  ? 'text-[#1D9E75]'
+                  : data.complianceRisk === 'medium'
+                  ? 'text-[#BA7517]'
+                  : 'text-[#E24B4A]'
+              }`}>
+                {data.complianceRisk === 'none'
+                  ? '\u2713 Compliance: Clear to deliver'
+                  : data.complianceRisk === 'low'
+                  ? '\u2713 Compliance: Low risk'
+                  : data.complianceRisk === 'medium'
+                  ? '\u26A0 Compliance: Medium risk'
+                  : '\u26D4 Compliance: High risk'}
+              </span>
+            </div>
+            {data.complianceRiskNote && (
+              <p className={`text-xs leading-relaxed ${
+                data.complianceRisk === 'none' || data.complianceRisk === 'low'
+                  ? 'text-[#1D9E75]/80'
+                  : data.complianceRisk === 'medium'
+                  ? 'text-[#BA7517]/80'
+                  : 'text-[#E24B4A]/80'
+              }`}>
+                {data.complianceRiskNote}
+              </p>
+            )}
+          </div>
+
+          {/* How people solve this today */}
+          <div>
+            <h3 className="text-sm font-semibold text-white mb-3">How people solve this today</h3>
+            <div className="space-y-3">
+              {data.currentSolutions.map((sol, i) => (
+                <div key={i} className="bg-[#161b22] border border-[#1e2a3a] rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-white">{sol.approach}</p>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">{sol.whyItFails}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Evidence strip */}
