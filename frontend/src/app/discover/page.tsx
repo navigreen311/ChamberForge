@@ -157,6 +157,17 @@ const SCAN_HISTORY = [
   { label: 'Contradiction resolution', time: '2d ago', status: 'warning' },
 ]
 
+const SCAN_SCHEDULE = {
+  nextScan: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+  nextScanType: 'Daily',
+  schedules: [
+    { scanType: 'Regulatory alerts', frequency: 'Real-time', sourcesChecked: 'FBI, FTC, SEC', lastRun: 'Live' },
+    { scanType: 'Daily scan', frequency: 'Every day 8 AM', sourcesChecked: 'All 13 sources', lastRun: 'Today 8:00 AM' },
+    { scanType: 'Weekly deep scan', frequency: 'Every Monday', sourcesChecked: 'All sources + new reports', lastRun: 'Mon, Mar 31' },
+    { scanType: 'Monthly re-score', frequency: '1st of month', sourcesChecked: 'Full problem library', lastRun: 'Apr 1' },
+  ],
+}
+
 const SOURCE_PILLS = ['SEC Filings', 'Expert Interviews', 'Industry Reports', 'HNW Forums', 'News']
 
 const EVIDENCE_DRAWER_DATA = [
@@ -623,7 +634,11 @@ export default function DiscoverPage() {
           </div>
 
           {/* Scan Schedule */}
-          <ScanSchedule />
+          <ScanSchedule
+            nextScan={SCAN_SCHEDULE.nextScan}
+            nextScanType={SCAN_SCHEDULE.nextScanType}
+            schedules={SCAN_SCHEDULE.schedules}
+          />
         </aside>
       </div>
 

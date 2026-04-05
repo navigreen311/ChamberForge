@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 interface Schedule {
@@ -10,7 +9,7 @@ interface Schedule {
   lastRun: string;
 }
 
-interface ScanScheduleData {
+interface ScanScheduleProps {
   nextScan: string;
   nextScanType: string;
   schedules: Schedule[];
@@ -30,25 +29,7 @@ const typeColors: Record<string, string> = {
   'Monthly Comprehensive': 'bg-amber-500/20 text-amber-400',
 };
 
-export default function ScanSchedule() {
-  const [data, setData] = useState<ScanScheduleData | null>(null);
-
-  useEffect(() => {
-    fetch('/api/discover/scan-schedule')
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {});
-  }, []);
-
-  if (!data) {
-    return (
-      <div className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4">
-        <h3 className="mb-3 text-xs font-medium tracking-wider text-gray-500">SCAN SCHEDULE</h3>
-        <div className="h-24 animate-pulse rounded bg-[#1e2a3a]" />
-      </div>
-    );
-  }
-
+export default function ScanSchedule({ nextScan, nextScanType, schedules }: ScanScheduleProps) {
   return (
     <div className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4">
       <h3 className="mb-3 text-xs font-medium tracking-wider text-gray-500">SCAN SCHEDULE</h3>
@@ -58,12 +39,12 @@ export default function ScanSchedule() {
         <div className="text-[10px] text-gray-500 mb-0.5">Next scheduled scan</div>
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-white">
-            {formatNextScan(data.nextScan)}
+            {formatNextScan(nextScan)}
           </span>
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${typeColors[data.nextScanType] || 'bg-gray-500/20 text-gray-400'}`}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${typeColors[nextScanType] || 'bg-gray-500/20 text-gray-400'}`}
           >
-            {data.nextScanType}
+            {nextScanType}
           </span>
         </div>
       </div>
@@ -80,7 +61,7 @@ export default function ScanSchedule() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1e2a3a]">
-            {data.schedules.map((s) => (
+            {schedules.map((s) => (
               <tr key={s.scanType} className="hover:bg-[#1e2a3a]/30">
                 <td className="px-2 py-1.5 text-gray-300 whitespace-nowrap">{s.scanType}</td>
                 <td className="px-2 py-1.5 text-gray-400">{s.frequency}</td>
