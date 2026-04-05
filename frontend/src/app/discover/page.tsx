@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import ProblemOfferDrawer from '@/app/components/discover/ProblemOfferDrawer'
+import ScanSchedule from '@/app/components/discover/ScanSchedule'
 
 // ─── Inline Data ──────────────────────────────────────────────
 const KPIS = [
@@ -620,6 +621,9 @@ export default function DiscoverPage() {
               ))}
             </div>
           </div>
+
+          {/* Scan Schedule */}
+          <ScanSchedule />
         </aside>
       </div>
 
