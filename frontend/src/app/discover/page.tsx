@@ -49,7 +49,7 @@ const PROBLEMS: Problem[] = [
     citations: 7,
     timestamp: '2h ago',
     wtpSignal: 8.4,
-    offerId: 'family-cyber-command',
+    offerId: 'family-cyber-command', problemSlug: 'ai-voice-fraud',
     offerTeaser: { name: 'Family Cybersecurity & Identity Command Center', price: '$10-25K/mo' },
   },
   {
@@ -65,7 +65,7 @@ const PROBLEMS: Problem[] = [
     citations: 5,
     timestamp: '4h ago',
     wtpSignal: 7.2,
-    offerId: 'private-ops-office',
+    offerId: 'private-ops-office', problemSlug: 'coordination-overload',
     offerTeaser: { name: 'Private Operations Office', price: '$15-30K/mo' },
   },
   {
@@ -81,7 +81,7 @@ const PROBLEMS: Problem[] = [
     citations: 8,
     timestamp: '6h ago',
     wtpSignal: 6.8,
-    offerId: 'footprint-reduction',
+    offerId: 'footprint-reduction', problemSlug: 'data-broker-exposure',
     offerTeaser: { name: 'Private Footprint Reduction Program', price: '$8-18K/mo' },
   },
   {
@@ -97,7 +97,7 @@ const PROBLEMS: Problem[] = [
     citations: 4,
     timestamp: '1d ago',
     wtpSignal: 6.2,
-    offerId: 'family-risk-council',
+    offerId: 'family-risk-council', problemSlug: 'non-investment-risk',
     offerTeaser: { name: 'Family Risk Council', price: '$15-35K/qtr' },
   },
   {
@@ -113,7 +113,7 @@ const PROBLEMS: Problem[] = [
     citations: 3,
     timestamp: '1d ago',
     wtpSignal: 5.5,
-    offerId: 'medical-navigation',
+    offerId: 'medical-navigation', problemSlug: 'healthcare-navigation',
     offerTeaser: { name: 'Medical Navigation & Longevity Desk', price: '$8-20K/mo' },
   },
 ]
@@ -492,7 +492,7 @@ export default function DiscoverPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }}
+                      onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }}
                       className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors"
                     >
                       Build offer →
@@ -503,7 +503,7 @@ export default function DiscoverPage() {
                     >
                       View evidence
                     </button>
-                    <button onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }} className="rounded-lg border border-[#1e2a3a] px-3 py-1.5 text-[11px] font-medium text-gray-400 hover:text-white hover:border-gray-600 transition-colors">
+                    <button onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }} className="rounded-lg border border-[#1e2a3a] px-3 py-1.5 text-[11px] font-medium text-gray-400 hover:text-white hover:border-gray-600 transition-colors">
                       Validate
                     </button>
                   </div>
@@ -514,7 +514,7 @@ export default function DiscoverPage() {
                   <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">What you'd sell:</div>
                   <div className="text-sm font-medium text-white">{p.offerTeaser.name}</div>
                   <div className="text-sm text-emerald-400 font-semibold">{p.offerTeaser.price}</div>
-                  <button onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }} className="text-[11px] text-[#C9A84C] hover:underline mt-1">See the full opportunity →</button>
+                  <button onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }} className="text-[11px] text-[#C9A84C] hover:underline mt-1">See the full opportunity →</button>
                 </div>
               </div>
             ))}
