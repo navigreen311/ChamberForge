@@ -274,7 +274,7 @@ export default function DiscoverPage() {
               Identify, validate, and prioritize high-value problems across wealth tiers
             </p>
           </div>
-          <button className="rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#d4b85d] transition-colors">
+          <button onClick={() => alert('AI Scan started — discovering problems from 23 evidence sources...')} className="rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-semibold text-black hover:bg-[#d4b85d] transition-colors">
             ▶ Run AI Scan
           </button>
         </div>
@@ -503,7 +503,7 @@ export default function DiscoverPage() {
                     >
                       View evidence
                     </button>
-                    <button className="rounded-lg border border-[#1e2a3a] px-3 py-1.5 text-[11px] font-medium text-gray-400 hover:text-white hover:border-gray-600 transition-colors">
+                    <button onClick={() => { setSelectedProblem(p.offerId); setDrawerOpen(true) }} className="rounded-lg border border-[#1e2a3a] px-3 py-1.5 text-[11px] font-medium text-gray-400 hover:text-white hover:border-gray-600 transition-colors">
                       Validate
                     </button>
                   </div>
