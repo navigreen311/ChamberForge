@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ProblemOfferDrawer from '@/app/components/discover/ProblemOfferDrawer'
 import ScanSchedule from '@/app/components/discover/ScanSchedule'
 
@@ -20,111 +20,34 @@ const URGENCY_OPTIONS = ['Any Urgency', '9+', '8+', '7+', '6+', '5+'] as const
 const SORT_OPTIONS = ['Composite Score', 'Urgency', 'Newest'] as const
 
 interface Problem {
-  id: number
+  id: string
   title: string
-  category: string
-  tier: string
-  lifecycle: string
-  urgency: number
-  credibility: number
-  composite: number
-  wtpRange: string
-  citations: number
-  timestamp: string
-  wtpSignal: number
-  offerId: string
-  offerTeaser: { name: string; price: string }
-  competitorCount: number
-  timeToFirstClient: string
+  description: string
+  wealth_tier: string
+  pain_category: string
+  lifecycle_stage: string
+  urgency_score: number
+  credibility_score: number
+  wtp_signal: string
+  composite_score: number
+  wtp_range: string
+  citation_count: number
+  buyer_type: string
+  compliance_risk: string
+  trust_channel: string
+  source_types: string[]
+  created_at: string
+  is_new: boolean
 }
 
-const PROBLEMS: Problem[] = [
-  {
-    id: 1,
-    title: 'AI Voice Cloning Wire Fraud Targeting Family Offices',
-    category: 'Security',
-    tier: 'UHNW',
-    lifecycle: 'Emerging',
-    urgency: 9.2,
-    credibility: 8.7,
-    composite: 8.9,
-    wtpRange: '$10-25K/mo',
-    citations: 7,
-    timestamp: '2h ago',
-    wtpSignal: 8.4,
-    offerId: 'family-cyber-command', problemSlug: 'ai-voice-fraud',
-    offerTeaser: { name: 'Family Cybersecurity & Identity Command Center', price: '$10-25K/mo' },
-    competitorCount: 3, timeToFirstClient: '4-8 wks',
-  },
-  {
-    id: 2,
-    title: 'Coordination Overload for Post-Exit Tech Founders',
-    category: 'Coordination',
-    tier: 'HNW',
-    lifecycle: 'Accelerating',
-    urgency: 8.1,
-    credibility: 7.9,
-    composite: 7.4,
-    wtpRange: '$15-30K/mo',
-    citations: 5,
-    timestamp: '4h ago',
-    wtpSignal: 7.2,
-    offerId: 'private-ops-office', problemSlug: 'coordination-overload',
-    offerTeaser: { name: 'Private Operations Office', price: '$15-30K/mo' },
-    competitorCount: 5, timeToFirstClient: '6-10 wks',
-  },
-  {
-    id: 3,
-    title: 'Data Broker Exposure of High-Profile Families',
-    category: 'Privacy',
-    tier: 'UHNW',
-    lifecycle: 'Proven',
-    urgency: 7.5,
-    credibility: 8.2,
-    composite: 7.1,
-    wtpRange: '$8-18K/mo',
-    citations: 8,
-    timestamp: '6h ago',
-    wtpSignal: 6.8,
-    offerId: 'footprint-reduction', problemSlug: 'data-broker-exposure',
-    offerTeaser: { name: 'Private Footprint Reduction Program', price: '$8-18K/mo' },
-    competitorCount: 8, timeToFirstClient: '3-6 wks',
-  },
-  {
-    id: 4,
-    title: 'Non-Investment Risk Governance Gaps',
-    category: 'Governance',
-    tier: 'Family Office',
-    lifecycle: 'Accelerating',
-    urgency: 7.8,
-    credibility: 7.1,
-    composite: 6.8,
-    wtpRange: '$15-35K/qtr',
-    citations: 4,
-    timestamp: '1d ago',
-    wtpSignal: 6.2,
-    offerId: 'family-risk-council', problemSlug: 'non-investment-risk',
-    offerTeaser: { name: 'Family Risk Council', price: '$15-35K/qtr' },
-    competitorCount: 6, timeToFirstClient: '8-12 wks',
-  },
-  {
-    id: 5,
-    title: 'Healthcare Navigation Fragmentation',
-    category: 'Medical',
-    tier: 'HNW',
-    lifecycle: 'Emerging',
-    urgency: 6.9,
-    credibility: 6.5,
-    composite: 5.8,
-    wtpRange: '$8-20K/mo',
-    citations: 3,
-    timestamp: '1d ago',
-    wtpSignal: 5.5,
-    offerId: 'medical-navigation', problemSlug: 'healthcare-navigation',
-    offerTeaser: { name: 'Medical Navigation & Longevity Desk', price: '$8-20K/mo' },
-    competitorCount: 4, timeToFirstClient: '4-6 wks',
-  },
-]
+interface Pagination {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
 
 const TRENDS = [
   { label: 'AI-based social engineering', direction: '↑', color: 'bg-red-400' },
@@ -202,9 +125,15 @@ const EVIDENCE_DRAWER_DATA = [
 
 // ─── Helpers ──────────────────────────────────────────────────
 function tierColor(tier: string) {
-  if (tier === 'UHNW') return 'bg-[#C9A84C]/20 text-[#C9A84C] border-[#C9A84C]/40'
-  if (tier === 'HNW') return 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+  if (tier.includes('UHNW')) return 'bg-[#C9A84C]/20 text-[#C9A84C] border-[#C9A84C]/40'
+  if (tier.includes('HNW')) return 'bg-blue-500/20 text-blue-400 border-blue-500/40'
   return 'bg-purple-500/20 text-purple-400 border-purple-500/40'
+}
+
+function tierShort(tier: string) {
+  if (tier.includes('UHNW')) return 'UHNW'
+  if (tier.includes('HNW')) return 'HNW'
+  return tier
 }
 
 function lifecycleColor(lc: string) {
@@ -224,15 +153,14 @@ function barColor(value: number, type: 'cred' | 'urgency' | 'wtp') {
   return 'bg-[#C9A84C]'
 }
 
-function competitionBadge(count: number) {
-  if (count <= 2) return { label: 'Blue ocean', cls: 'bg-emerald-500/20 text-emerald-400' }
-  if (count <= 6) return { label: 'Low competition', cls: 'bg-blue-500/20 text-blue-400' }
-  return { label: 'Competitive', cls: 'bg-amber-500/20 text-amber-400' }
-}
-
 function statusBadge(s: string) {
   if (s === 'complete') return 'bg-emerald-500/20 text-emerald-400'
   return 'bg-amber-500/20 text-amber-400'
+}
+
+function wtpSignalNumeric(signal: string): number {
+  const map: Record<string, number> = { 'Very High': 9.0, 'High': 7.5, 'Medium': 5.5, 'Low': 3.5 }
+  return map[signal] || 5.0
 }
 
 // ─── Page ─────────────────────────────────────────────────────
@@ -244,10 +172,40 @@ export default function DiscoverPage() {
   const [selectedLifecycles, setSelectedLifecycles] = useState<Set<string>>(new Set())
   const [painCategory, setPainCategory] = useState('All Categories')
   const [urgencyFilter, setUrgencyFilter] = useState('Any Urgency')
-  const [drawerProblemId, setDrawerProblemId] = useState<number | null>(null)
+  const [drawerProblemId, setDrawerProblemId] = useState<string | null>(null)
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [savedProblems, setSavedProblems] = useState<Set<number>>(new Set())
+
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(12)
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [problems, setProblems] = useState<Problem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [search, sort, selectedTiers, selectedLifecycles, painCategory, urgencyFilter])
+
+  // Fetch problems from API
+  const fetchProblems = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/discover/problems?page=${page}&limit=${limit}`)
+      const data = await res.json()
+      setProblems(data.problems)
+      setPagination(data.pagination)
+    } catch {
+      // Keep existing data on error
+    } finally {
+      setLoading(false)
+    }
+  }, [page, limit])
+
+  useEffect(() => {
+    fetchProblems()
+  }, [fetchProblems])
 
   const toggleTier = (t: string) => {
     const next = new Set(selectedTiers)
@@ -269,14 +227,14 @@ export default function DiscoverPage() {
     setSearch('')
   }
 
-  // Filter problems
-  const filtered = PROBLEMS.filter((p) => {
-    if (selectedTiers.size > 0 && !selectedTiers.has(p.tier)) return false
-    if (selectedLifecycles.size > 0 && !selectedLifecycles.has(p.lifecycle)) return false
-    if (painCategory !== 'All Categories' && p.category !== painCategory) return false
+  // Client-side filter (applied to current page of data)
+  const filtered = problems.filter((p) => {
+    if (selectedTiers.size > 0 && !selectedTiers.has(tierShort(p.wealth_tier))) return false
+    if (selectedLifecycles.size > 0 && !selectedLifecycles.has(p.lifecycle_stage)) return false
+    if (painCategory !== 'All Categories' && !p.pain_category.toLowerCase().includes(painCategory.toLowerCase())) return false
     if (urgencyFilter !== 'Any Urgency') {
       const min = parseFloat(urgencyFilter.replace('+', ''))
-      if (p.urgency < min) return false
+      if (p.urgency_score < min) return false
     }
     if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
@@ -284,10 +242,14 @@ export default function DiscoverPage() {
 
   // Sort
   const sorted = [...filtered].sort((a, b) => {
-    if (sort === 'Urgency') return b.urgency - a.urgency
-    if (sort === 'Newest') return a.id - b.id
-    return b.composite - a.composite
+    if (sort === 'Urgency') return b.urgency_score - a.urgency_score
+    if (sort === 'Newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    return b.composite_score - a.composite_score
   })
+
+  // Pagination display helpers
+  const showingStart = pagination ? (page - 1) * limit + 1 : 0
+  const showingEnd = pagination ? Math.min(page * limit, pagination.total) : 0
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-gray-100">
@@ -324,7 +286,7 @@ export default function DiscoverPage() {
           <span className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-gray-400">
-              Idle · Last scan: 2h ago · 47 problems · Evidence Ops active
+              Idle · Last scan: 2h ago · {pagination?.total ?? 47} problems · Evidence Ops active
             </span>
           </span>
           <div className="flex gap-2 ml-auto">
@@ -459,110 +421,190 @@ export default function DiscoverPage() {
             </div>
           </div>
 
-          <div className="text-xs text-gray-500">
-            Showing {sorted.length} of 47 problems
-          </div>
+          {pagination && (
+            <div className="text-xs text-gray-500">
+              Showing {showingStart}–{showingEnd} of {pagination.total} problems
+            </div>
+          )}
+
+          {/* Loading state */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#C9A84C] border-t-transparent" />
+            </div>
+          )}
 
           {/* Problem Cards */}
-          <div className="space-y-3">
-            {sorted.map((p) => (
-              <div key={p.id} className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4 hover:border-[#C9A84C]/40 cursor-pointer transition-colors">
-                {/* Title row */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-white leading-tight">{p.title}</h3>
-                    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-gray-500">{p.category}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tierColor(p.tier)}`}>
-                        {p.tier}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${lifecycleColor(p.lifecycle)}`}>
-                        {p.lifecycle}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${competitionBadge(p.competitorCount).cls}`}>
-                        {competitionBadge(p.competitorCount).label}
-                      </span>
-                      <span className="rounded-full bg-gray-500/20 px-2 py-0.5 text-[10px] font-medium text-gray-400">
-                        First client: {p.timeToFirstClient}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-medium border ${p.composite >= 8.5 ? 'bg-[#0F2E1A] text-[#1D9E75] border-[#1D9E75]/30' : p.composite >= 7 ? 'bg-[#1f1500] text-[#BA7517] border-[#BA7517]/30' : 'bg-[#0a1a2e] text-[#85B7EB] border-[#185FA5]/30'}`}>
-                        {p.composite >= 8.5 ? 'Great fit' : p.composite >= 7 ? 'Good match' : 'Stretch goal'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="ml-3 shrink-0 text-right">
-                    <div className="text-2xl font-bold text-[#C9A84C]">{p.composite}</div>
-                    <div className="text-[10px] text-gray-500 uppercase tracking-wider cursor-help" title="Overall opportunity score combining credibility, urgency, and payment likelihood">Composite</div>
-                  </div>
-                </div>
-
-                {/* Evidence bars */}
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Credibility', value: p.credibility, type: 'cred' as const, tip: 'How solid our research is — 10 = government/academic source, 1 = blog post' },
-                    { label: 'Urgency', value: p.urgency, type: 'urgency' as const, tip: 'How fast this problem is growing and how urgently wealthy people need it solved' },
-                    { label: 'WTP Signal', value: p.wtpSignal, type: 'wtp' as const, tip: 'Willingness To Pay — how likely wealthy clients are to pay premium prices to solve this' },
-                  ].map((bar) => (
-                    <div key={bar.label}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-gray-500 cursor-help" title={bar.tip}>{bar.label}</span>
-                        <span className="text-[10px] font-medium text-gray-300">{bar.value}</span>
+          {!loading && (
+            <div className="space-y-3">
+              {sorted.map((p) => (
+                <div key={p.id} className="rounded-xl border border-[#1e2a3a] bg-[#111827] p-4 hover:border-[#C9A84C]/40 cursor-pointer transition-colors">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-white leading-tight">{p.title}</h3>
+                        {p.is_new && (
+                          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400 uppercase tracking-wider">New</span>
+                        )}
                       </div>
-                      <div className="h-1.5 rounded-full bg-[#1e2a3a] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${barColor(bar.value, bar.type)}`}
-                          style={{ width: `${(bar.value / 10) * 100}%` }}
-                        />
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-gray-500">{p.pain_category}</span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tierColor(p.wealth_tier)}`}>
+                          {tierShort(p.wealth_tier)}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${lifecycleColor(p.lifecycle_stage)}`}>
+                          {p.lifecycle_stage}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${p.compliance_risk === 'Critical' ? 'bg-red-500/20 text-red-400' : p.compliance_risk === 'High' ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                          {p.compliance_risk} risk
+                        </span>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {/* Meta + actions */}
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-[10px] text-gray-500">
-                    <span>WTP: {p.wtpRange}</span>
-                    <span>{p.citations} citations</span>
-                    <span>{p.timestamp}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }}
-                      className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors"
-                    >
-                      Build offer →
-                    </button>
-                    <button
-                      onClick={() => setDrawerProblemId(drawerProblemId === p.id ? null : p.id)}
-                      className="rounded-lg border border-[#C9A84C]/40 px-3 py-1.5 text-[11px] font-medium text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors"
-                    >
-                      View evidence
-                    </button>
-                    <button onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }} className="rounded-lg border border-[#1e2a3a] px-3 py-1.5 text-[11px] font-medium text-gray-400 hover:text-white hover:border-gray-600 transition-colors">
-                      Validate
-                    </button>
-                  </div>
-                </div>
-
-                {/* Offer Teaser + PRIMARY CTA */}
-                <div className="mt-3 pt-3 border-t border-[#1e2a3a]">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">What you'd sell:</div>
-                      <div className="text-sm font-medium text-white">{p.offerTeaser.name}</div>
+                    <div className="ml-3 shrink-0 text-right">
+                      <div className="text-2xl font-bold text-[#C9A84C]">{p.composite_score}</div>
+                      <div className="text-[10px] text-gray-500 uppercase tracking-wider cursor-help" title="Overall opportunity score combining credibility, urgency, and payment likelihood">Composite</div>
                     </div>
-                    <div className="text-sm text-emerald-400 font-semibold">{p.offerTeaser.price}</div>
                   </div>
-                  <button
-                    onClick={() => { setSelectedProblem(p.problemSlug); setDrawerOpen(true) }}
-                    className="w-full py-2.5 bg-[#C9A84C] text-[#0D1117] font-semibold text-[13px] rounded-lg hover:bg-[#B8973B] transition-colors flex items-center justify-center gap-2"
-                  >
-                    See the full opportunity <span>→</span>
-                  </button>
+
+                  {/* Description */}
+                  <p className="mt-2 text-xs text-gray-400 leading-relaxed line-clamp-2">{p.description}</p>
+
+                  {/* Evidence bars */}
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    {[
+                      { label: 'Credibility', value: p.credibility_score, type: 'cred' as const, tip: 'How solid our research is — 10 = government/academic source, 1 = blog post' },
+                      { label: 'Urgency', value: p.urgency_score, type: 'urgency' as const, tip: 'How fast this problem is growing and how urgently wealthy people need it solved' },
+                      { label: 'WTP Signal', value: wtpSignalNumeric(p.wtp_signal), type: 'wtp' as const, tip: 'Willingness To Pay — how likely wealthy clients are to pay premium prices to solve this' },
+                    ].map((bar) => (
+                      <div key={bar.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] text-gray-500 cursor-help" title={bar.tip}>{bar.label}</span>
+                          <span className="text-[10px] font-medium text-gray-300">{bar.value}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-[#1e2a3a] overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${barColor(bar.value, bar.type)}`}
+                            style={{ width: `${(bar.value / 10) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Meta + actions */}
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-[10px] text-gray-500">
+                      <span>WTP: {p.wtp_range}</span>
+                      <span>{p.citation_count} citations</span>
+                      <span>{p.buyer_type}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { setSelectedProblem(p.id); setDrawerOpen(true) }}
+                        className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors"
+                      >
+                        Build offer →
+                      </button>
+                      <button
+                        onClick={() => setDrawerProblemId(drawerProblemId === p.id ? null : p.id)}
+                        className="rounded-lg border border-[#C9A84C]/40 px-3 py-1.5 text-[11px] font-medium text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors"
+                      >
+                        View evidence
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Pagination Controls ── */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="hidden md:flex items-center justify-between mt-6 pt-4 border-t border-[#1e2a3a]">
+              {/* Left: result count */}
+              <span className="text-[11px] text-[#4a5568]">
+                Showing {showingStart}–{showingEnd} of {pagination.total} problems
+              </span>
+
+              {/* Center: page buttons */}
+              <div className="flex items-center gap-1">
+                {/* Previous button */}
+                <button
+                  onClick={() => { setPage(p => p - 1); window.scrollTo(0, 0) }}
+                  disabled={!pagination.hasPrev}
+                  className={`px-3 py-1.5 rounded-md text-[11px] border transition ${
+                    pagination.hasPrev
+                      ? 'border-[#2a3a4a] text-[#8892a4] hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                      : 'border-[#1e2a3a] text-[#2a3a4a] cursor-not-allowed'
+                  }`}
+                >
+                  ← Previous
+                </button>
+
+                {/* Page number pills */}
+                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc: (number | string)[], p, i, arr) => {
+                    if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, i) =>
+                    p === '...'
+                      ? <span key={`ellipsis-${i}`} className="px-2 text-[#4a5568] text-[11px]">...</span>
+                      : (
+                        <button
+                          key={`page-${p}`}
+                          onClick={() => { setPage(p as number); window.scrollTo(0, 0) }}
+                          className={`w-8 h-8 rounded-md text-[11px] font-medium transition ${
+                            p === page
+                              ? 'bg-[#C9A84C] text-[#0D1117]'
+                              : 'border border-[#2a3a4a] text-[#8892a4] hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                  )
+                }
+
+                {/* Next button */}
+                <button
+                  onClick={() => { setPage(p => p + 1); window.scrollTo(0, 0) }}
+                  disabled={!pagination.hasNext}
+                  className={`px-3 py-1.5 rounded-md text-[11px] border transition ${
+                    pagination.hasNext
+                      ? 'border-[#2a3a4a] text-[#8892a4] hover:border-[#C9A84C] hover:text-[#C9A84C]'
+                      : 'border-[#1e2a3a] text-[#2a3a4a] cursor-not-allowed'
+                  }`}
+                >
+                  Next →
+                </button>
               </div>
-            ))}
-          </div>
+
+              {/* Right: per-page selector */}
+              <select
+                value={limit}
+                onChange={e => { setLimit(parseInt(e.target.value)); setPage(1) }}
+                className="bg-[#111827] border border-[#2a3a4a] text-[#8892a4] rounded-md px-2 py-1.5 text-[11px]"
+              >
+                <option value={12}>12 per page</option>
+                <option value={24}>24 per page</option>
+                <option value={48}>48 per page</option>
+              </select>
+            </div>
+          )}
+
+          {/* ── Mobile: Load More Button ── */}
+          {pagination && pagination.hasNext && (
+            <button
+              onClick={() => setPage(p => p + 1)}
+              className="md:hidden w-full mt-4 py-3 border border-[#2a3a4a] text-[#8892a4] rounded-lg text-[12px] hover:border-[#C9A84C] hover:text-[#C9A84C] transition"
+            >
+              Load more problems ({pagination.total - page * limit} remaining)
+            </button>
+          )}
         </main>
 
         {/* ── RIGHT: Sidebar Panels ── */}
@@ -666,10 +708,10 @@ export default function DiscoverPage() {
               {/* Problem context */}
               <div className="mb-5 rounded-lg border border-[#1e2a3a] bg-[#111827] p-3">
                 <div className="text-sm font-medium text-white">
-                  {PROBLEMS.find((p) => p.id === drawerProblemId)?.title}
+                  {problems.find((p) => p.id === drawerProblemId)?.title}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  {PROBLEMS.find((p) => p.id === drawerProblemId)?.citations} evidence sources analyzed
+                  {problems.find((p) => p.id === drawerProblemId)?.citation_count} evidence sources analyzed
                 </div>
               </div>
 
