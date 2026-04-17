@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import ProblemOfferDrawer from '@/app/components/discover/ProblemOfferDrawer'
 import ScanSchedule from '@/app/components/discover/ScanSchedule'
+import JargonTooltip from '@/app/components/shared/JargonTooltip'
 
 // ─── Inline Data ──────────────────────────────────────────────
 const KPIS = [
@@ -93,35 +94,126 @@ const SCAN_SCHEDULE = {
 
 const SOURCE_PILLS = ['SEC Filings', 'Expert Interviews', 'Industry Reports', 'HNW Forums', 'News']
 
-const EVIDENCE_DRAWER_DATA = [
+interface EvidenceSource {
+  source: string
+  type: 'Government' | 'Industry Report' | 'Peer Reviewed' | 'Primary' | 'News' | string
+  credibility: number
+  claims: string[]
+  publishedDate: string
+  publisher: string
+  jurisdiction?: string
+  ageMonths: number
+  url: string
+  directQuote?: string
+  directQuoteAttribution?: string
+  relevanceNote: string
+}
+
+const EVIDENCE_DRAWER_DATA: EvidenceSource[] = [
   {
     source: 'FBI IC3 Annual Report 2025',
     type: 'Government',
     credibility: 9.4,
+    publishedDate: '2025-11-14',
+    publisher: 'FBI Internet Crime Complaint Center',
+    jurisdiction: 'United States',
+    ageMonths: 5,
+    url: 'https://www.ic3.gov/AnnualReport',
     claims: [
       'AI voice cloning attacks against family offices up 340% YoY',
       'Average wire fraud loss per incident: $2.3M',
+      'Family-office segment is the fastest-growing target category in the 2025 report.',
     ],
+    directQuote:
+      'Criminal actors have increasingly adopted generative voice models to defeat verbal verification controls in private-wealth settings.',
+    directQuoteAttribution: 'FBI IC3, 2025 Annual Report',
+    relevanceNote:
+      'Federal acknowledgement plus a $2.3M loss figure makes this the single strongest citation for anchoring price. Lead pitch materials with this stat.',
   },
   {
     source: 'Campden Wealth Family Office Survey',
     type: 'Industry Report',
     credibility: 8.1,
+    publishedDate: '2025-09-02',
+    publisher: 'Campden Wealth Research',
+    jurisdiction: 'Global',
+    ageMonths: 7,
+    url: 'https://www.campdenwealth.com/research',
     claims: [
-      '67% of family offices report attempted social engineering',
-      'Only 12% have AI-specific fraud prevention protocols',
+      '67% of family offices report attempted social engineering in the last 12 months',
+      'Only 12% have AI-specific fraud prevention protocols in place',
+      'Planned 2026 spend on household security up 38% vs. 2024 baseline.',
     ],
+    directQuote:
+      'The gap between perceived risk and implemented controls is wider than at any point since we began tracking this category.',
+    directQuoteAttribution: 'Dr. Rebecca Gooch, Senior Director of Research, Campden Wealth',
+    relevanceNote:
+      'The 12% coverage figure quantifies the exact unmet-need gap your offer fills. Strongest number to use when a prospect asks "why now".',
   },
   {
     source: 'Expert Interview — CISO, $4B SFO',
     type: 'Primary',
     credibility: 7.8,
+    publishedDate: '2026-01-30',
+    publisher: 'ChamberForge Primary Research',
+    jurisdiction: 'North America',
+    ageMonths: 3,
+    url: 'https://chamberforge.com/research/interviews',
     claims: [
-      'Current voice verification systems fail against latest deepfakes',
+      'Current voice verification systems fail against the latest deepfakes',
       'Budget allocation for AI security expected to triple in 18 months',
+      'Interviewee flagged vendor consolidation as the #1 2026 priority.',
     ],
+    directQuote:
+      'We now assume any unverified voice request is hostile until proven otherwise. That was not our posture 12 months ago.',
+    directQuoteAttribution: 'CISO, $4B single-family office (anonymized)',
+    relevanceNote:
+      'First-party signal that the buyer is actively reallocating budget toward this problem. Use as the closing argument on urgency.',
   },
 ]
+
+const LIFECYCLE_TOOLTIPS: Record<string, string> = {
+  Emerging:
+    'This problem is newly appearing — fewer than 3 years of strong evidence. Early movers win premium positioning and face little competition. High risk, high reward.',
+  Accelerating:
+    'Growing fast right now — evidence volume and urgency scores increasing month over month. The best time to build an offer. Competition still manageable.',
+  Proven:
+    'Well-established problem with a clear market. Multiple providers exist but the UHNW market is large enough for specialists. Easier client conversations, more established pricing.',
+  Saturated:
+    'Many providers competing. Requires strong differentiation or niche specialization to win. Price pressure is higher. Consider a sub-niche angle.',
+  Declining:
+    'Problem losing urgency due to regulatory changes, technology, or market saturation. Exercise caution — short retainer windows likely.',
+}
+
+const TIER_TOOLTIPS: Record<string, string> = {
+  UHNW:
+    'Ultra High Net Worth — clients with $30M+ in investable assets. Typically family offices, dynastic wealth, or recent liquidity events. Highest willingness to pay, expect white-glove service.',
+  HNW:
+    'High Net Worth — clients with $1M-$30M in investable assets. Often successful professionals, business owners, or pre-exit founders. Strong willingness to pay for specialized expertise.',
+  'Family Office':
+    'Family Office — a dedicated advisory structure for a single family or small group of families. Decisions flow through a Chief of Staff or principal; sales cycle is slower but retention is high.',
+  Dynasty:
+    'Dynasty — multigenerational wealth structures with governance, succession, and philanthropy layered on top of investment management. Largest opportunity, longest sales cycle.',
+}
+
+const PAIN_CATEGORY_TOOLTIPS: Record<string, string> = {
+  Security:
+    'Cyber threats, physical security, AI impersonation, fraud prevention, household surveillance risks',
+  Coordination:
+    'Managing complex multi-entity households, vendors, staff, properties, travel, and schedules',
+  Privacy:
+    'Digital footprint reduction, data broker removal, personal information exposure, identity protection',
+  Governance:
+    'Succession planning, family governance, trust structures, next-gen wealth education',
+  Medical:
+    'Concierge health navigation, specialist access, international medical coordination, health records',
+  Travel:
+    'High-risk destination preparation, logistics, security briefings, medical evacuation planning',
+  Legal:
+    'Cross-jurisdiction legal strategy, litigation readiness, trust & estate complexity, regulatory exposure',
+  Financial:
+    'Investment diligence, liquidity planning, tax optimization, complex instrument oversight',
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 function tierColor(tier: string) {
@@ -145,6 +237,46 @@ function lifecycleColor(lc: string) {
     Declining: 'bg-red-500/20 text-red-400',
   }
   return map[lc] || 'bg-gray-500/20 text-gray-400'
+}
+
+function painCategoryColor(cat: string) {
+  const map: Record<string, string> = {
+    Security: 'bg-red-500/15 text-red-400',
+    Coordination: 'bg-blue-500/15 text-blue-400',
+    Privacy: 'bg-purple-500/15 text-purple-400',
+    Governance: 'bg-amber-500/15 text-amber-400',
+    Medical: 'bg-emerald-500/15 text-emerald-400',
+    Travel: 'bg-cyan-500/15 text-cyan-400',
+    Legal: 'bg-orange-500/15 text-orange-400',
+    Financial: 'bg-teal-500/15 text-teal-400',
+  }
+  return map[cat] || 'bg-gray-500/20 text-gray-400'
+}
+
+function BadgeWithTooltip({
+  label,
+  colorClass,
+  title,
+  body,
+}: {
+  label: string
+  colorClass: string
+  title: string
+  body: string
+}) {
+  return (
+    <span className="relative group inline-block">
+      <span
+        className={`rounded-full px-2 py-0.5 text-[10px] font-medium cursor-help ${colorClass}`}
+      >
+        {label}
+      </span>
+      <span className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 text-[10px] text-[#8892a4] leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50 shadow-xl block">
+        <span className="block font-semibold text-[#e2e8f0] mb-1">{title}</span>
+        {body}
+      </span>
+    </span>
+  )
 }
 
 function barColor(value: number, type: 'cred' | 'urgency' | 'wtp') {
@@ -173,7 +305,7 @@ export default function DiscoverPage() {
   const [painCategory, setPainCategory] = useState('All Categories')
   const [urgencyFilter, setUrgencyFilter] = useState('Any Urgency')
   const [drawerProblemId, setDrawerProblemId] = useState<string | null>(null)
-  const [selectedProblem, setSelectedProblem] = useState<string | null>(null)
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Pagination state
@@ -449,13 +581,24 @@ export default function DiscoverPage() {
                         )}
                       </div>
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-gray-500">{p.pain_category}</span>
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tierColor(p.wealth_tier)}`}>
-                          {tierShort(p.wealth_tier)}
-                        </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${lifecycleColor(p.lifecycle_stage)}`}>
-                          {p.lifecycle_stage}
-                        </span>
+                        <BadgeWithTooltip
+                          label={p.pain_category}
+                          colorClass={painCategoryColor(p.pain_category)}
+                          title={p.pain_category}
+                          body={PAIN_CATEGORY_TOOLTIPS[p.pain_category] || 'Pain category groups problems by the operational area they affect.'}
+                        />
+                        <BadgeWithTooltip
+                          label={tierShort(p.wealth_tier)}
+                          colorClass={`border ${tierColor(p.wealth_tier)}`}
+                          title={tierShort(p.wealth_tier)}
+                          body={TIER_TOOLTIPS[tierShort(p.wealth_tier)] || 'Client tier describes the asset bracket of the target buyer. Pricing and delivery model typically scale with tier.'}
+                        />
+                        <BadgeWithTooltip
+                          label={p.lifecycle_stage}
+                          colorClass={lifecycleColor(p.lifecycle_stage)}
+                          title={p.lifecycle_stage}
+                          body={LIFECYCLE_TOOLTIPS[p.lifecycle_stage] || 'Lifecycle indicates where this problem sits on the adoption curve.'}
+                        />
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${p.compliance_risk === 'Critical' ? 'bg-red-500/20 text-red-400' : p.compliance_risk === 'High' ? 'bg-amber-500/20 text-amber-400' : 'bg-gray-500/20 text-gray-400'}`}>
                           {p.compliance_risk} risk
                         </span>
@@ -501,7 +644,7 @@ export default function DiscoverPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => { setSelectedProblem(p.id); setDrawerOpen(true) }}
+                        onClick={() => { setSelectedProblem(p); setDrawerOpen(true) }}
                         className="rounded-lg bg-[#C9A84C] px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-[#d4b85d] transition-colors"
                       >
                         Build offer →
@@ -685,79 +828,162 @@ export default function DiscoverPage() {
       </div>
 
       {/* ── Evidence Chain Drawer ── */}
-      {drawerProblemId !== null && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setDrawerProblemId(null)}
-          />
-          {/* Drawer */}
-          <div className="relative w-[480px] h-full bg-[#0D1117] border-l border-[#1e2a3a] overflow-auto animate-slide-in">
-            <div className="p-5">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-bold text-white">Evidence Chain</h2>
-                <button
-                  onClick={() => setDrawerProblemId(null)}
-                  className="text-gray-500 hover:text-white text-xl leading-none"
-                >
-                  &times;
-                </button>
-              </div>
-
-              {/* Problem context */}
-              <div className="mb-5 rounded-lg border border-[#1e2a3a] bg-[#111827] p-3">
-                <div className="text-sm font-medium text-white">
-                  {problems.find((p) => p.id === drawerProblemId)?.title}
+      {drawerProblemId !== null && (() => {
+        const current = problems.find((p) => p.id === drawerProblemId)
+        const avgCredibility =
+          EVIDENCE_DRAWER_DATA.length === 0
+            ? 0
+            : Math.round(
+                (EVIDENCE_DRAWER_DATA.reduce((s, x) => s + x.credibility, 0) / EVIDENCE_DRAWER_DATA.length) * 10
+              ) / 10
+        return (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerProblemId(null)} />
+            <div className="relative w-[480px] h-full bg-[#0D1117] border-l border-[#1e2a3a] overflow-auto animate-slide-in">
+              <div className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-white">Evidence Chain</h2>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{current?.title}</p>
+                  </div>
+                  <button
+                    onClick={() => setDrawerProblemId(null)}
+                    className="text-gray-500 hover:text-white text-xl leading-none"
+                    aria-label="Close evidence chain"
+                  >
+                    &times;
+                  </button>
                 </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  {problems.find((p) => p.id === drawerProblemId)?.citation_count} evidence sources analyzed
-                </div>
-              </div>
 
-              {/* Evidence sources */}
-              <div className="space-y-4">
-                {EVIDENCE_DRAWER_DATA.map((e, i) => (
-                  <div key={i} className="rounded-lg border border-[#1e2a3a] bg-[#111827] p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="text-sm font-medium text-white">{e.source}</div>
-                        <span className="mt-1 inline-block rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-400">
-                          {e.type}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-emerald-400">{e.credibility}</div>
-                        <div className="text-[10px] text-gray-500">Credibility</div>
-                      </div>
+                {/* Summary bar */}
+                <div className="mb-4 rounded-lg border border-[#1e2a3a] bg-[#0a0f17] p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider text-[#4a5568]">Sources</div>
+                      <div className="text-[18px] font-bold text-[#e2e8f0]">{EVIDENCE_DRAWER_DATA.length}</div>
                     </div>
-
-                    {/* Credibility bar */}
-                    <div className="mb-3">
-                      <div className="h-1.5 rounded-full bg-[#1e2a3a] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${barColor(e.credibility, 'cred')}`}
-                          style={{ width: `${(e.credibility / 10) * 100}%` }}
-                        />
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider text-[#4a5568]">Avg credibility</div>
+                      <div
+                        className="text-[18px] font-bold"
+                        style={{
+                          color:
+                            avgCredibility >= 8.5
+                              ? '#1D9E75'
+                              : avgCredibility >= 7
+                              ? '#C9A84C'
+                              : '#BA7517',
+                        }}
+                      >
+                        {avgCredibility.toFixed(1)}
                       </div>
-                    </div>
-
-                    {/* Claims */}
-                    <div className="space-y-1.5">
-                      {e.claims.map((c, ci) => (
-                        <div key={ci} className="flex items-start gap-2">
-                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#C9A84C]" />
-                          <span className="text-xs text-gray-300 leading-relaxed">{c}</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
-                ))}
+                  <div className="mt-3 bg-[#2a1d0a] border border-[#BA7517]/40 rounded px-3 py-2">
+                    <div className="text-[10px] font-semibold text-[#E3B84C] uppercase tracking-wider mb-1">
+                      Contradiction detected
+                    </div>
+                    <div className="text-[10px] text-[#C9A84C] leading-relaxed">
+                      IC3 and Campden disagree on the median loss per incident ($2.3M vs. a $2.4M Campden estimate). Cross-check before citing a single figure in client materials.
+                    </div>
+                  </div>
+                  <div className="mt-2 text-[9px] text-[#4a5568]">
+                    Evidence last refreshed: 2026-04-15 09:12 UTC
+                  </div>
+                </div>
+
+                {/* Evidence sources */}
+                <div className="space-y-3">
+                  {EVIDENCE_DRAWER_DATA.map((e, i) => (
+                    <div key={i} className="rounded-lg border border-[#1e2a3a] bg-[#111827] p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="pr-3">
+                          <span className="inline-block mr-2 rounded bg-[#0a1a2e] text-[#85B7EB] text-[9px] font-semibold px-2 py-0.5 uppercase tracking-wider">
+                            {e.type}
+                          </span>
+                          <span className="text-[12px] font-semibold text-[#e2e8f0]">{e.source}</span>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div
+                            className="text-[18px] font-bold"
+                            style={{
+                              color:
+                                e.credibility >= 8.5
+                                  ? '#1D9E75'
+                                  : e.credibility >= 7
+                                  ? '#C9A84C'
+                                  : '#BA7517',
+                            }}
+                          >
+                            {e.credibility}
+                          </div>
+                          <div className="text-[9px] text-[#4a5568]">credibility</div>
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-[#4a5568] mb-3">
+                        Published: {e.publishedDate} · {e.publisher} · {e.jurisdiction || 'Global'}
+                      </div>
+
+                      <div className="mb-3">
+                        <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-2">
+                          Key findings relevant to this problem
+                        </div>
+                        {e.claims.map((claim, ci) => (
+                          <div key={ci} className="flex gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] flex-shrink-0 mt-1.5" />
+                            <div className="text-[11px] text-[#8892a4] leading-relaxed">{claim}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {e.directQuote && (
+                        <div className="bg-[#0D1117] border-l-2 border-[#C9A84C] px-3 py-2 mb-3">
+                          <div className="text-[11px] text-[#e2e8f0] italic leading-relaxed">
+                            &ldquo;{e.directQuote}&rdquo;
+                          </div>
+                          {e.directQuoteAttribution && (
+                            <div className="text-[9px] text-[#C9A84C] mt-1">— {e.directQuoteAttribution}</div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded px-3 py-2">
+                        <div className="text-[9px] font-semibold text-[#1D9E75] uppercase tracking-wider mb-1">
+                          Why this matters for your offer
+                        </div>
+                        <div className="text-[10px] text-[#5DCAA5] leading-relaxed">{e.relevanceNote}</div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#1e2a3a]">
+                        <span
+                          className={`text-[9px] font-medium ${
+                            e.ageMonths <= 6
+                              ? 'text-[#1D9E75]'
+                              : e.ageMonths <= 18
+                              ? 'text-[#C9A84C]'
+                              : 'text-[#E24B4A]'
+                          }`}
+                        >
+                          {e.ageMonths <= 6 ? '● Fresh' : e.ageMonths <= 18 ? '● Aging' : '● Stale'} · {e.ageMonths}mo old
+                        </span>
+                        <a
+                          href={e.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] text-[#534AB7] hover:text-[#AFA9EC]"
+                        >
+                          View source →
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Drawer slide animation */}
       <style jsx>{`
@@ -771,7 +997,7 @@ export default function DiscoverPage() {
       `}</style>
 
       {drawerOpen && selectedProblem && (
-        <ProblemOfferDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} problemId={selectedProblem} />
+        <ProblemOfferDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} problemId={selectedProblem.id} problem={selectedProblem} />
       )}
     </div>
   )
