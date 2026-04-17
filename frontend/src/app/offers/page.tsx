@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopBar from '../components/shared/TopBar'
 import CommandAIButton from '../components/shared/CommandAIButton'
 
@@ -149,6 +150,7 @@ const ATTENTION_IDS = new Set(['2', '5'])
 
 // ─── Page Component ──────────────────────────────────────────
 export default function OffersPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('Name A-Z')
@@ -487,7 +489,7 @@ export default function OffersPage() {
 
                 {/* Actions */}
                 <div className="border-t border-[#1e2a3a] pt-3 mt-3 flex gap-2">
-                  <button onClick={() => alert(`Editing offer: ${selectedOffer?.name}`)} className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
+                  <button onClick={() => router.push(`/offers/${selectedOffer?.id}/edit`)} className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
                   <button onClick={() => { setFullDrawerOffer(selectedOffer); setRevenueSliderClients(5) }} className="flex-1 bg-[#1e2a3a] text-gray-300 text-xs py-2 rounded-lg hover:bg-[#1e2a3a]/80">View Full</button>
                 </div>
               </div>
