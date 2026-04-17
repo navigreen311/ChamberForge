@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import TopBar from '../../../components/shared/TopBar'
 import CommandAIButton from '../../../components/shared/CommandAIButton'
 
+type DealStageId = 'awareness' | 'interest' | 'evaluation' | 'decision' | 'closed'
+
 interface ClientSummary {
   id: string
   name: string
@@ -21,7 +23,17 @@ interface ClientSummary {
   matchedProblem: { id: string; name: string; lifecycle: string; credibility: number }
   matchedOffer: { name: string; priceMonthly: number; rationale: string }
   objections: { risk: string; response: string }[]
+  dealStage: DealStageId
+  daysInStage: number
 }
+
+const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
+  { id: 'awareness', label: 'Awareness', desc: 'Client knows you exist' },
+  { id: 'interest', label: 'Interest', desc: 'Expressed willingness to learn more' },
+  { id: 'evaluation', label: 'Evaluating', desc: 'Comparing options actively' },
+  { id: 'decision', label: 'Decision', desc: 'Ready to commit or decline' },
+  { id: 'closed', label: 'Closed', desc: 'Retainer signed' },
+]
 
 const FALLBACK: ClientSummary = {
   id: 'unknown',
@@ -80,6 +92,8 @@ const FALLBACK: ClientSummary = {
         'Median single-incident loss among UHNW households is $2.4M (FinCEN, 2025). One prevented incident pays for 7 years of retainer. This is insurance you can actively operate.',
     },
   ],
+  dealStage: 'evaluation',
+  daysInStage: 9,
 }
 
 interface BriefData {
@@ -121,6 +135,21 @@ export default function DecisionRoomPage() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const updateDealStage = async (stageId: DealStageId) => {
+    if (!client) return
+    setClient({ ...client, dealStage: stageId, daysInStage: 0 })
+    try {
+      await fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealStage: stageId, stageUpdatedAt: new Date().toISOString() }),
+      })
+    } catch {
+      /* soft-fail */
+    }
+    showToast(`Deal stage advanced to ${DEAL_STAGES.find(s => s.id === stageId)?.label ?? stageId}`)
   }
 
   useEffect(() => {
@@ -306,6 +335,55 @@ export default function DecisionRoomPage() {
             <div className="text-[10px] text-gray-500 mt-1">Last contact: {client.lastContact}</div>
           </div>
         </div>
+
+        {/* ── Deal Stage Tracker ─────────────── */}
+        {(() => {
+          const currentStageIndex = DEAL_STAGES.findIndex(s => s.id === client.dealStage)
+          return (
+            <div className="flex items-center gap-0 mb-6 bg-[#111827] rounded-xl p-4 border border-[#1e2a3a]">
+              {DEAL_STAGES.map((stage, i) => (
+                <div key={stage.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div
+                      onClick={() => updateDealStage(stage.id)}
+                      title={stage.desc}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold cursor-pointer transition ${
+                        i < currentStageIndex
+                          ? 'bg-[#1D9E75] text-white'
+                          : i === currentStageIndex
+                          ? 'bg-[#C9A84C] text-[#0D1117]'
+                          : 'bg-[#1e2a3a] text-[#4a5568]'
+                      }`}
+                    >
+                      {i < currentStageIndex ? '✓' : i + 1}
+                    </div>
+                    <div
+                      className={`text-[9px] mt-1 font-medium text-center ${
+                        i === currentStageIndex
+                          ? 'text-[#C9A84C]'
+                          : i < currentStageIndex
+                          ? 'text-[#1D9E75]'
+                          : 'text-[#4a5568]'
+                      }`}
+                    >
+                      {stage.label}
+                    </div>
+                    {i === currentStageIndex && (
+                      <div className="text-[8px] text-[#4a5568]">{client.daysInStage}d here</div>
+                    )}
+                  </div>
+                  {i < DEAL_STAGES.length - 1 && (
+                    <div
+                      className={`h-0.5 flex-1 ${
+                        i < currentStageIndex ? 'bg-[#1D9E75]' : 'bg-[#1e2a3a]'
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         <div className="grid grid-cols-2 gap-6">
           {/* ── LEFT COLUMN ─ Client context ─────────────── */}
