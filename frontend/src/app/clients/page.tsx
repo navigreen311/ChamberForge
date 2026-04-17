@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import JargonTooltip from '@/app/components/shared/JargonTooltip'
 
 // ─── Types ───────────────────────────────────────────────────
 type Status = 'active' | 'prospect' | 'at_risk' | 'alumni'
@@ -257,6 +259,7 @@ const MOCK_BRIEF = {
 
 // ─── Page Component ──────────────────────────────────────────
 export default function ClientsPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
   const [tierFilter, setTierFilter] = useState('all')
@@ -389,7 +392,7 @@ export default function ClientsPage() {
                         <div className="text-[10px] text-purple-400">{c.trustChannel}</div>
                       </td>
                       {/* Tier */}
-                      <td className="px-3 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full border ${tierBadge[c.tier]}`}>{c.tier}</span></td>
+                      <td className="px-3 py-3"><JargonTooltip term={c.tier} bare><span className={`text-[10px] px-2 py-0.5 rounded-full border ${tierBadge[c.tier]}`}>{c.tier}</span></JargonTooltip></td>
                       {/* Status */}
                       <td className="px-3 py-3"><span className={`text-[10px] px-2 py-0.5 rounded-full ${statusPill[isAtRisk(c) ? 'at_risk' : c.status]}`}>{isAtRisk(c) ? 'at risk' : c.status}</span></td>
                       {/* Pain Focus */}
@@ -481,7 +484,7 @@ export default function ClientsPage() {
                     <div className="text-sm font-semibold">{selectedClient.name}</div>
                     <div className="text-[11px] text-gray-400">{selectedClient.company}</div>
                     <div className="flex gap-2 mt-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${tierBadge[selectedClient.tier]}`}>{selectedClient.tier}</span>
+                      <JargonTooltip term={selectedClient.tier} bare><span className={`text-[10px] px-2 py-0.5 rounded-full border ${tierBadge[selectedClient.tier]}`}>{selectedClient.tier}</span></JargonTooltip>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${statusPill[isAtRisk(selectedClient) ? 'at_risk' : selectedClient.status]}`}>{isAtRisk(selectedClient) ? 'at risk' : selectedClient.status}</span>
                     </div>
                   </div>
@@ -536,7 +539,7 @@ export default function ClientsPage() {
                 {/* Action Buttons */}
                 <div className="mt-4 space-y-2">
                   <button onClick={() => openBrief(selectedClient)} className="w-full bg-[#C9A84C] text-[#0D1117] font-semibold py-2 rounded-lg text-sm hover:bg-[#C9A84C]/90">Generate Brief</button>
-                  <button className="w-full bg-purple-900/50 text-purple-400 border border-purple-500/40 py-2 rounded-lg text-sm hover:bg-purple-900/70">Open Decision Room</button>
+                  <button onClick={() => router.push(`/clients/${selectedClient.id}/decision-room`)} className="w-full bg-purple-900/50 text-purple-400 border border-purple-500/40 py-2 rounded-lg text-sm hover:bg-purple-900/70">Open Decision Room</button>
                   <button className="w-full border border-[#1e2a3a] text-gray-400 py-2 rounded-lg text-sm hover:border-gray-600">Log Touchpoint</button>
                   {isAtRisk(selectedClient) && <button className="w-full bg-red-900/50 text-red-400 border border-red-500/40 py-2 rounded-lg text-sm hover:bg-red-900/70">Schedule Intervention</button>}
                 </div>
