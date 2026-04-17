@@ -275,6 +275,29 @@ const PLAYBOOKS: Playbook[] = [
   },
 ]
 
+// Typical time from activating the playbook to landing the first paying client.
+const FIRST_CLIENT_TIMELINE_BY_SLUG: Record<string, string> = {
+  'footprint-reduction': '3-6 wks',
+  'family-cyber-command': '4-8 wks',
+  'ecosystem-orchestrator': '6-10 wks',
+  'private-ops-office': '4-8 wks',
+  'family-risk-council': '8-12 wks',
+  'next-gen-studio': '8-16 wks',
+  'medical-navigation': '4-6 wks',
+  'property-resilience': '6-12 wks',
+  'travel-reliability': '3-5 wks',
+  'household-workforce': '5-8 wks',
+}
+
+// Active client names shown in the hover tooltip on the "N active" badge.
+const ACTIVE_CLIENT_NAMES_BY_ID: Record<number, string[]> = {
+  1: ['Jonathan Wellington III', 'Hiroshi Nakamura', 'Elena Rivera'],
+  2: ['Jonathan Wellington III', 'Robert Kingsley'],
+  3: ['Jonathan Wellington III'],
+  6: ['Elena Rivera'],
+  9: ['Jonathan Wellington III'],
+}
+
 // Plain-language descriptions for deliverables shown in the DetailPanel.
 const INCLUDED_DESCRIPTIONS: Record<string, string> = {
   'Dedicated ops coordinator': 'A named person owning daily coordination across vendors, staff, and advisors — your single point of accountability.',
@@ -1079,7 +1102,27 @@ function PlaybookCard({ playbook: p, selected, onSelect, onActivate, composerMod
           <span className="text-[10px] px-1.5 py-0.5 rounded border border-gray-700 bg-gray-800 text-gray-400">{p.deliveryModel}</span>
           <span className={`text-[10px] px-1.5 py-0.5 rounded border ${redTeamBg}`}>{p.redTeam === 'Not audited' ? 'Not audited' : `Red-team: ${p.redTeam}`}</span>
           {p.activeClients > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/40 font-medium">{p.activeClients} active</span>
+            <div className="relative group">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#C9A84C]/10 text-[#C9A84C] border border-[#C9A84C]/40 font-medium cursor-help inline-block">
+                {p.activeClients} active
+              </span>
+              {ACTIVE_CLIENT_NAMES_BY_ID[p.id]?.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-2 w-48 bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
+                  <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-2">Active clients</div>
+                  {ACTIVE_CLIENT_NAMES_BY_ID[p.id].map((c) => (
+                    <div key={c} className="text-[10px] text-[#e2e8f0] py-0.5">{c}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {FIRST_CLIENT_TIMELINE_BY_SLUG[p.slug] && (
+            <span
+              className="text-[9px] px-2 py-0.5 rounded-full bg-[#1e2a3a] text-[#4a5568] border border-[#2a3a4a]"
+              title="How long it typically takes to land the first paying client using this playbook"
+            >
+              First client: {FIRST_CLIENT_TIMELINE_BY_SLUG[p.slug]}
+            </span>
           )}
         </div>
 
