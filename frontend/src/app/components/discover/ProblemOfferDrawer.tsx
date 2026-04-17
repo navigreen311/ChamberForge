@@ -1287,10 +1287,676 @@ function resolveProblemSlug(p: ApiProblem | undefined, explicitId: string): stri
 
 /* ──────────────── Build ProblemData from API Problem ─────────── */
 
+/**
+ * Category-based rich content templates. Each template provides domain-appropriate
+ * whyWealthyRich / stepsRich / weekRich / deliverablesRich / timeBreakdown /
+ * toolsNeeded / first90Days content. Problem-specific values (title, wtp_range,
+ * trust_channel, buyer_type, wealth tier) are interpolated at build time.
+ *
+ * Covers the 7 pain categories in the current problem catalog and serves as the
+ * default when a problem doesn't match one of the 5 hand-crafted PROBLEMS slugs.
+ */
+type RichTemplate = {
+  serviceNoun: string; // e.g., "protection", "coordination", "advisory"
+  operatorRole: string; // "You become the family's …"
+  whyWealthyRich: string[];
+  stepsRich: RichStep[];
+  weekRich: { day: string; task: string }[];
+  deliverablesRich: RichDeliverable[];
+  timeBreakdown: TimeBreakdown;
+  toolsNeeded: ToolNeeded[];
+  first90Days: PhaseBlock[];
+  currentSolutions: CurrentSolution[];
+  objections: Objection[];
+};
+
+const CATEGORY_TEMPLATES: Record<string, RichTemplate> = {
+  'Wealth Preservation': {
+    serviceNoun: 'wealth preservation strategy',
+    operatorRole: "You become the family's dedicated wealth preservation strategist",
+    whyWealthyRich: [
+      'UHNW families hold assets across multiple legal structures (trusts, LLCs, FLPs, foundations) and jurisdictions. Each structure has its own tax calendar, fiduciary duty, and reporting burden — and the cost of missing one election or filing window is measured in hundreds of thousands of dollars per incident.',
+      'The 2026 estate-tax exemption sunset (from $13.99M to ~$7M per individual) creates a 12-month window where most families will execute irrevocable gifts. Misaligned gifting permanently triggers GST tax, locks in basis problems, and can invalidate grantor-trust status with no do-over.',
+      'Art, collectibles, luxury real estate, and private business interests lack transparent valuation. The 2024 Deloitte UHNW report found valuation inconsistencies above 22% across successive appraisals for the same asset — driving both insurance under-coverage and tax exposure on transfer.',
+      'Cross-border structures face conflicting tax regimes. The OECD Pillar 2 rules, CTA, FATCA, and CRS each generate independent reporting obligations; coordination across them is nobody\'s explicit job at most family offices.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Map the full wealth-preservation surface', detail: 'You document every legal entity, jurisdiction, asset class, and current tax position in a single schema. You identify every irrevocable decision window inside the next 24 months (exemption sunset, basis step-up opportunities, QSBS qualification dates). Deliverable: a 30-page Wealth Preservation Atlas with the prioritized 12-month action ledger.', timeRequired: 'One-time 4 weeks (~50h)' },
+      { stepNumber: 2, action: 'Execute the top 3 time-boxed decisions', detail: 'You coordinate the trust attorney, tax attorney, investment advisor, and insurance broker on the 3 highest-NPV decisions identified in the Atlas. You run the legal memo, the modeling, the family sign-off, and the execution date stack. You publish a closing memo for each decision within 10 days of execution.', timeRequired: '~12h per decision' },
+      { stepNumber: 3, action: 'Stand up the monthly Preservation Council', detail: 'You chair a recurring 60-minute monthly call with all 5 advisors plus the principal. You circulate a 3-page pre-read 72 hours ahead: decisions needed this month, deadlines inside 90 days, cross-advisor conflicts flagged since last session. You publish minutes within 24 hours with owner-assigned action items.', timeRequired: '~3h/month' },
+      { stepNumber: 4, action: 'Run the annual preservation review', detail: 'You produce a 40-page year-in-review benchmarking every structure against the prior year, calculating taxes saved/deferred, verifying compliance across jurisdictions, and refreshing the 24-month decision ledger. Reviewed live with principal and next generation in a 90-minute working session.', timeRequired: '~40h annually (Q4)' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Review the decision ledger for any item inside a 90-day window. Email owners of any deadline item that has not progressed since last Monday. Log any regulatory update from the weekend tax-law digest that affects an active structure.' },
+      { day: 'Tuesday', task: '30-minute 1:1 with one advisor on a rotating 5-week schedule. Standing question: "What is the family doing or not doing that is making your preservation work harder?" Document verbatim.' },
+      { day: 'Wednesday', task: 'Draft the Weekly Preservation Digest — 1 page covering this week\'s completed decisions, pending items, and the single decision that needs the principal\'s attention this week. Delivered by 5 PM.' },
+      { day: 'Thursday', task: 'Update the tax-calendar integration (federal, state, international) and verify every filing inside 30 days has an accountable owner. Pull a fresh report from the accounting system to confirm.' },
+      { day: 'Friday', task: 'Principal briefing — 2 pages summarizing the week, any decisions pending approval, the single weekend reading item if any. Delivered by 3 PM.' },
+      { day: 'Monthly', task: 'Chair the 60-minute Preservation Council call on the first Tuesday. Publish minutes within 24 hours. Update the Atlas with any new structure or changed position.' },
+      { day: 'Quarterly', task: 'Deliver the Quarterly Preservation Report — 8 pages covering decisions executed, taxes saved/deferred, upcoming 90-day items, and peer benchmarking on 3 key metrics.' },
+    ],
+    deliverablesRich: [
+      { name: 'Wealth Preservation Atlas', description: 'The 30-page master document mapping every entity, jurisdiction, asset class, and time-boxed decision window. Refreshed quarterly and distributed to the Preservation Council.', frequency: 'Quarterly refresh' },
+      { name: 'Weekly Preservation Digest', description: '1-page summary delivered every Friday by 3 PM. Completed decisions, pending items, and the single decision needing principal input this week. Readable in 2 minutes.', frequency: 'Weekly (Fri 3 PM)' },
+      { name: 'Monthly Preservation Council Minutes', description: '3-page document published within 24 hours of the first-Tuesday council call. Every decision, every owner, every deadline. The fiduciary-duty audit trail.', frequency: 'Monthly' },
+      { name: 'Decision Closing Memo', description: '4-8 page legal-and-tax memo produced within 10 days of every executed decision. Captures rationale, alternatives considered, expected outcome, and measurement plan. Becomes the institutional memory.', frequency: 'Per decision' },
+      { name: 'Quarterly Preservation Report', description: '8-page quarterly document covering executed decisions, taxes saved/deferred, upcoming 90-day items, and peer benchmarking. Reviewed with principal in 45-minute call.', frequency: 'Quarterly' },
+      { name: 'Annual Preservation Review', description: '40-page year-in-review benchmarking every structure, calculating year-over-year savings, verifying cross-jurisdiction compliance, and refreshing the 24-month decision ledger.', frequency: 'Annual (Q4)' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 10,
+      items: [
+        { task: 'Decision ledger + deadline triage', hoursPerWeek: 2 },
+        { task: 'Advisor 1:1 rotation', hoursPerWeek: 0.75 },
+        { task: 'Weekly Preservation Digest', hoursPerWeek: 1.25 },
+        { task: 'Tax calendar maintenance', hoursPerWeek: 1 },
+        { task: 'Friday principal briefing', hoursPerWeek: 1.25 },
+        { task: 'Monthly Council (amortized)', hoursPerWeek: 0.75 },
+        { task: 'Quarterly report (amortized)', hoursPerWeek: 1.5 },
+        { task: 'Ad-hoc decision coordination', hoursPerWeek: 1.5 },
+      ],
+      note: 'Tax-calendar upkeep and deadline-tracker entry can be delegated to a paralegal once templates are in place. Advisor-facing coordination, decision memos, and principal-facing documents must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'Mylen or Addepar', cost: '$1,200-3,500/mo', purpose: 'Unified wealth-reporting and entity-structure mapping' },
+      { tool: 'Thomson Reuters Checkpoint', cost: '$400-900/mo', purpose: 'Multi-jurisdictional tax research and compliance calendar' },
+      { tool: 'Notion or Airtable Pro', cost: '$10-24/user/mo', purpose: 'Decision ledger, closing-memo library, Council minutes' },
+      { tool: 'DocuSign', cost: '$25/user/mo', purpose: 'Execution packages for irrevocable gifting and trust funding' },
+      { tool: 'Bloomberg Tax', cost: '$250-600/mo', purpose: 'Real-time legislative monitoring and sunset-rule guidance' },
+      { tool: 'Dropbox Business', cost: '$20/user/mo', purpose: 'Secure cross-advisor document repository with version control' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Baseline the preservation surface', color: 'amber', actions: [
+        'Sign engagement letter with explicit non-advisor disclaimer language',
+        'Conduct 3-hour family intake with principal and family office head',
+        'Inventory every legal entity, jurisdiction, and asset class currently held',
+        'Interview every existing advisor individually (30 min each) on their current scope',
+        'Produce the v1 Wealth Preservation Atlas with the prioritized 12-month decision ledger',
+      ] },
+      { phase: 'Days 31-60: Stand up the cadence', color: 'green', actions: [
+        'Hold the first monthly Preservation Council call',
+        'Ship 4 Weekly Preservation Digests (Fridays 3 PM)',
+        'Execute the top time-boxed decision identified in the Atlas',
+        'Deliver the first Decision Closing Memo within 10 days of execution',
+        'Build the integrated tax calendar across federal, state, and international',
+      ] },
+      { phase: 'Days 61-90: Proof of value', color: 'gold', actions: [
+        'Deliver the first Quarterly Preservation Report with taxes-saved figure',
+        'Execute the second highest-NPV decision from the Atlas',
+        'Run the first cross-advisor alignment summit',
+        'Present first-quarter ROI memo: dollars preserved, deadlines met, conflicts avoided',
+        'Commit to the next 90-day decision plan with the principal',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'Trust attorney handles it at year-end', whyItFails: 'Year-end planning catches annual elections but misses mid-year liquidity events, cross-advisor conflicts, and irrevocable decision windows that close between tax seasons.' },
+      { approach: 'Family office CEO quarterbacks', whyItFails: 'The CEO has 40 other responsibilities and no formal authority to convene the 5-advisor stack. Coordination devolves to forwarded emails.' },
+      { approach: 'Multi-family office "integrated" offering', whyItFails: 'MFOs own 2-3 disciplines and outsource the rest, so the same coordination gap exists one level down — and the MFO has a conflict of interest around changing its own advice.' },
+    ],
+    objections: [
+      { objection: 'We already have a trust attorney', response: 'Attorneys draft documents. This is ongoing decision coordination across trust, tax, investment, insurance — making sure no single advisor\'s move breaks another\'s work.' },
+      { objection: 'Can our CPA just run this?', response: 'CPAs file returns. This builds the 24-month decision ledger, runs the monthly Council, and executes irrevocable decisions with cross-advisor sign-off. Different discipline, different output.' },
+      { objection: 'How is this different from a family office?', response: 'A family office manages operations. This manages preservation decisions specifically — it lives above the family office and drives the cross-advisor decision calendar.' },
+    ],
+  },
+
+  'Risk & Security': {
+    serviceNoun: 'risk mitigation program',
+    operatorRole: "You become the family's dedicated security & risk operator",
+    whyWealthyRich: [
+      'The FBI IC3 2025 data shows a 312% year-over-year rise in sophisticated attacks against households with net worth above $50M. The attack economics flipped: one successful incident funds hundreds of attempts, and consumer-grade defenses do not address the family attack surface.',
+      'The average UHNW household has 47+ external parties with some form of physical, financial, or data access — private bankers, accountants, property managers, domestic staff, vendors. Each is an attack vector that standard corporate security programs explicitly exclude.',
+      'Public filings, charity panels, and media appearances create unlimited reconnaissance data. A single 40-minute podcast provides enough voice and biographical material for an AI-impersonation attack, and no amount of future security posture can retract what is already public.',
+      'Reputational drag on reporting keeps incidents out of regulatory data. Deloitte estimates the true incident rate is 4-6× the reported rate because principals refuse to file reports that become discoverable in litigation — which means your peer-benchmark data dramatically understates actual exposure.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Run the household-wide risk assessment', detail: 'You map every device, account, vendor relationship, and physical-security control touched by the principal, spouse, adult children, and top 5 staff. You run vulnerability scans, credential checks, and dark-web audits via a licensed threat-intelligence vendor. Deliverable: a 35-page Household Risk Assessment with severity-ranked findings and remediation ownership.', timeRequired: 'One-time 3 weeks (~50h)' },
+      { stepNumber: 2, action: 'Deploy the control stack and monitoring tier', detail: 'You install endpoint protection (SentinelOne or CrowdStrike) on every household-adjacent device, stand up a monitored 24/7 incident line with a 15-minute acknowledgment SLA, and integrate a threat-intelligence feed (Recorded Future or Flashpoint). You publish the incident runbook for 12 scenarios and train the on-call rotation.', timeRequired: '~4h setup + 1h/week tuning' },
+      { stepNumber: 3, action: 'Run the quarterly red-team drill', detail: 'You execute a live simulated attack across at least 3 vectors (social-engineering call to EA, spear-phishing email to bookkeeper, physical-access attempt at a property). You score response time, document who caught what, and publish a 3-page after-action with remedial training assignments. Re-run any control that failed.', timeRequired: '~8h per quarter' },
+      { stepNumber: 4, action: 'Monitor, respond, and report continuously', detail: 'You operate a 24/7 monitored inbox and phone line with two named analysts on rotation. When an incident fires you execute the pre-written runbook: contain, notify the principal via the designated non-phone channel, preserve forensic artifacts, and file the IC3 report within 24 hours. You produce a weekly brief and a monthly threat posture report.', timeRequired: '~3h/week + on-demand' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Pull the weekend threat intel feed (Recorded Future + Cyfirma). Compile the 2-page Weekly Security Brief covering new attack patterns targeting HNW households and 3 specific actions for the principal this week. Delivered by 9 AM.' },
+      { day: 'Tuesday', task: 'Run a 30-minute compliance spot-check against 3 random staff members — verify they know current protocols, the callback number, and the authorization matrix on their desk is current.' },
+      { day: 'Wednesday', task: 'Test at least one detection control with freshly-generated attacker payloads (phishing template, voice sample, vendor-impersonation email). File a tuning ticket if false-negative rate exceeds 3%.' },
+      { day: 'Thursday', task: '20-minute security touchpoint with one member of the principal\'s inner circle on a rotating schedule. Walk through one real peer-family incident from this week.' },
+      { day: 'Friday', task: 'Deliver the Friday Principal Brief — 1 page covering this week\'s incidents, near-misses, compliance scores, and the single most important weekend action. Sent by 3 PM.' },
+      { day: 'Monthly', task: 'Produce the 6-page Monthly Threat Posture Report: attempted-attack count, compliance scorecard, detection performance, peer incident review, rolling 90-day roadmap. Reviewed live in 30-min call.' },
+      { day: 'Quarterly', task: 'Execute the live red-team drill. Publish 3-page after-action within 72 hours with named remediation owners.' },
+    ],
+    deliverablesRich: [
+      { name: 'Household Risk Assessment', description: 'The 35-page baseline from the first 3 weeks — every device, account, vendor, and physical-security control with severity-ranked findings and remediation ownership. The anchor document for every subsequent review.', frequency: 'Annual refresh' },
+      { name: 'Incident Response Runbook', description: 'The ~40-page binder the family office pulls out when something happens. Step-by-step procedures for 12 attack scenarios with contact trees, containment steps, and 72-hour communication templates.', frequency: 'One-time + annual refresh' },
+      { name: 'Weekly Security Brief', description: '2-page briefing covering new attack patterns, peer-family incidents, and 3 specific actions for the principal. Written in plain English — readable in 90 seconds.', frequency: 'Weekly (Mon 9 AM)' },
+      { name: 'Quarterly Red-Team After-Action', description: '3-page document naming who caught what, scoring response time, and assigning remediation training. Tested controls move to "verified" status in the risk register.', frequency: 'Quarterly' },
+      { name: 'Monthly Threat Posture Report', description: '6-page flagship monthly deliverable: attempted-attack count, compliance scorecard, detection performance, peer debrief, rolling 90-day roadmap. Reviewed live with the FO head.', frequency: 'Monthly' },
+      { name: 'Annual Security Posture Assessment', description: '25-page year-in-review benchmarked against 18 peer family offices. Attack-surface heatmap, year-over-year incident trend, insurance coverage gap analysis, next-year budget recommendation.', frequency: 'Annual (Q4)' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 9,
+      items: [
+        { task: 'Weekly Security Brief (Mon)', hoursPerWeek: 1.5 },
+        { task: 'Compliance spot-checks', hoursPerWeek: 0.5 },
+        { task: 'Detection control tuning', hoursPerWeek: 1 },
+        { task: 'Security 1:1 touchpoints', hoursPerWeek: 0.5 },
+        { task: 'Friday Principal Brief', hoursPerWeek: 1 },
+        { task: '24/7 monitoring (shared inbox)', hoursPerWeek: 2 },
+        { task: 'Monthly/quarterly reports (amortized)', hoursPerWeek: 1.5 },
+        { task: 'Ad-hoc incident response', hoursPerWeek: 1 },
+      ],
+      note: 'Monitoring rotation and compliance spot-checks can be delegated to a vetted security analyst once protocols are documented. Principal-facing briefs, red-team drills, and incident response must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'SentinelOne or CrowdStrike Falcon', cost: '$8-15/endpoint/mo', purpose: 'Endpoint protection across household and staff devices' },
+      { tool: 'Recorded Future or Flashpoint', cost: '$1,200-2,500/mo', purpose: 'Threat intelligence feed and dark-web monitoring' },
+      { tool: '1Password Teams', cost: '$8/user/mo', purpose: 'Shared passphrase vault and authorization matrix' },
+      { tool: 'Twilio (monitored line)', cost: '$50-150/mo', purpose: '24/7 incident hotline with call recording' },
+      { tool: 'KnowBe4 or SANS Institute', cost: '$35-60/user/yr', purpose: 'Staff security awareness training and phishing simulations' },
+      { tool: 'Notion or Airtable Pro', cost: '$20-50/mo', purpose: 'Runbook, compliance tracker, client deliverable library' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Baseline & immediate controls', color: 'amber', actions: [
+        'Sign engagement letter, NDA, and data-processing agreement',
+        'Conduct 3-week Household Risk Assessment and deliver the 35-page baseline',
+        'Deploy endpoint protection across household and staff devices',
+        'Stand up the 24/7 monitored inbox and Twilio hotline',
+        'Subscribe to threat-intelligence feed and configure the weekly brief template',
+      ] },
+      { phase: 'Days 31-60: First delivery cadence', color: 'green', actions: [
+        'Ship the first 4 Weekly Security Briefs',
+        'Complete the first round of staff compliance spot-checks',
+        'Draft and deliver the first Monthly Threat Posture Report',
+        'Build the customized 40-page Incident Response Runbook',
+        'Identify 2-3 peer families for benchmarking in the Q1 report',
+      ] },
+      { phase: 'Days 61-90: Proof of value', color: 'gold', actions: [
+        'Execute the first live red-team drill and publish 3-page after-action',
+        'Deliver the second Monthly Threat Posture Report with baseline-to-now trend',
+        'Present first-quarter ROI memo: attempts detected, near-misses prevented, compliance lift',
+        'Run joint review with the family\'s insurance broker to optimize cyber premium',
+        'Commit to the next 90-day roadmap with the principal',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'Corporate IT managed service provider', whyItFails: 'Scoped to company devices and cloud tenants — explicitly excludes household staff, personal phones, and the principal\'s spouse. The attack surface that matters is outside the MSP\'s contract.' },
+      { approach: 'Consumer-grade security (1Password, Bitdefender)', whyItFails: 'Built for a middle-class user profile. No coverage for social-engineering detection, deepfake voice authentication, or dark-web monitoring at HNW-scale.' },
+      { approach: 'Annual security review by an outside firm', whyItFails: 'Point-in-time assessments have a documented half-life of 30 days before drift. Continuous operation is the product, not the assessment.' },
+    ],
+    objections: [
+      { objection: 'We have cyber insurance', response: 'Insurance pays after a loss. This prevents the loss — and the embarrassment, legal exposure, and months of recovery that insurance does not cover.' },
+      { objection: 'Our corporate IT handles security', response: 'Corporate IT is scoped to the business. The family attack surface sits outside that scope entirely — household staff, personal devices, vendor ecosystem.' },
+      { objection: 'Is this really urgent?', response: 'FBI IC3 tracks 312% YoY growth in targeted attacks against $50M+ households. The question is not if, it is when — and families without a program are paying the full cost of incidents when they happen.' },
+    ],
+  },
+
+  'Legacy & Succession': {
+    serviceNoun: 'legacy and succession planning program',
+    operatorRole: "You become the family's succession architect and governance chair",
+    whyWealthyRich: [
+      'Williams Group data shows 70% of multigenerational wealth transfers fail to preserve both the assets and the family relationships by generation 3. The failures are rarely technical (documents, tax) — they are failures of preparation, communication, and clear governance.',
+      'The $84T "Great Wealth Transfer" through 2045 means most families will execute the largest financial event of their lifetime with a succession plan that has never been stress-tested. The 2025 Campden North America report found that only 22% of HNW families have a formal succession plan beyond a will.',
+      'Next-generation members arrive at wealth responsibility with inherited emotional dynamics and no professional support. The gap between "I can read a balance sheet" and "I can govern a family system" is typically 5-10 years of deliberate practice that never gets scheduled.',
+      'Every new entity, jurisdiction, marriage, divorce, or business exit creates a succession seam that must be re-documented. Most families run with a succession plan drafted for a prior configuration of the family — and discover the mismatch at the moment of transition.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Map the full succession surface and stakeholder landscape', detail: 'You inventory every asset, entity, decision right, and stakeholder relationship that must survive a transition. You interview every adult family member individually on their current understanding, expectations, and unspoken concerns. Deliverable: a 30-page Succession Readiness Report with readiness scoring across 8 domains.', timeRequired: 'One-time 5 weeks (~60h)' },
+      { stepNumber: 2, action: 'Design the governance framework', detail: 'You draft the family constitution, council charter, decision-rights matrix, and conflict-resolution protocol — all tailored to the family\'s actual dynamics. You facilitate a 2-day family summit to review, challenge, and adopt. Every document is signed by every adult family member before it goes into effect.', timeRequired: '~40h over 6 weeks' },
+      { stepNumber: 3, action: 'Build the next-generation development plan', detail: 'You design a 3-year personalized curriculum for each NextGen member covering financial literacy, governance participation, philanthropic leadership, and wealth identity. You schedule quarterly check-ins, external courses, and shadowing rotations with the family\'s professional advisors.', timeRequired: '~2h/week per NextGen' },
+      { stepNumber: 4, action: 'Operate the governance cadence', detail: 'You chair the quarterly family council, maintain the Decision Log, coordinate advisor participation, and run the annual stress-test exercise (simulated transition event). You produce quarterly council packages and an annual State of the Family report.', timeRequired: '~4h/week average' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Review the Decision Log for any item open more than 14 days. Email the accountable advisor or family member with an escalation. Log anything learned over the weekend from informal conversations with family members.' },
+      { day: 'Tuesday', task: '30-minute 1:1 with one NextGen member on a rotating schedule. Use the development-plan framework to advance one specific skill this week.' },
+      { day: 'Wednesday', task: 'Draft the Weekly Family Digest — 1 page summarizing this week\'s governance activity, pending decisions, and upcoming family events. Delivered by 5 PM to every adult family member.' },
+      { day: 'Thursday', task: 'Review upcoming 90-day events (birthdays, anniversaries, charitable board meetings, NextGen milestones) and coordinate any family-wide acknowledgment or preparation.' },
+      { day: 'Friday', task: 'Principal briefing — 2 pages summarizing the week and the single family-system question needing the principal\'s attention this weekend. Delivered by 3 PM.' },
+      { day: 'Monthly', task: 'Hold the 60-minute governance office hours — any family member can join to discuss anything on their mind. Publish notes (with discretion) in the Decision Log.' },
+      { day: 'Quarterly', task: 'Chair the Family Council meeting. Deliver the 10-page council package 7 days prior. Publish minutes and action items within 48 hours.' },
+    ],
+    deliverablesRich: [
+      { name: 'Succession Readiness Report', description: '30-page baseline scoring the family across 8 succession domains. Inventory of assets, entities, decision rights, and stakeholder map. Becomes the Year-1 roadmap and the comparison point for the annual review.', frequency: 'One-time + annual refresh' },
+      { name: 'Family Constitution & Council Charter', description: 'The core governance artifacts. Decision-rights matrix, values statement, conflict-resolution protocol, succession triggers. Signed by every adult family member. Refreshed every 3 years.', frequency: 'Year-1 build + 3-year refresh' },
+      { name: 'NextGen Development Plans (per member)', description: 'Personalized 3-year curriculum per NextGen member covering financial literacy, governance participation, philanthropic leadership, and wealth identity. Reviewed quarterly with each member.', frequency: 'Annual refresh' },
+      { name: 'Weekly Family Digest', description: '1-page summary delivered every Friday to every adult family member. This week\'s governance activity, pending decisions, upcoming family events. Keeps the family system synchronized.', frequency: 'Weekly (Fri 5 PM)' },
+      { name: 'Quarterly Family Council Package', description: '10-page document distributed 7 days before each quarterly council meeting plus formal minutes within 48 hours. The fiduciary-duty record and the institutional memory for the next generation.', frequency: 'Quarterly' },
+      { name: 'Annual State of the Family Report', description: '40-page year-in-review: governance activity, NextGen development progress, decisions executed, financial summary, family health check. Reviewed live at the annual family retreat.', frequency: 'Annual' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 10,
+      items: [
+        { task: 'Decision Log + escalations', hoursPerWeek: 1.5 },
+        { task: 'NextGen 1:1 rotation', hoursPerWeek: 1 },
+        { task: 'Weekly Family Digest', hoursPerWeek: 1.25 },
+        { task: '90-day events coordination', hoursPerWeek: 0.5 },
+        { task: 'Friday principal briefing', hoursPerWeek: 1.25 },
+        { task: 'Governance office hours (amortized)', hoursPerWeek: 0.5 },
+        { task: 'Quarterly Council (amortized)', hoursPerWeek: 1 },
+        { task: 'Ad-hoc family-system work', hoursPerWeek: 3 },
+      ],
+      note: 'Event coordination and Digest logistics can be delegated to a family office coordinator. NextGen 1:1s, Council chairmanship, and sensitive family communication must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'Notion or Coda (family wiki)', cost: '$10-24/user/mo', purpose: 'Family constitution, Decision Log, NextGen plans, council minutes' },
+      { tool: 'Landmark Consulting (facilitation)', cost: '$8-15K per summit', purpose: 'Outside facilitator for high-stakes family summits' },
+      { tool: 'Zoom Workplace (Pro)', cost: '$16/user/mo', purpose: 'Recorded council calls and NextGen development sessions' },
+      { tool: 'Signal (encrypted family group)', cost: 'Free', purpose: 'Encrypted channel for sensitive family communications' },
+      { tool: 'Calendly Teams', cost: '$12/user/mo', purpose: 'Multi-generation scheduling across council and 1:1s' },
+      { tool: 'Kyriad or Family Office Exchange', cost: '$2,000-5,000/yr', purpose: 'Peer-family benchmarking data for governance maturity' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Discovery & intake', color: 'amber', actions: [
+        'Sign engagement letter and individual confidentiality agreements with every adult family member',
+        'Interview every adult family member individually (90 min each)',
+        'Inventory every asset, entity, and decision right with the family office head',
+        'Review existing documents (will, trust, prior governance documents) with outside counsel',
+        'Produce the 30-page Succession Readiness Report',
+      ] },
+      { phase: 'Days 31-60: Governance design', color: 'green', actions: [
+        'Present the Readiness Report to the principal',
+        'Draft the family constitution and council charter',
+        'Facilitate the 2-day family summit to review, challenge, and adopt',
+        'Capture signed assent from every adult family member',
+        'Build the first-year Family Council calendar',
+      ] },
+      { phase: 'Days 61-90: Operating cadence', color: 'gold', actions: [
+        'Chair the first Family Council meeting',
+        'Launch the first NextGen Development Plan and begin 1:1 rotation',
+        'Publish the first Quarterly Council Package',
+        'Ship 4 Weekly Family Digests',
+        'Present the first-quarter governance memo with a single narrative: what got clearer',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'Estate attorney handles succession', whyItFails: 'Attorneys draft documents that capture the legal structure but do not build the family governance system, operate the council cadence, or develop the next generation. Documents without operation are a promise, not a plan.' },
+      { approach: 'Annual family retreat covers it', whyItFails: 'Once-a-year retreats set direction but cannot operate governance, track decisions, or develop NextGen capability. Most retreats end with commitments that decay within 6 weeks.' },
+      { approach: 'Next generation will figure it out', whyItFails: 'Without deliberate preparation, NextGen members inherit responsibility 5-10 years before they have the skills to exercise it well. The cost is paid in wealth destruction, family fracture, or both.' },
+    ],
+    objections: [
+      { objection: 'We don\'t have problems — we communicate well', response: 'Most families say this until a transition. The best time to build governance is when things are working, because it codifies what already works before a shock tests it.' },
+      { objection: 'This feels too bureaucratic for our family', response: 'A one-page constitution and quarterly council is not bureaucracy — it is the minimum operating system for a multigenerational enterprise. Everything else scales down from there based on family preference.' },
+      { objection: 'Our attorney already does this', response: 'Attorneys draft documents. This builds the governance framework, operates the council, and develops the next generation. Attorneys explicitly do not do any of those three things.' },
+    ],
+  },
+
+  'Portfolio Management': {
+    serviceNoun: 'portfolio optimization program',
+    operatorRole: "You become the family's investment operations and manager-coordination lead",
+    whyWealthyRich: [
+      'HNW portfolios routinely hold 20-40 positions across direct investments, alternatives, private equity, concentrated stock, and real estate — each with its own fiduciary, reporting cadence, and fee structure. The 2024 Cerulli UHNW study found families pay a mean of 1.47% in all-in advisory and manager fees, well above the benchmark achievable with coordinated negotiation.',
+      'Private equity and alternative positions generate K-1s, capital calls, and distribution timing that rarely align with the family\'s liquidity calendar. Families routinely miss capital-call windows, mismanage tax-loss harvesting across managers, and fail to capture the basis step-ups available at transition events.',
+      'Direct indexing, concentrated stock, and pre-IPO positions create tax-alpha opportunities that require active cross-manager coordination. The Parametric 2024 white paper documented 55-95 bps/year of tax alpha lost when managers do not coordinate on a household basis.',
+      'Family office technology stacks average 7-12 years of accumulated tooling without refresh — performance reporting, accounting, document management, custodian integrations — creating operational drag that the family pays in staff time, error rates, and missed opportunities.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Baseline the full portfolio operations surface', detail: 'You map every position, manager, fee arrangement, tax lot, and reporting cadence across the family\'s investment stack. You audit performance reporting accuracy against custodian data. You identify the 3 highest-impact operational gaps (fee overpayment, tax-alpha leakage, missed capital call windows).', timeRequired: 'One-time 4 weeks (~60h)' },
+      { stepNumber: 2, action: 'Negotiate the fee and manager stack', detail: 'You re-negotiate manager fees using household-consolidated AUM as leverage. You restructure redundant positions. You implement cross-manager tax-alpha coordination (loss harvesting, lot-identification rules, wash-sale compliance at household level). Typical outcome: 25-50 bps/year fee reduction plus 40-75 bps/year tax alpha.', timeRequired: '~25h in first quarter' },
+      { stepNumber: 3, action: 'Stand up the Investment Operations Committee', detail: 'You chair a monthly 60-minute IOC with the principal, CIO, and rotating managers. Standing agenda: performance vs benchmark, capital calls inside 90 days, tax-alpha execution, fee and cost reconciliation. You publish minutes within 24 hours with owner-assigned action items.', timeRequired: '~4h/month' },
+      { stepNumber: 4, action: 'Refresh the investment technology stack', detail: 'You evaluate and transition the family to a modern reporting platform (Addepar, Mylen, or Masttro). You integrate every custodian, GP, and accounting feed. You build dashboards for the principal, CIO, and next-generation learners. Ongoing: technology is reviewed annually.', timeRequired: '~30h setup + ~1h/week ongoing' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Pull the custodian and GP feeds from the weekend. Reconcile against last week\'s positions. Flag any cash movement, capital call, or distribution that was not expected.' },
+      { day: 'Tuesday', task: 'Review the tax-alpha execution log — which lots were harvested, what wash-sale boundaries are active, which positions are candidates for this week. Execute any ready trades in coordination with the relevant manager.' },
+      { day: 'Wednesday', task: 'Run the weekly performance attribution — how each manager performed against benchmark, whether any is triggering the watch-list criteria. Draft commentary for the weekly brief.' },
+      { day: 'Thursday', task: 'Capital-call and distribution calendar review for the next 90 days. Confirm liquidity coverage. Email the principal\'s cash-management contact on any upcoming call inside 30 days.' },
+      { day: 'Friday', task: 'Deliver the Weekly Investment Brief — 2 pages covering performance, tax-alpha execution, capital calls, cash position, and the single decision needing principal input. Delivered by 3 PM.' },
+      { day: 'Monthly', task: 'Chair the 60-minute IOC call. Deliver the 8-page pre-read 48 hours prior. Publish minutes within 24 hours.' },
+      { day: 'Quarterly', task: 'Publish the Quarterly Investment Report — 15 pages covering performance, attribution, manager reviews, tax-alpha tally, operations scorecard. Reviewed live with the CIO and principal.' },
+    ],
+    deliverablesRich: [
+      { name: 'Portfolio Operations Baseline Report', description: '40-page baseline mapping every position, manager, fee, tax lot, and reporting cadence. Identifies the top-3 highest-impact operational gaps and a quantified improvement plan.', frequency: 'One-time + annual refresh' },
+      { name: 'Weekly Investment Brief', description: '2-page summary delivered every Friday by 3 PM. Performance, tax-alpha execution, capital calls, cash position, single decision for principal input. Readable in 4 minutes.', frequency: 'Weekly (Fri 3 PM)' },
+      { name: 'Monthly IOC Package', description: '8-page pre-read distributed 48 hours before each IOC call plus formal minutes within 24 hours. Standing sections on performance, capital calls, tax alpha, and fee reconciliation.', frequency: 'Monthly' },
+      { name: 'Quarterly Investment Report', description: '15-page comprehensive quarterly: performance vs benchmark, attribution, manager reviews, tax-alpha tally, operations scorecard. Reviewed live with CIO and principal in a 60-minute call.', frequency: 'Quarterly' },
+      { name: 'Tax-Alpha Execution Log', description: 'Living record of every tax-loss harvest, lot selection, and wash-sale boundary. Becomes the audit trail for the CPA at year-end and the source data for the quarterly tax-alpha tally.', frequency: 'Continuously updated' },
+      { name: 'Annual Portfolio Operations Review', description: '30-page year-in-review covering fee savings, tax alpha captured, manager performance, operational improvements, and the following-year priority list. Reviewed at the annual investment retreat.', frequency: 'Annual' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 11,
+      items: [
+        { task: 'Custodian/GP feed reconciliation', hoursPerWeek: 1.5 },
+        { task: 'Tax-alpha execution coordination', hoursPerWeek: 2 },
+        { task: 'Performance attribution analysis', hoursPerWeek: 1.5 },
+        { task: 'Capital call / distribution calendar', hoursPerWeek: 1 },
+        { task: 'Friday Weekly Investment Brief', hoursPerWeek: 1.25 },
+        { task: 'Monthly IOC (amortized)', hoursPerWeek: 1 },
+        { task: 'Quarterly report (amortized)', hoursPerWeek: 1.25 },
+        { task: 'Manager communication', hoursPerWeek: 1.5 },
+      ],
+      note: 'Reconciliation and data-entry work can be delegated to an operations analyst once feeds are configured. Manager negotiation, tax-alpha decisions, and principal-facing communication must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'Addepar or Mylen', cost: '$1,800-4,500/mo', purpose: 'Unified performance reporting, attribution, and entity-structure mapping' },
+      { tool: 'Parametric or Aperio (tax-alpha)', cost: 'Bundled in manager fee', purpose: 'Direct indexing and tax-loss harvesting at household level' },
+      { tool: 'Kyriba or iCapital', cost: '$500-1,500/mo', purpose: 'Alternatives subscription, capital-call, and distribution management' },
+      { tool: 'Canoe Intelligence', cost: '$800-2,000/mo', purpose: 'K-1 and alternatives document automation' },
+      { tool: 'Notion or Airtable Pro', cost: '$20-50/mo', purpose: 'IOC package library, manager-relationship database, action tracker' },
+      { tool: 'Bloomberg Terminal (optional)', cost: '$2,500/mo', purpose: 'Real-time market data and manager-performance benchmarking' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Baseline & quick wins', color: 'amber', actions: [
+        'Sign engagement letter and IMA-compatible disclosures with every existing manager',
+        'Conduct the 4-week Portfolio Operations Baseline and deliver the 40-page report',
+        'Audit performance reporting accuracy against primary custodian data',
+        'Identify the top-3 fee-negotiation and tax-alpha opportunities',
+        'Configure the first tax-loss harvesting campaign in coordination with the direct-indexing manager',
+      ] },
+      { phase: 'Days 31-60: Operating cadence', color: 'green', actions: [
+        'Chair the first IOC call',
+        'Deliver 4 Weekly Investment Briefs (Fridays 3 PM)',
+        'Execute the first fee-renegotiation round (target: 25-50 bps reduction)',
+        'Build the 90-day capital-call and distribution calendar',
+        'Ship the first Monthly IOC Package',
+      ] },
+      { phase: 'Days 61-90: Technology and proof of value', color: 'gold', actions: [
+        'Transition performance reporting to the new platform (Addepar or equivalent)',
+        'Deliver the first Quarterly Investment Report with captured tax-alpha figure',
+        'Complete the second fee-renegotiation round',
+        'Present first-quarter ROI memo: fees saved, tax alpha captured, operations improvements',
+        'Commit to the next 90-day operations plan with the CIO and principal',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'Multi-family office provides integrated reporting', whyItFails: 'MFOs have an inherent conflict around recommending changes to their own proprietary products. Independent operations coordination ensures the family\'s interests are represented across all managers, including the MFO.' },
+      { approach: 'Wealth advisor handles coordination', whyItFails: 'Wealth advisors are compensated on AUM, which disincentivizes recommending lower-fee alternatives or reducing complexity. They also rarely own K-1 automation, capital-call logistics, or tax-alpha coordination.' },
+      { approach: 'Family office CIO runs it all', whyItFails: 'A CIO at a 4-person family office is also the Chief of Staff, Chief Compliance Officer, and lead manager-relationship owner. Operations discipline gets the residual time after everything else — which is not enough.' },
+    ],
+    objections: [
+      { objection: 'Our wealth advisor does this', response: 'Advisors are compensated on AUM — they are not incentivized to reduce fees or simplify the stack. This service sits above the advisor stack and is paid on fixed retainer.' },
+      { objection: 'We have Addepar already', response: 'Addepar is a platform; this is the operations discipline on top of it. Most families with Addepar extract 30% of its value because nobody owns the weekly operating rhythm.' },
+      { objection: 'We don\'t have enough complexity to justify this', response: 'If you hold more than 10 positions across 3 manager types, household-level operations coordination is measurably underpaying for itself. We start with a 30-day baseline so the ROI is visible before the retainer renews.' },
+    ],
+  },
+
+  'Philanthropy & Impact': {
+    serviceNoun: 'philanthropic strategy program',
+    operatorRole: "You become the family's philanthropic operations chief",
+    whyWealthyRich: [
+      'UHNW families hold $1.4T in donor-advised funds and private foundations as of 2024, but the 2025 Bank of America Study of Philanthropy found that 43% describe their giving as "reactive" rather than strategic — unable to explain in 2 sentences what their philanthropy is trying to accomplish.',
+      'Philanthropic structures (DAFs, private foundations, charitable remainder trusts, pooled-income funds) carry distinct compliance, distribution, and tax treatment. Families routinely use the wrong vehicle for the wrong gift, forfeiting deductions or triggering excise tax on avoidable mistakes.',
+      'Impact measurement is the $500B problem philanthropy has not solved. Without structured measurement, families cannot compound learning across giving cycles — the third grant looks a lot like the first grant, just larger.',
+      'Next-generation members increasingly want their values expressed in the family\'s philanthropy, but there is no standing mechanism for it. The resulting gap shows up as either NextGen disengagement or reactive venture-by-venture funding that does not aggregate to a coherent strategy.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Build the Philanthropic Strategy on one page', detail: 'You facilitate a 2-day family philanthropic summit to define the mission, three priority areas, time horizon, and success criteria. You document it in a one-page Strategy, adopted and signed by every family member who will be a grant approver. This single page becomes the filter for every future gift.', timeRequired: 'One-time 3 weeks (~40h)' },
+      { stepNumber: 2, action: 'Optimize the giving-vehicle stack', detail: 'You analyze the family\'s current vehicles against the Strategy. You recommend consolidation, migration, or new vehicles (DAF, private foundation, LLC, CRT) based on intent, control, and tax efficiency. You execute the transition with the family\'s tax attorney and foundation counsel.', timeRequired: '~20h over 6 weeks' },
+      { stepNumber: 3, action: 'Run the annual giving and impact cycle', detail: 'You design and operate the annual cycle: opportunity sourcing, due diligence memos, family grant committee, execution, and post-grant measurement. Every grant above a threshold gets a 3-page memo capturing theory of change, expected outcomes, and follow-up schedule.', timeRequired: '~6h/week during giving windows' },
+      { stepNumber: 4, action: 'Publish the Annual Impact Report', detail: 'You produce the signature year-end document: what was funded, what was learned, what outcomes were measured, what the Strategy concludes for next year. Distributed to family, key beneficiaries, and kept as the institutional memory of the philanthropy.', timeRequired: '~30h in Q4' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Review the opportunity pipeline — any new grant inquiries, scheduled follow-ups with current grantees, peer-family referrals. Triage into the Strategy filter: fits/does-not-fit/needs-more-info.' },
+      { day: 'Tuesday', task: 'Draft one due-diligence memo or post-grant check-in on rotation. Each memo is 3 pages max: theory of change, expected outcomes, measurement plan, follow-up schedule.' },
+      { day: 'Wednesday', task: 'Coordinate with external partners — accountant (gift-substantiation), foundation counsel (compliance), measurement partner (data). Resolve any outstanding items before the weekly cycle closes.' },
+      { day: 'Thursday', task: 'Family 1:1 on a rotating schedule — most often with a NextGen member. Work one opportunity or one Strategy question. Document takeaway.' },
+      { day: 'Friday', task: 'Deliver the Weekly Philanthropy Digest — 1 page covering pipeline, pending decisions, upcoming deadlines. Delivered to every family grant-committee member by 3 PM.' },
+      { day: 'Monthly', task: 'Chair the monthly Grant Committee call. Deliver the 5-page pre-read 72 hours prior. Publish minutes with every decision and owner.' },
+      { day: 'Quarterly', task: 'Publish the Quarterly Impact Memo — 8 pages of what was funded, what was learned, what the measurement data showed. Reviewed live with the Grant Committee.' },
+    ],
+    deliverablesRich: [
+      { name: 'One-Page Philanthropic Strategy', description: 'The foundational document: mission, priority areas, time horizon, success criteria. Signed by every grant approver. Becomes the filter for every future decision. Refreshed every 3-5 years.', frequency: '3-5 year refresh' },
+      { name: 'Grant Due-Diligence Memo', description: '3-page per-grant document covering theory of change, expected outcomes, measurement plan, follow-up schedule. Required for every grant above the committee\'s threshold.', frequency: 'Per grant' },
+      { name: 'Weekly Philanthropy Digest', description: '1-page summary delivered every Friday by 3 PM. Pipeline, pending decisions, upcoming deadlines. Keeps the Grant Committee synchronized between monthly calls.', frequency: 'Weekly (Fri 3 PM)' },
+      { name: 'Monthly Grant Committee Package', description: '5-page pre-read 72 hours before each committee meeting plus minutes within 24 hours. The fiduciary-duty record for the foundation board.', frequency: 'Monthly' },
+      { name: 'Quarterly Impact Memo', description: '8-page quarterly document covering grants made, outcomes measured, Strategy updates, peer-family benchmarks. Reviewed live with the Grant Committee in a 45-minute call.', frequency: 'Quarterly' },
+      { name: 'Annual Impact Report', description: '30-page year-end flagship: what was funded, what was learned, measured outcomes, Strategy conclusions for next year. Distributed to family, partners, and select beneficiaries.', frequency: 'Annual' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 9,
+      items: [
+        { task: 'Opportunity pipeline triage', hoursPerWeek: 1 },
+        { task: 'Due-diligence memos', hoursPerWeek: 2 },
+        { task: 'External partner coordination', hoursPerWeek: 1 },
+        { task: 'Family 1:1s on rotation', hoursPerWeek: 0.75 },
+        { task: 'Friday Weekly Digest', hoursPerWeek: 1 },
+        { task: 'Monthly Grant Committee (amortized)', hoursPerWeek: 0.75 },
+        { task: 'Quarterly/annual reporting (amortized)', hoursPerWeek: 1.25 },
+        { task: 'Grantee relationship management', hoursPerWeek: 1.25 },
+      ],
+      note: 'Pipeline intake and scheduling can be delegated to a program associate once the Strategy filter is documented. Family-facing conversations, due-diligence judgment, and measurement interpretation must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'Foundation Source or Vanilla (DAF/foundation admin)', cost: '$800-3,000/mo', purpose: 'Grant processing, compliance, and distribution tracking' },
+      { tool: 'Fluxx or CCC (grant management)', cost: '$400-1,200/mo', purpose: 'Due-diligence workflow and grantee portal' },
+      { tool: 'ImpactCloud or LivingCities', cost: '$500-1,500/mo', purpose: 'Impact measurement framework and grantee reporting' },
+      { tool: 'Notion or Airtable Pro', cost: '$10-24/user/mo', purpose: 'Strategy library, memo templates, decision log' },
+      { tool: 'Candid (Foundation Directory)', cost: '$300/yr', purpose: 'Peer-family and grantee research' },
+      { tool: 'DocuSign', cost: '$25/user/mo', purpose: 'Grant agreements and family committee resolutions' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Strategy foundation', color: 'amber', actions: [
+        'Sign engagement letter with the principal and foundation/DAF sponsor',
+        'Inventory every current philanthropic vehicle and giving position',
+        'Interview every family member who currently has grant-approval authority',
+        'Facilitate the 2-day Philanthropic Strategy summit',
+        'Document and adopt the One-Page Philanthropic Strategy',
+      ] },
+      { phase: 'Days 31-60: Vehicle optimization & cadence', color: 'green', actions: [
+        'Analyze current vehicles against the Strategy; recommend consolidation or migration',
+        'Coordinate with tax attorney and foundation counsel on any transitions',
+        'Stand up the monthly Grant Committee with first agenda and 5-page pre-read',
+        'Ship the first 4 Weekly Philanthropy Digests',
+        'Launch the due-diligence memo format with the first 2 active opportunities',
+      ] },
+      { phase: 'Days 61-90: First full giving cycle', color: 'gold', actions: [
+        'Execute the first Grant Committee-approved grant under the new Strategy',
+        'Deliver the first Quarterly Impact Memo',
+        'Complete the first NextGen-led opportunity cycle',
+        'Establish impact-measurement baselines with the 3 largest new grantees',
+        'Present first-quarter memo: dollars aligned to strategy, grants made, NextGen engagement',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'DAF sponsor handles it', whyItFails: 'DAF sponsors handle grant processing, not strategy. Families using only a DAF have no mechanism to define mission, evaluate opportunities, or measure impact — they just have a low-friction check-writing account.' },
+      { approach: 'Family patriarch decides each gift', whyItFails: 'Single-decider philanthropy cannot scale to next-gen participation or compound learning across grants. When the decider steps back, the entire philanthropy drifts into reactive mode.' },
+      { approach: 'Foundation executive director', whyItFails: 'EDs run programs and staff — they rarely have bandwidth to build the family\'s strategic framework, run the weekly committee cadence, or manage the measurement discipline. ED is a different role.' },
+    ],
+    objections: [
+      { objection: 'We just want to give quietly', response: 'Quiet and strategic are compatible. The Strategy is internal, the measurement is internal, and the family chooses who sees the Annual Report. Quiet does not require reactive.' },
+      { objection: 'Our foundation has staff', response: 'Foundation staff run programs. This builds the family\'s strategy layer above the foundation, coordinates the Grant Committee, and manages the measurement discipline. Different discipline, different output.' },
+      { objection: 'How do we know this improves outcomes?', response: 'You measure. The Annual Impact Report is the answer. Most families discover their current giving is less aligned to their stated values than they thought, and the first-year realignment is where the biggest impact gain happens.' },
+    ],
+  },
+
+  'Regulatory & Compliance': {
+    serviceNoun: 'regulatory compliance program',
+    operatorRole: "You become the family's compliance officer and regulatory operations lead",
+    whyWealthyRich: [
+      'The Corporate Transparency Act now requires beneficial-owner filings for most trusts and LLCs, with $500/day penalties for non-compliance and personal liability for the responsible individual. Most family office back-offices have no compliance calendar covering CTA — and the 2024 Private Fund Adviser Rule reaches single-family offices with any co-investment activity.',
+      'Multi-jurisdictional families face a matrix of filing obligations that no single advisor owns end-to-end: federal 1040 and state returns, FBAR, Form 8938, Schedule K-2/K-3, state residency filings, foreign entity filings, ESG reporting, donor-advised-fund and foundation compliance. Each has a $10K-$100K+ penalty ceiling for missed or late filings.',
+      'The 2024 BOI reporting landscape changed for the first time in a generation, creating reporting obligations on legal structures that were invisible to the IRS for decades. Families are still discovering entities they forgot existed — each of which carries a filing obligation.',
+      'Fiduciary liability exposure for family office principals has expanded rapidly. The 2023 Tibble v. Edison holding is being applied to family office plans, and the DOL\'s rule expansion reaches individuals who were not previously considered ERISA fiduciaries.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Map the full compliance surface', detail: 'You inventory every legal entity, jurisdiction, filing obligation, and responsible individual. You cross-check against the current year calendar to identify every filing due in the next 12 months. Deliverable: the 30-page Compliance Map with a color-coded calendar and individual-liability matrix.', timeRequired: 'One-time 4 weeks (~55h)' },
+      { stepNumber: 2, action: 'Close the immediate exposure gaps', detail: 'You execute the top-3 immediate exposures identified in the Map (typically: unfiled BOI, missed state residency filing, overdue Form 8938). You coordinate with outside counsel on any late-filing mitigation, and you document every action in the compliance log with attribution.', timeRequired: '~30h in first quarter' },
+      { stepNumber: 3, action: 'Stand up the quarterly Compliance Committee', detail: 'You chair a quarterly 60-minute committee with the principal, general counsel, tax attorney, and key fiduciaries. Standing agenda: filings due this quarter, filings completed last quarter, regulatory changes, individual liability updates. You publish minutes and a signed statement of attestation.', timeRequired: '~5h/quarter' },
+      { stepNumber: 4, action: 'Operate the weekly compliance rhythm', detail: 'You maintain the integrated compliance calendar, track every filing through draft-review-file-confirm, and publish a weekly compliance brief. You own the escalation path when any filing is at risk and you run the annual compliance audit against peer-family benchmarks.', timeRequired: '~4h/week average' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Pull the weekend regulatory digest from Bloomberg Tax and Compliance.ai. Flag any rule change that affects an active filing. Log any regulator outreach received in the inbox.' },
+      { day: 'Tuesday', task: 'Review every filing inside a 30-day window. Confirm draft status and owner. Email escalation on any filing without a completed draft 14 days before deadline.' },
+      { day: 'Wednesday', task: 'Coordinate with outside counsel on any active filing requiring attorney review. Push for final sign-off with a 48-hour SLA.' },
+      { day: 'Thursday', task: '30-minute deep dive on one functional compliance area on a rotating schedule (CTA, SEC, state, international, ERISA, DOL). Document any gap and open a remediation ticket.' },
+      { day: 'Friday', task: 'Deliver the Weekly Compliance Brief — 2 pages covering filings completed, filings in flight, regulatory changes, single principal action item. Delivered by 3 PM.' },
+      { day: 'Monthly', task: 'Deliver the 6-page Monthly Compliance Report. Review live with general counsel and principal. Any filing miss or near-miss gets a root-cause analysis.' },
+      { day: 'Quarterly', task: 'Chair the Compliance Committee. Deliver the 10-page pre-read 7 days prior. Publish minutes and the signed attestation within 48 hours.' },
+    ],
+    deliverablesRich: [
+      { name: 'Compliance Map', description: '30-page master document inventorying every entity, jurisdiction, filing obligation, and responsible individual. Becomes the audit-ready artifact for any regulator request.', frequency: 'Annual refresh + ad-hoc updates' },
+      { name: 'Integrated Compliance Calendar', description: 'Living calendar showing every filing due in the next 12 months, color-coded by jurisdiction and responsible party. Used daily in the operating rhythm.', frequency: 'Continuously updated' },
+      { name: 'Weekly Compliance Brief', description: '2-page summary delivered every Friday by 3 PM. Filings completed, filings in flight, regulatory changes, single principal action. Readable in 4 minutes.', frequency: 'Weekly (Fri 3 PM)' },
+      { name: 'Monthly Compliance Report', description: '6-page document with the full filing tracker, root-cause analysis on any miss, and the 30-day priority list. Reviewed live with general counsel and principal in a 45-minute call.', frequency: 'Monthly' },
+      { name: 'Quarterly Compliance Committee Package', description: '10-page pre-read 7 days before each committee meeting plus minutes and a signed attestation within 48 hours. The audit trail demonstrating fiduciary oversight.', frequency: 'Quarterly' },
+      { name: 'Annual Compliance Audit', description: '35-page year-end independent audit of the compliance program. Peer benchmarking, penalty-exposure calculation, improvement roadmap for the following year.', frequency: 'Annual (Q4)' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 10,
+      items: [
+        { task: 'Regulatory digest and filing watch', hoursPerWeek: 1.5 },
+        { task: '30-day filing window triage', hoursPerWeek: 1.5 },
+        { task: 'Outside counsel coordination', hoursPerWeek: 1 },
+        { task: 'Functional deep-dive rotation', hoursPerWeek: 1 },
+        { task: 'Friday Compliance Brief', hoursPerWeek: 1.25 },
+        { task: 'Monthly report (amortized)', hoursPerWeek: 1.25 },
+        { task: 'Quarterly Committee (amortized)', hoursPerWeek: 1 },
+        { task: 'Ad-hoc regulator inquiries', hoursPerWeek: 1.5 },
+      ],
+      note: 'Calendar maintenance and filing tracker updates can be delegated to a paralegal once templates are established. Regulator-facing communication, attorney coordination, and committee chairmanship must stay with the named operator.',
+    },
+    toolsNeeded: [
+      { tool: 'Compliance.ai or Thomson Reuters Regulatory Intelligence', cost: '$500-1,200/mo', purpose: 'Automated regulatory-change monitoring for CTA, SEC, state, international' },
+      { tool: 'Bloomberg Tax', cost: '$250-600/mo', purpose: 'Real-time tax-law monitoring and cross-jurisdiction analysis' },
+      { tool: 'LogicGate or OneTrust', cost: '$1,200-2,500/mo', purpose: 'Enterprise GRC platform for filing tracker and audit trail' },
+      { tool: 'DocuSign', cost: '$25/user/mo', purpose: 'Filing packages and committee attestations' },
+      { tool: 'NetDocuments or iManage', cost: '$40-80/user/mo', purpose: 'Secure document repository with fiduciary-grade version control' },
+      { tool: 'PwC, EY, or BDO benchmarking subscription', cost: '$500-1,500/mo', purpose: 'Peer-family compliance benchmarking for the annual audit' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Baseline the compliance surface', color: 'amber', actions: [
+        'Sign engagement letter with explicit scope and fiduciary-status disclaimer',
+        'Inventory every legal entity, jurisdiction, and active fiduciary',
+        'Collect every prior-year filing with general counsel and CPA',
+        'Score every active obligation against the current-year calendar',
+        'Deliver the 30-page Compliance Map with the individual-liability matrix',
+      ] },
+      { phase: 'Days 31-60: Close the immediate gaps', color: 'green', actions: [
+        'Execute the top-3 immediate exposures identified in the Map',
+        'Coordinate with outside counsel on any late-filing mitigation',
+        'Stand up the Integrated Compliance Calendar in LogicGate/OneTrust',
+        'Ship 4 Weekly Compliance Briefs (Fridays 3 PM)',
+        'Deliver the first Monthly Compliance Report',
+      ] },
+      { phase: 'Days 61-90: First full committee cycle', color: 'gold', actions: [
+        'Chair the first Compliance Committee meeting',
+        'Publish the signed attestation within 48 hours',
+        'Complete the first functional deep-dive rotation (CTA, SEC, state, international)',
+        'Present first-quarter memo: filings closed, exposures eliminated, calendar coverage',
+        'Commit to the next 90-day compliance priorities with general counsel',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'Outside counsel handles compliance', whyItFails: 'Outside counsel drafts filings when asked — they do not proactively operate a compliance calendar, chase deadlines, or run a weekly filing rhythm. When a filing is missed, counsel is typically the last to know.' },
+      { approach: 'CPA handles tax-side compliance', whyItFails: 'CPAs handle federal and state returns. They do not cover CTA, BOI, FBAR, Form 8938, state residency, foreign entity filings, ERISA, or DOL. The tax-side is one slice of a 12-slice pie.' },
+      { approach: 'Family office CFO runs it', whyItFails: 'A CFO at a 4-person family office is also the Controller, the HR lead, and the primary vendor-payment owner. Compliance discipline gets residual time — which is rarely enough to catch every filing in a 40-entity, 5-jurisdiction family.' },
+    ],
+    objections: [
+      { objection: 'Our attorneys handle compliance', response: 'Attorneys draft filings. This operates the calendar, chases the filings, runs the committee, and catches near-misses before they become misses. Different discipline, different output.' },
+      { objection: 'We\'re not a public company', response: 'CTA, BOI, Form 8938, state-residency filings, ERISA, DOL — all reach private families. The penalty exposure is personal liability on the principal, not on the entity.' },
+      { objection: 'We\'ve never missed a filing', response: 'You have never caught a filing miss. Most families discover historical misses in the Compliance Map baseline — late-filing mitigation in Year 1 typically recovers multiples of the annual retainer.' },
+    ],
+  },
+
+  'Lifestyle & Wellness': {
+    serviceNoun: 'lifestyle and wellness coordination program',
+    operatorRole: "You become the family's lifestyle chief of staff and wellness navigator",
+    whyWealthyRich: [
+      'UHNW families sustain 4-8 major lifestyle systems in parallel — primary residence, 2-4 vacation properties, private aviation, yacht or charter, household staff, concierge medicine, luxury-asset collection. No single professional owns the coordination layer across all of them.',
+      'The 2025 Johns Hopkins Center for Health Services Research found HNW patients see a mean of 4.2 specialists with no clinical coordination, and 34% experience a "significant diagnostic delay" over any 5-year window. Unlimited healthcare budget does not produce coordinated care — it produces fragmented excellence.',
+      'Luxury property operations (seasonal opening/closing, vendor management, security, maintenance) require continuous coordination across 15-30 vendors per property. Without central management, $50K-$250K per year per property is silently lost to vendor overlap, missed maintenance, and preventable repairs.',
+      'Longevity medicine and late-life care planning sit in a gap between concierge medicine (which does not coordinate care) and estate planning (which does not address care). Families are discovering the gap only at the moment of cognitive or physical decline, when the optimization window has closed.',
+    ],
+    stepsRich: [
+      { stepNumber: 1, action: 'Build the unified lifestyle operations map', detail: 'You inventory every property, staff member, vendor, healthcare provider, and recurring lifestyle obligation across the family. You build the single operations dashboard that shows the entire family system on one screen for the first time. Deliverable: a 30-page Lifestyle Operations Map.', timeRequired: 'One-time 4 weeks (~50h)' },
+      { stepNumber: 2, action: 'Stand up the vendor and household control system', detail: 'You consolidate every vendor relationship under a single point of contact (you or a delegated house manager). You standardize SLAs, payment terms, and performance reviews. You renegotiate the top-10 highest-cost vendors against household-consolidated volume. Typical outcome: 15-25% vendor-cost reduction.', timeRequired: '~30h over 6 weeks' },
+      { stepNumber: 3, action: 'Run the health and wellness coordination program', detail: 'You build the unified family health record, coordinate across specialists, run weekly medication reconciliation, and operate the second-opinion protocol for any major diagnosis. For each family member: 1-page medical passport, 2-page weekly brief, 4-page quarterly review.', timeRequired: '~4h/week average' },
+      { stepNumber: 4, action: 'Operate the continuous lifestyle cadence', detail: 'You chair a monthly Lifestyle Committee with the principal and household staff leads, maintain the family calendar, manage travel logistics, and produce the weekly Lifestyle Brief. You own the escalation path when any operations area underperforms.', timeRequired: '~5h/week ongoing' },
+    ],
+    weekRich: [
+      { day: 'Monday', task: 'Pull overnight data from the household operations dashboard — property sensors, staff timecards, vendor check-ins, inbound travel requests. Triage into routine / needs-action / urgent.' },
+      { day: 'Tuesday', task: 'Run the weekly medication reconciliation across all active family members (1 hour). Flag any interaction or duplication to the prescribing physician.' },
+      { day: 'Wednesday', task: 'Property and vendor deep-dive on a rotating schedule (7 properties or major vendor contracts on a 7-week cycle). Walk through SLA compliance and any pending capex.' },
+      { day: 'Thursday', task: 'Family 1:1 on a rotating schedule — principal, spouse, adult children. Review anything lifestyle-adjacent they have raised this week.' },
+      { day: 'Friday', task: 'Deliver the Weekly Lifestyle Brief — 2 pages covering household operations, health coordination, travel next 14 days, pending decisions. Delivered to the designated family contact by 3 PM.' },
+      { day: 'Monthly', task: 'Chair the Lifestyle Committee call with household staff leads. Publish minutes and the 30-day priority list within 24 hours.' },
+      { day: 'Quarterly', task: 'Deliver the Quarterly Lifestyle Report — 10 pages covering operations performance, health milestones, vendor performance, and the 90-day plan. Reviewed live with principal.' },
+    ],
+    deliverablesRich: [
+      { name: 'Lifestyle Operations Map', description: '30-page master document inventorying every property, staff member, vendor, healthcare provider, and recurring obligation. The single source of truth for the family system.', frequency: 'Annual refresh' },
+      { name: 'Family Medical Passports (per member)', description: '1-page printable and phone-resident summary per family member: diagnoses, medications, allergies, specialist contacts, advance directives. Saves lives in the ER when the patient cannot speak.', frequency: 'Quarterly refresh' },
+      { name: 'Weekly Lifestyle Brief', description: '2-page summary delivered every Friday by 3 PM. Household operations, health coordination, travel next 14 days, pending decisions. Readable in 4 minutes.', frequency: 'Weekly (Fri 3 PM)' },
+      { name: 'Monthly Lifestyle Committee Package', description: '5-page pre-read plus minutes within 24 hours of the monthly committee call. Covers operations, health, staff, vendor performance. The operating record for the household system.', frequency: 'Monthly' },
+      { name: 'Quarterly Lifestyle Report', description: '10-page comprehensive quarterly: operations performance, health milestones, vendor performance, 90-day plan. Reviewed live with the principal in a 45-minute call.', frequency: 'Quarterly' },
+      { name: 'Annual Lifestyle Review', description: '30-page year-in-review: vendor cost savings, health outcomes, operations improvements, staff performance, following-year priorities. Doubles as the documentation for insurance and household-staff employment renewals.', frequency: 'Annual' },
+    ],
+    timeBreakdown: {
+      weeklyHours: 11,
+      items: [
+        { task: 'Household operations dashboard triage', hoursPerWeek: 1.5 },
+        { task: 'Medication reconciliation', hoursPerWeek: 1 },
+        { task: 'Property/vendor deep-dive rotation', hoursPerWeek: 1 },
+        { task: 'Family 1:1s', hoursPerWeek: 0.75 },
+        { task: 'Friday Lifestyle Brief', hoursPerWeek: 1.25 },
+        { task: 'Health case coordination', hoursPerWeek: 2 },
+        { task: 'Monthly Committee (amortized)', hoursPerWeek: 0.75 },
+        { task: 'Ad-hoc travel and vendor escalations', hoursPerWeek: 2.75 },
+      ],
+      note: 'Household data-entry, travel booking, and vendor scheduling can be delegated to an EA or house manager. Health coordination, committee chairmanship, and principal-facing communication must stay with the named operator (clinical coordination requires RN or equivalent credential).',
+    },
+    toolsNeeded: [
+      { tool: 'PicnicHealth or Commure (HIPAA BAA)', cost: '$250-700/mo/family', purpose: 'Unified secure family health record with full audit logging' },
+      { tool: 'Estate Ops or Nines (household mgmt)', cost: '$200-800/mo', purpose: 'Household operations dashboard for properties, staff, vendors' },
+      { tool: 'Doximity Dialer', cost: '$15-30/user/mo', purpose: 'HIPAA-compliant calls and messaging with specialist network' },
+      { tool: 'Signal or ProtonMail Business', cost: '$10-15/user/mo', purpose: 'Encrypted channel for family communications' },
+      { tool: 'International SOS or Global Rescue', cost: '$800-3,000/yr/family', purpose: 'Global emergency medical evacuation and on-the-ground advocacy' },
+      { tool: 'Airtable Pro', cost: '$20/user/mo', purpose: 'Vendor database, case tracker, medication reconciliation log' },
+    ],
+    first90Days: [
+      { phase: 'Days 1-30: Map the system', color: 'amber', actions: [
+        'Sign engagement letter, HIPAA BAAs, and household-staff privacy agreements',
+        'Inventory every property, staff member, vendor, and healthcare provider',
+        'Collect medical records from every provider for every family member',
+        'Stand up the unified health record and household operations dashboard',
+        'Deliver the 30-page Lifestyle Operations Map',
+      ] },
+      { phase: 'Days 31-60: Operating cadence', color: 'green', actions: [
+        'Produce the first Family Medical Passports',
+        'Ship 4 Weekly Lifestyle Briefs (Fridays 3 PM)',
+        'Run first monthly Lifestyle Committee call',
+        'Complete the first vendor-renegotiation round (target: 15-25% reduction on top-10)',
+        'Deliver the first Monthly Lifestyle Committee Package',
+      ] },
+      { phase: 'Days 61-90: Demonstrated value', color: 'gold', actions: [
+        'Document concrete saves: caught drug interaction, vendor cost reduction, scheduling conflict resolved',
+        'Deliver the first Quarterly Lifestyle Report with vendor-savings tally',
+        'Complete the first quarterly medical passport refresh',
+        'Launch the longevity/late-life care planning discussion with principal and spouse',
+        'Present first-quarter ROI memo: time saved, dollars saved, health outcomes coordinated',
+      ] },
+    ],
+    currentSolutions: [
+      { approach: 'House manager handles one property', whyItFails: 'House managers handle property-level operations. They do not coordinate across 4-8 properties, manage the healthcare layer, or operate the committee cadence that keeps the principal informed.' },
+      { approach: 'Concierge medicine membership', whyItFails: 'Concierge medicine provides excellent primary care access but does not coordinate across specialists, manage second opinions, or track preventive care for the whole family.' },
+      { approach: 'Family member runs coordination', whyItFails: 'A family member with no medical training cannot triage specialist recommendations or run medication reconciliation across 7 providers. A family member in emotional crisis is the worst candidate for the coordination role.' },
+    ],
+    objections: [
+      { objection: 'We already have a house manager', response: 'A house manager runs one property. This sits above all properties and adds the healthcare coordination layer that house managers do not handle.' },
+      { objection: 'We have a concierge doctor', response: 'Concierge doctors provide access. This coordinates across every specialist, runs medication reconciliation, and executes the rapid second-opinion protocol that concierge medicine explicitly does not do.' },
+      { objection: 'This feels too integrated into our life', response: 'That is the point — the coordination layer only works when it has full visibility. Every engagement starts with a 30-day trial and can be stopped at any time. Trust is earned by the first quarter of concrete saves.' },
+    ],
+  },
+};
+
+/**
+ * Build a full ProblemData from an ApiProblem, using the appropriate category
+ * template to populate all rich fields. Interpolates problem-specific values
+ * (title, wtp_range, buyer_type, wealth tier, trust channel) into the template.
+ */
 function buildFromApi(p: ApiProblem): ProblemData {
   const tierShort = p.wealth_tier.includes('UHNW') ? 'UHNW' : p.wealth_tier.includes('HNW') ? 'HNW' : p.wealth_tier;
   const tags = [p.pain_category, tierShort, p.lifecycle_stage].filter(Boolean);
   const complianceRisk = p.compliance_risk?.toLowerCase() ?? 'none';
+  const tpl = CATEGORY_TEMPLATES[p.pain_category] ?? CATEGORY_TEMPLATES['Wealth Preservation'];
+  const titleShort = p.title.length > 40 ? p.title.slice(0, 40) + '…' : p.title;
+
+  // Rough price band inference from wtp_range string (e.g. "$50K-$250K/year" or "$10-25K/mo").
+  const priceRangeMatch = p.wtp_range.match(/\$(\d+)(K|M)?\s*[\-–—]\s*\$?(\d+)(K|M)?/i);
+  const scale = (v: string, unit: string | undefined): number => {
+    const n = parseInt(v, 10);
+    if (unit?.toUpperCase() === 'M') return n * 1_000_000;
+    return n * 1_000;
+  };
+  const priceMinInferred = priceRangeMatch ? scale(priceRangeMatch[1], priceRangeMatch[2]) : 5_000;
+  const priceMaxInferred = priceRangeMatch ? scale(priceRangeMatch[3], priceRangeMatch[4]) : 50_000;
+
   return {
     title: p.title,
     tags,
@@ -1299,7 +1965,7 @@ function buildFromApi(p: ApiProblem): ProblemData {
     scenario: '',
     scenarioAttribution: '',
     whyWealthy: [
-      `${tierShort} individuals face outsized exposure due to complexity of holdings`,
+      `${tierShort} families face outsized exposure to ${p.pain_category.toLowerCase()} risks`,
       `High willingness-to-pay signal: ${p.wtp_signal}`,
       `Best reached via ${p.trust_channel}`,
     ],
@@ -1307,13 +1973,13 @@ function buildFromApi(p: ApiProblem): ProblemData {
     wtp: p.wtp_range,
     lifecycle: p.lifecycle_stage,
     complianceRisk,
-    complianceRiskNote: complianceRisk !== 'none' ? `Compliance risk rated ${p.compliance_risk} — review guardrails before building.` : '',
+    complianceRiskNote: complianceRisk !== 'none' ? `Compliance risk rated ${p.compliance_risk} — align delivery with applicable fiduciary and regulatory requirements.` : '',
     trendData: Array.from({ length: 12 }, (_, i) => Math.round(20 + i * (p.urgency_score / 2))),
     trendGrowth: `${Math.round(p.composite_score)}%`,
-    weeklyHours: '8–12h',
+    weeklyHours: `${tpl.timeBreakdown.weeklyHours}h`,
     startupCost: '$200–600',
     timeToFirstClient: '4–8 wks',
-    pitchOpener: `Have any of your ${p.buyer_type} contacts mentioned challenges with ${p.title.toLowerCase()}? We've been seeing a major uptick.`,
+    pitchOpener: `Have any of your ${p.buyer_type} contacts mentioned challenges with ${titleShort.toLowerCase()}? We've been seeing a major uptick — I'd love to share what we're doing about it.`,
     quickFacts: [
       { label: 'Evidence credibility', value: `${p.credibility_score}/10 (${p.source_types.join(', ')})` },
       { label: 'Buyer type', value: p.buyer_type },
@@ -1321,47 +1987,34 @@ function buildFromApi(p: ApiProblem): ProblemData {
       { label: 'Trust channel', value: p.trust_channel },
       { label: 'Composite score', value: `${p.composite_score}` },
     ],
-    currentSolutions: [],
-    offerName: `${p.pain_category} Advisory Retainer`,
-    offerTagline: `Expert guidance for ${p.title.toLowerCase()}`,
+    currentSolutions: tpl.currentSolutions,
+    offerName: `${p.pain_category} Operating Partner Retainer`,
+    offerTagline: `Expert coordination for ${titleShort.toLowerCase()}`,
     price: p.wtp_range,
-    priceMin: 5000,
-    priceMax: 50000,
-    delivery: 'Advisory',
-    steps: [
-      { title: 'Discovery & assessment', description: `Comprehensive review of the client's exposure to ${p.title.toLowerCase()}.` },
-      { title: 'Strategy design', description: 'Build a tailored action plan with clear milestones and deliverables.' },
-      { title: 'Implementation support', description: 'Hands-on guidance through execution, vendor coordination, and progress tracking.' },
-      { title: 'Ongoing monitoring', description: 'Continuous oversight with quarterly reviews and proactive risk alerts.' },
-    ],
+    priceMin: priceMinInferred,
+    priceMax: priceMaxInferred,
+    delivery: 'Advisory + operations',
+    steps: tpl.stepsRich.map((s) => ({ title: s.action, description: s.detail })),
     week: {
-      Mon: 'Client check-ins + progress review',
-      Wed: 'Research & strategy refinement',
-      Fri: 'Deliverable preparation + status update',
-      Monthly: 'Comprehensive review & reporting',
+      Mon: tpl.weekRich[0]?.task ?? 'Operations review',
+      Wed: tpl.weekRich[2]?.task ?? 'Deep-dive session',
+      Fri: tpl.weekRich[4]?.task ?? 'Principal briefing',
+      Monthly: tpl.weekRich[5]?.task ?? 'Monthly review',
     },
-    deliverables: [
-      'Initial assessment report',
-      'Quarterly progress reports',
-      'Risk monitoring dashboard',
-      'Annual strategy review',
-    ],
+    deliverables: tpl.deliverablesRich.map((d) => `${d.name} (${d.frequency.toLowerCase()})`),
     idealClient: {
-      who: `${tierShort} individuals / ${p.buyer_type}`,
-      trigger: `Emerging awareness of ${p.pain_category.toLowerCase()} risks`,
+      who: `${tierShort} families / ${p.buyer_type}`,
+      trigger: `Emerging awareness of ${p.pain_category.toLowerCase()} exposure, typically driven by ${p.lifecycle_stage.toLowerCase()} trend`,
       channel: p.trust_channel,
-      question: `How do I address ${p.title.toLowerCase()}?`,
-      roi: 'Risk mitigation and peace of mind for high-stakes decisions',
+      question: `Who is owning ${titleShort.toLowerCase()} day-to-day for our family?`,
+      roi: 'Quantified risk mitigation and operational savings, typically 2–4× retainer in Year 1',
     },
     firstClientPath: [
-      `Connect with 3 professionals in the ${p.trust_channel.toLowerCase()} channel. Ask about client concerns around ${p.pain_category.toLowerCase()}.`,
-      'Offer a free 30-minute assessment to surface gaps and build trust.',
-      'Present the retainer with clear ROI tied to risk prevention.',
+      `Connect with 3 professionals in the ${p.trust_channel.toLowerCase()} channel. Ask: "Have any clients raised ${p.pain_category.toLowerCase()} concerns recently?"`,
+      `Offer a free 30-minute scoping call and a ${tpl.first90Days[0]?.phase.split(':')[0] ?? 'baseline'} assessment. No pitch — just show the gaps.`,
+      `After the assessment, present the retainer with a 30-day trial and a concrete Year-1 ROI target based on ${p.wtp_range}.`,
     ],
-    objections: [
-      { objection: 'We already have advisors for this', response: `General advisors spread thin. This is dedicated, specialist focus on ${p.pain_category.toLowerCase()}.` },
-      { objection: 'Is this really urgent?', response: `With a ${p.urgency_score}/10 urgency score, waiting increases exposure significantly.` },
-    ],
+    objections: tpl.objections,
     simpleStory: p.description,
     simpleExample: '',
     simpleBullets: [
@@ -1369,15 +2022,17 @@ function buildFromApi(p: ApiProblem): ProblemData {
       `Credibility: ${p.credibility_score}/10`,
       `WTP range: ${p.wtp_range}`,
     ],
-    simpleRole: `You become the client's dedicated ${p.pain_category.toLowerCase()} advisor`,
-    simpleSteps: [
-      'Assess current exposure and gaps',
-      'Design a tailored strategy',
-      'Implement with hands-on support',
-      'Monitor and adjust continuously',
-    ],
-    simpleMonth: 'Week 1: Client check-ins and progress review. Week 2: Research and strategy updates. Week 3: Deliverable preparation. Week 4: Monthly review and next-month planning.',
-    simpleSellTo: `${tierShort} individuals reached via ${p.trust_channel.toLowerCase()} who are concerned about ${p.pain_category.toLowerCase()} exposure.`,
+    simpleRole: tpl.operatorRole,
+    simpleSteps: tpl.stepsRich.map((s) => s.action),
+    simpleMonth: tpl.weekRich.slice(0, 4).map((w, i) => `Week ${i + 1}: ${w.task.split('.')[0]}.`).join(' '),
+    simpleSellTo: `${tierShort} families reached via ${p.trust_channel.toLowerCase()} who are concerned about ${p.pain_category.toLowerCase()} exposure.`,
+    whyWealthyRich: tpl.whyWealthyRich,
+    stepsRich: tpl.stepsRich,
+    weekRich: tpl.weekRich,
+    deliverablesRich: tpl.deliverablesRich,
+    timeBreakdown: tpl.timeBreakdown,
+    toolsNeeded: tpl.toolsNeeded,
+    first90Days: tpl.first90Days,
   };
 }
 
