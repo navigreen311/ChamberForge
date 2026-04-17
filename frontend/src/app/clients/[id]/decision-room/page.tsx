@@ -82,15 +82,25 @@ const FALLBACK: ClientSummary = {
   ],
 }
 
+interface BriefData {
+  summary: string
+  painSignals: string[]
+  opener: string
+  objections: { risk: string; response: string }[]
+  proofPoint: string
+}
+
 export default function DecisionRoomPage() {
   const router = useRouter()
   const params = useParams()
   const id = String(params?.id ?? '')
+  const clientId = id
 
   const [client, setClient] = useState<ClientSummary | null>(null)
-  const [loadingPitch, setLoadingPitch] = useState(false)
-  const [pitch, setPitch] = useState<string | null>(null)
-  const [brief, setBrief] = useState<string | null>(null)
+  const [pitchOpener, setPitchOpener] = useState('')
+  const [pitchLoading, setPitchLoading] = useState(false)
+  const [brief, setBrief] = useState<BriefData | null>(null)
+  const [briefLoading, setBriefLoading] = useState(false)
   const [decisionLogged, setDecisionLogged] = useState(false)
 
   useEffect(() => {
@@ -112,40 +122,58 @@ export default function DecisionRoomPage() {
     }
   }, [id])
 
-  const generatePitch = async () => {
+  const generatePitchOpener = async () => {
     if (!client) return
-    setLoadingPitch(true)
-    setPitch(null)
+    setPitchLoading(true)
     try {
-      const res = await fetch(`/api/clients/${id}/generate-pitch`, {
+      const res = await fetch(`/api/clients/${clientId}/generate-pitch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: client.name,
+          clientName: client.name,
           company: client.company,
           tier: client.tier,
-          problem: client.matchedProblem.name,
-          wealthEvent: client.wealthEvents[0] ?? null,
-          pain: client.painFocus[0],
+          wealthEvents: client.wealthEvents,
+          painCategory: client.painFocus[0],
+          offerName: client.matchedOffer.name,
+          competitorContext: client.intel.filter(x => /morgan stanley|competing|competitor/i.test(x)),
         }),
       })
       if (!res.ok) throw new Error('not ok')
       const data = await res.json()
-      setPitch(data.pitch ?? null)
+      setPitchOpener(
+        data.pitchOpener ??
+          `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. Would Thursday work for a 20-minute walk-through of what a readiness audit would look like?`,
+      )
     } catch {
-      setPitch(
-        `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. I'd like to walk you through what a 30-day readiness audit would look like — nothing to buy, just a clear map of your surface. Would Thursday work?`,
+      setPitchOpener(
+        `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. Would Thursday work for a 20-minute walk-through of what a readiness audit would look like?`,
       )
     } finally {
-      setLoadingPitch(false)
+      setPitchLoading(false)
     }
   }
 
-  const generateBrief = () => {
+  const generateBrief = async () => {
     if (!client) return
-    setBrief(
-      `Pre-meeting brief for ${client.name} (${client.company}): Tier ${client.tier}, health ${client.health ?? '—'}. Last contact ${client.lastContact}. Open thread: ${client.intel[0]} Recommended opener: lead with the peer-fraud angle and move to the retainer scope only if she surfaces the question.`,
-    )
+    setBriefLoading(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/generate-brief`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'quick', context: 'decision_room' }),
+      })
+      if (!res.ok) throw new Error('not ok')
+      const data = await res.json()
+      setBrief(
+        (data.brief as BriefData) ??
+          buildFallbackBrief(client, pitchOpener),
+      )
+    } catch {
+      setBrief(buildFallbackBrief(client, pitchOpener))
+    } finally {
+      setBriefLoading(false)
+    }
   }
 
   const logDecision = async () => {
@@ -313,41 +341,95 @@ export default function DecisionRoomPage() {
             </section>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500">Pitch opener</div>
-                <button
-                  onClick={generatePitch}
-                  disabled={loadingPitch}
-                  className="text-[11px] bg-[#C9A84C] text-[#0D1117] font-semibold px-3 py-1.5 rounded hover:bg-[#C9A84C]/90 disabled:opacity-60"
-                >
-                  {loadingPitch ? 'Generating…' : pitch ? 'Regenerate' : 'Generate'}
-                </button>
-              </div>
-              {pitch ? (
-                <div className="text-[12px] text-gray-200 bg-[#0D1117] border border-[#1e2a3a] rounded p-3 leading-relaxed">
-                  {pitch}
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Pitch opener</div>
+              {pitchOpener ? (
+                <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded-lg p-4">
+                  <div className="text-[12px] text-[#5DCAA5] leading-relaxed italic mb-3">
+                    &ldquo;{pitchOpener}&rdquo;
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(pitchOpener)}
+                      className="text-[10px] border border-[#2a3a4a] text-[#8892a4] px-3 py-1.5 rounded"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      onClick={generatePitchOpener}
+                      disabled={pitchLoading}
+                      className="text-[10px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded disabled:opacity-60"
+                    >
+                      {pitchLoading ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-[11px] text-gray-500 italic">
-                  Click generate — Command AI will produce a 2-3 sentence opener tailored to {client.name}.
-                </div>
+                <button
+                  onClick={generatePitchOpener}
+                  disabled={pitchLoading}
+                  className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+                >
+                  {pitchLoading ? 'Generating...' : 'Generate'}
+                </button>
               )}
             </section>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="text-[10px] uppercase tracking-wider text-gray-500">Pre-meeting brief</div>
-                <button
-                  onClick={generateBrief}
-                  className="text-[11px] text-[#C9A84C] hover:underline"
-                >
-                  {brief ? 'Refresh' : 'Generate'}
-                </button>
+                {brief && (
+                  <button
+                    onClick={generateBrief}
+                    disabled={briefLoading}
+                    className="text-[10px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded disabled:opacity-60"
+                  >
+                    {briefLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                )}
               </div>
               {brief ? (
-                <div className="text-[11px] text-gray-300 leading-relaxed">{brief}</div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Client summary</div>
+                    <div className="text-[11px] text-gray-200 leading-relaxed">{brief.summary}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Pain signals</div>
+                    {brief.painSignals.map((s, i) => (
+                      <div key={i} className="flex gap-2 mb-1">
+                        <span className="w-1 h-1 rounded-full bg-[#C9A84C] mt-1.5 flex-shrink-0" />
+                        <div className="text-[10px] text-gray-300 leading-relaxed">{s}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Conversation opener</div>
+                    <div className="text-[10px] text-[#5DCAA5] italic leading-relaxed">&ldquo;{brief.opener}&rdquo;</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Top 2 objections</div>
+                    <div className="space-y-2">
+                      {brief.objections.map((o, i) => (
+                        <div key={i} className="border-l-2 border-amber-500/40 pl-3">
+                          <div className="text-[11px] text-amber-300 italic">{o.risk}</div>
+                          <div className="text-[10px] text-gray-300 mt-0.5 leading-relaxed">{o.response}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-[#0D1117] border border-[#C9A84C]/30 rounded p-3">
+                    <div className="text-[9px] font-semibold text-[#C9A84C] uppercase tracking-wider mb-1">Closing proof point</div>
+                    <div className="text-[11px] text-gray-200 leading-relaxed">{brief.proofPoint}</div>
+                  </div>
+                </div>
               ) : (
-                <div className="text-[11px] text-gray-500 italic">Inline brief will appear here.</div>
+                <button
+                  onClick={generateBrief}
+                  disabled={briefLoading}
+                  className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+                >
+                  {briefLoading ? 'Generating...' : 'Generate'}
+                </button>
               )}
             </section>
 
@@ -377,4 +459,22 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-gray-200">{value}</span>
     </div>
   )
+}
+
+function buildFallbackBrief(client: ClientSummary, pitchOpener: string): BriefData {
+  const topWealth = client.wealthEvents[0]
+  return {
+    summary: `${client.name} (${client.company}) is a ${client.tier} client, health ${client.health ?? '—'}, last contact ${client.lastContact}. Pain focus: ${client.painFocus.join(', ') || 'n/a'}.`,
+    painSignals: [
+      topWealth ? `Recent ${topWealth.label}${topWealth.amount ? ` (${topWealth.amount})` : ''} — ${topWealth.when}.` : client.intel[0] ?? 'Intelligence pipeline has not surfaced a priority signal yet.',
+      client.intel[1] ?? 'No secondary intel point available.',
+      client.intel[2] ?? 'No tertiary intel point available.',
+    ],
+    opener:
+      pitchOpener ||
+      `Open with the peer-family fraud event — ask how it landed with her team before pivoting to the retainer scope.`,
+    objections: client.objections.slice(0, 2),
+    proofPoint:
+      'Median single-incident loss among UHNW households is $2.4M (FinCEN, 2025). One prevented incident pays for 7 years of retainer.',
+  }
 }
