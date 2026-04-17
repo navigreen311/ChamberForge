@@ -1271,6 +1271,20 @@ const PROBLEMS: Record<string, ProblemData> = {
   },
 };
 
+/* ─── Resolve API problem → enriched PROBLEMS slug via title/category keywords ─── */
+
+function resolveProblemSlug(p: ApiProblem | undefined, explicitId: string): string | null {
+  if (PROBLEMS[explicitId]) return explicitId;
+  if (!p) return null;
+  const hay = `${p.title ?? ''} ${p.pain_category ?? ''}`.toLowerCase();
+  if (/(deepfake|voice\s*clon|voice\s*fraud|ai\s*impersonat|voice\s*phish)/.test(hay)) return 'ai-voice-fraud';
+  if (/(coordination|multi-?entity|advisors?|post[- ]exit|liquidity\s*event)/.test(hay)) return 'coordination-overload';
+  if (/(data\s*broker|doxx|privacy|exposure|footprint|dark\s*web)/.test(hay)) return 'data-broker-exposure';
+  if (/(governance|risk\s*committee|key[- ]person|insurance\s*gap|compliance|next[- ]gen|succession|legacy)/.test(hay)) return 'non-investment-risk';
+  if (/(health|medical|concierge\s*med|care\s*coord|specialist|diagnos)/.test(hay)) return 'healthcare-navigation';
+  return null;
+}
+
 /* ──────────────── Build ProblemData from API Problem ─────────── */
 
 function buildFromApi(p: ApiProblem): ProblemData {
@@ -1406,7 +1420,8 @@ export default function ProblemOfferDrawer({
   const [readinessItems, setReadinessItems] = useState([false, false, false]);
   const [scrollProgress, setScrollProgress] = useState(0);
   const rightColRef = useRef<HTMLDivElement>(null);
-  const data = PROBLEMS[problemId] ?? (problem ? buildFromApi(problem) : null);
+  const resolvedSlug = resolveProblemSlug(problem, problemId);
+  const data = (resolvedSlug && PROBLEMS[resolvedSlug]) ?? (problem ? buildFromApi(problem) : null);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
