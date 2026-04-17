@@ -35,6 +35,15 @@ interface ClientSummary {
   wealthNote: string
   offerProgressScore: number
   offerNote: string
+  competitors: {
+    name: string
+    type: string
+    daysSincePitch: number
+    threat: 'high' | 'medium' | 'low'
+    offering: string
+    weakness: string
+    counterPosition: string
+  }[]
 }
 
 const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
@@ -114,6 +123,41 @@ const FALLBACK: ClientSummary = {
   wealthNote: '$180M secondary + board exit = peak capital deployment window. Tier + liquidity profile aligns perfectly with retainer scope.',
   offerProgressScore: 15,
   offerNote: 'One active retainer, one proposal in review. Ecosystem suggests upsell is live; no contract friction yet.',
+  competitors: [
+    {
+      name: 'Morgan Stanley PWM',
+      type: 'Large institutional advisor',
+      daysSincePitch: 7,
+      threat: 'high',
+      offering: 'Full wealth management + family office services, AUM-based fee',
+      weakness:
+        'Generalist approach — same RM handles 40+ client relationships, no household-specific security or coordination expertise.',
+      counterPosition:
+        'Morgan Stanley manages the money. You manage the household. Different job, different expertise, different team. Position as a complement, not a competitor — then show the cyber incident data.',
+    },
+    {
+      name: 'Private Family Office Consortium',
+      type: 'Boutique peer network referral',
+      daysSincePitch: 21,
+      threat: 'medium',
+      offering: 'Shared chief-of-staff pool across 6 family offices, event-driven engagement model',
+      weakness:
+        'Shared staff means divided loyalty and no dedicated household protocol. Quality of the assigned operator varies widely week to week.',
+      counterPosition:
+        'Named operator, dedicated retainer, documented SLA. Ask: "When the wire-verification call comes at 9pm, who picks up — and are they yours?"',
+    },
+    {
+      name: 'Status quo (do nothing)',
+      type: 'Internal inertia',
+      daysSincePitch: 0,
+      threat: 'low',
+      offering: 'Keep current patchwork — CISO at op-co, bank fraud monitoring, informal staff screening.',
+      weakness:
+        'The patchwork is exactly what FinCEN identified as the failure mode — no single accountable owner for household surface, median $2.4M loss when it breaks.',
+      counterPosition:
+        'Frame inaction as a choice, not a default. "The decision is not whether to spend the money — it is whether the household has a named owner for this surface."',
+    },
+  ],
 }
 
 interface BriefData {
@@ -547,6 +591,58 @@ export default function DecisionRoomPage() {
                 ))}
               </div>
             </section>
+
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#BA7517]/20">
+              <div className="text-[10px] font-semibold text-[#BA7517] uppercase tracking-wider mb-3">
+                Competitor intelligence
+              </div>
+              {client.competitors.map((comp, i) => (
+                <div
+                  key={i}
+                  className="mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="text-[12px] font-semibold text-[#e2e8f0]">{comp.name}</div>
+                      <div className="text-[10px] text-[#4a5568]">
+                        {comp.type}
+                        {comp.daysSincePitch > 0 ? ` · Pitched ${comp.daysSincePitch}d ago` : ''}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
+                        comp.threat === 'high'
+                          ? 'bg-[#1f0d0d] text-[#E24B4A]'
+                          : comp.threat === 'medium'
+                          ? 'bg-[#1f1500] text-[#BA7517]'
+                          : 'bg-[#0F2E1A] text-[#1D9E75]'
+                      }`}
+                    >
+                      {comp.threat === 'high'
+                        ? 'High threat'
+                        : comp.threat === 'medium'
+                        ? 'Medium threat'
+                        : 'Low threat'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[#8892a4] mb-2 leading-relaxed">
+                    <strong className="text-[#e2e8f0]">What they offered:</strong> {comp.offering}
+                  </div>
+                  <div className="text-[10px] text-[#8892a4] mb-2 leading-relaxed">
+                    <strong className="text-[#e2e8f0]">Their weakness:</strong> {comp.weakness}
+                  </div>
+                  <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded px-3 py-2">
+                    <div className="text-[9px] font-semibold text-[#1D9E75] mb-1">
+                      Your counter-position
+                    </div>
+                    <div className="text-[10px] text-[#5DCAA5] leading-relaxed">{comp.counterPosition}</div>
+                  </div>
+                </div>
+              ))}
+              <button className="w-full mt-2 py-1.5 text-[10px] border border-[#2a3a4a] text-[#8892a4] rounded-lg hover:border-[#C9A84C]/40 hover:text-[#C9A84C]">
+                + Log new competitor
+              </button>
+            </div>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Pitch opener</div>
