@@ -19,7 +19,15 @@ interface ClientSummary {
   activeOffers: number
   wealthEvents: { label: string; amount?: string; when: string }[]
   intel: string[]
+  intelligenceBullets: { fact: string; implication: string }[]
   touchpoints: { type: string; desc: string; time: string }[]
+  conversationHistory: {
+    type: 'CALL' | 'EMAIL' | 'MEETING' | 'DOC' | string
+    subject: string
+    outcome: string
+    daysAgo: number
+    openItem?: string
+  }[]
   matchedProblem: { id: string; name: string; lifecycle: string; credibility: number }
   matchedOffer: { name: string; priceMonthly: number; rationale: string }
   objections: { risk: string; response: string }[]
@@ -92,12 +100,79 @@ const FALLBACK: ClientSummary = {
     'Mentioned cybersecurity unease after peer-family fraud event in industry press.',
     'Lifestyle staff turnover (chief of staff resigned) — coordination gap widening.',
   ],
+  intelligenceBullets: [
+    {
+      fact: 'Recent $180M secondary — new capital looking for structured stewardship.',
+      implication:
+        'OPPORTUNITY: Pair the retainer conversation with a stewardship narrative. Frame this offer as part of how the capital gets deployed, not a separate spend.',
+    },
+    {
+      fact: 'Son joins family office in Q3 — next-gen governance conversations are live.',
+      implication:
+        'OPPORTUNITY: Position the next-gen studio add-on before he starts. First 90 days of his involvement is the highest-leverage window for succession planning conversations.',
+    },
+    {
+      fact: 'Competing advisor (Morgan Stanley PWM) pitched last week; relationship strained.',
+      implication:
+        'DO NOT rush to close. Her wariness after a hard sell creates an opening for a consultative approach — be the one who educates, not pitches.',
+    },
+    {
+      fact: 'Mentioned cybersecurity unease after peer-family fraud event in industry press.',
+      implication:
+        "This is the emotional trigger. Lead with empathy about the event, not statistics. Ask: 'How did that story land with your team?'",
+    },
+    {
+      fact: 'Lifestyle staff turnover (chief of staff resigned) — coordination gap widening.',
+      implication:
+        'OPPORTUNITY: Even without a CoS replacement, your retainer absorbs the highest-risk subset of what a CoS does (vendor/vetting/coordination). Price the offer against the hiring cost, not thin air.',
+    },
+  ],
   touchpoints: [
     { type: 'call', desc: 'Quarterly review — governance topic raised', time: '3d ago' },
     { type: 'email', desc: 'Forwarded WSJ piece on AI voice-clone fraud', time: '9d ago' },
     { type: 'meeting', desc: 'Dinner with son, informal intro to office', time: '21d ago' },
     { type: 'doc', desc: 'Shared Trust Pack v2 for review', time: '38d ago' },
     { type: 'call', desc: 'Kickoff on cyber audit scope', time: '49d ago' },
+  ],
+  conversationHistory: [
+    {
+      type: 'CALL',
+      subject: 'Quarterly review — governance topic raised',
+      outcome:
+        'Alexandra asked three unprompted questions about next-gen onboarding and succession. Temperature: warm, shifting toward advisory.',
+      daysAgo: 3,
+      openItem: 'Commit to send next-gen studio one-pager by end of week.',
+    },
+    {
+      type: 'EMAIL',
+      subject: 'Forwarded WSJ piece on AI voice-clone fraud',
+      outcome:
+        'She forwarded unprompted with the note "this is exactly what I worry about". Strongest signal of personal concern in 90 days.',
+      daysAgo: 9,
+      openItem: 'Reference this thread in the pitch opener — do not let the signal go stale.',
+    },
+    {
+      type: 'MEETING',
+      subject: 'Dinner with son, informal intro to office',
+      outcome:
+        'Son (incoming Q3) engaged, asked about governance-as-a-service. No commitments; relationship-building only.',
+      daysAgo: 21,
+    },
+    {
+      type: 'DOC',
+      subject: 'Shared Trust Pack v2 for review',
+      outcome:
+        'Opened 3 times, last view 2 days ago. Spent longest on the cyber incident response section (3:42 on page).',
+      daysAgo: 38,
+      openItem: 'Follow up specifically on the incident response section she re-read.',
+    },
+    {
+      type: 'CALL',
+      subject: 'Kickoff on cyber audit scope',
+      outcome:
+        'Scoped the existing retainer. Alexandra flagged wire-verification as her #1 concern. No objections raised.',
+      daysAgo: 49,
+    },
   ],
   matchedProblem: {
     id: 'prob-014',
@@ -644,28 +719,61 @@ export default function DecisionRoomPage() {
             })()}
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
                 Intelligence brief — Command AI
               </div>
-              <ul className="text-[12px] text-gray-300 space-y-1.5 leading-relaxed">
-                {client.intel.map((line, i) => (
-                  <li key={i}>• {line}</li>
+              <div>
+                {client.intelligenceBullets.map((bullet, i) => (
+                  <div
+                    key={i}
+                    className="mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                  >
+                    <div className="flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] flex-shrink-0 mt-1.5"></div>
+                      <div>
+                        <div className="text-[11px] text-[#e2e8f0] leading-relaxed mb-1">{bullet.fact}</div>
+                        <div className="text-[10px] text-[#C9A84C] leading-relaxed">
+                          → {bullet.implication}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </section>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
                 Conversation history (last 5)
               </div>
-              <div className="space-y-2 text-[12px]">
-                {client.touchpoints.slice(0, 5).map((t, i) => (
-                  <div key={i} className="flex justify-between gap-3 border-b border-[#1e2a3a]/50 pb-1.5 last:border-0">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500 mr-2">{t.type}</span>
-                      <span className="text-gray-300">{t.desc}</span>
+              <div>
+                {client.conversationHistory.slice(0, 5).map((tp, i) => (
+                  <div key={i} className="flex gap-3 py-3 border-b border-[#1e2a3a] last:border-0">
+                    <div
+                      className={`text-[9px] font-semibold px-2 py-0.5 rounded h-fit flex-shrink-0 ${
+                        tp.type === 'CALL'
+                          ? 'bg-[#0a1a2e] text-[#85B7EB]'
+                          : tp.type === 'EMAIL'
+                          ? 'bg-[#1e1a2e] text-[#AFA9EC]'
+                          : tp.type === 'MEETING'
+                          ? 'bg-[#0F2E1A] text-[#1D9E75]'
+                          : 'bg-[#1e2a3a] text-[#8892a4]'
+                      }`}
+                    >
+                      {tp.type}
                     </div>
-                    <span className="text-[10px] text-gray-500 whitespace-nowrap">{t.time}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <div className="text-[11px] font-medium text-[#e2e8f0]">{tp.subject}</div>
+                        <div className="text-[9px] text-[#4a5568] flex-shrink-0 ml-2">
+                          {tp.daysAgo}d ago
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-[#4a5568] leading-relaxed mb-1">{tp.outcome}</div>
+                      {tp.openItem && (
+                        <div className="text-[9px] text-[#BA7517]">Open: {tp.openItem}</div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
