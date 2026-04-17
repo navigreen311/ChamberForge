@@ -319,6 +319,63 @@ const READINESS_CHECKLIST = [
   { label: 'Evidence review completed', done: true },
 ]
 
+// ─── Audit types ─────────────────────────────────────────────
+type AuditSeverity = 'critical' | 'warning'
+interface AuditIssue {
+  category: string
+  severity: AuditSeverity
+  description: string
+  recommendation: string
+}
+interface AuditResult {
+  passed: boolean
+  score: number
+  issues: AuditIssue[]
+  ranAt: string
+}
+
+// Fallback issues used when opening Fix drawer before the first audit runs.
+const FALLBACK_ISSUES: AuditIssue[] = [
+  {
+    category: 'Compliance risk',
+    severity: 'critical',
+    description: 'Scope may require jurisdiction-specific licensing. Two target markets lack a compliance gap review.',
+    recommendation: 'Add a jurisdiction matrix and secure a partnered license holder where needed before activation.',
+  },
+  {
+    category: 'Delivery fragility',
+    severity: 'warning',
+    description: 'Delivery depends on a single operator and two unbackstopped partner vendors.',
+    recommendation: 'Secure LOIs from one backup operator and one alternate vendor per critical deliverable.',
+  },
+  {
+    category: 'Margin stress',
+    severity: 'warning',
+    description: 'At the low end of the price band, unit margin compresses below 45% beyond 4 clients.',
+    recommendation: 'Lift the floor price by 12-15% or cap cohort size until a new capacity tier is built.',
+  },
+  {
+    category: 'Competitive vulnerability',
+    severity: 'critical',
+    description: 'Incumbents could replicate 80% of the stack at a 30-40% discount within 6 months.',
+    recommendation: 'Lead pitch assets with proprietary evidence chain and named-operator relationships.',
+  },
+  {
+    category: 'Reputation risk',
+    severity: 'warning',
+    description: 'Outcome language implies guarantees. A public failure would be picked up by trade press.',
+    recommendation: 'Swap guarantee language for best-effort commitments and add an incident comms playbook.',
+  },
+]
+
+const ACTION_FOR_DIMENSION: Record<string, { label: string; href: string | null }> = {
+  'Compliance risk': { label: 'Review compliance guide →', href: '/risk-queue' },
+  'Delivery fragility': { label: 'Add backup partner →', href: '/partners' },
+  'Margin stress': { label: 'Adjust pricing →', href: null },
+  'Competitive vulnerability': { label: 'Differentiate offer →', href: null },
+  'Reputation risk': { label: 'Add guarantee clause →', href: null },
+}
+
 // ─── Page Component ──────────────────────────────────────────
 export default function PlaybooksPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
@@ -333,6 +390,39 @@ export default function PlaybooksPage() {
   const [showComposer, setShowComposer] = useState(false)
   const [composerSelections, setComposerSelections] = useState<Set<number>>(new Set())
   const [composerDone, setComposerDone] = useState(false)
+  const [auditLoading, setAuditLoading] = useState<string | null>(null)
+  const [auditResults, setAuditResults] = useState<Record<string, AuditResult>>({})
+  const [fixIssuesPlaybook, setFixIssuesPlaybook] = useState<Playbook | null>(null)
+  const [fixResolved, setFixResolved] = useState<Record<string, Set<string>>>({})
+  const [fixToast, setFixToast] = useState<string | null>(null)
+
+  const runRedTeamAudit = async (playbookSlug: string) => {
+    setAuditLoading(playbookSlug)
+    try {
+      const res = await fetch(`/api/playbooks/${playbookSlug}/red-team`, { method: 'POST' })
+      const data: AuditResult = await res.json()
+      setAuditResults(prev => ({ ...prev, [playbookSlug]: data }))
+    } catch {
+      setAuditResults(prev => ({
+        ...prev,
+        [playbookSlug]: {
+          passed: false,
+          score: 0,
+          issues: [
+            {
+              category: 'Audit service unreachable',
+              severity: 'warning',
+              description: 'The red-team audit service did not respond. Results below are a local fallback.',
+              recommendation: 'Retry once the audit API is online.',
+            },
+          ],
+          ranAt: new Date().toISOString(),
+        },
+      }))
+    } finally {
+      setAuditLoading(null)
+    }
+  }
 
   const toggleComposerSelection = (id: number) => {
     const next = new Set(composerSelections)
@@ -455,22 +545,37 @@ export default function PlaybooksPage() {
           {viewMode === 'cards' ? (
             <div className="grid grid-cols-2 gap-4">
               {filtered.map(p => (
-                <PlaybookCard key={p.id} playbook={p}
-                  selected={selectedPlaybook?.id === p.id}
-                  onSelect={() => setSelectedPlaybook(p)}
-                  onActivate={() => handleActivate(p)}
-                  composerMode={showComposer}
-                  composerSelected={composerSelections.has(p.id)}
-                  onComposerToggle={() => toggleComposerSelection(p.id)} />
+                <div key={p.id}>
+                  <PlaybookCard playbook={p}
+                    selected={selectedPlaybook?.id === p.id}
+                    onSelect={() => setSelectedPlaybook(p)}
+                    onActivate={() => handleActivate(p)}
+                    composerMode={showComposer}
+                    composerSelected={composerSelections.has(p.id)}
+                    onComposerToggle={() => toggleComposerSelection(p.id)}
+                    auditLoading={auditLoading === p.slug}
+                    auditResult={auditResults[p.slug]}
+                    onRunAudit={() => runRedTeamAudit(p.slug)}
+                    onFixIssues={() => setFixIssuesPlaybook(p)} />
+                  {auditResults[p.slug] && (
+                    <AuditResultCard result={auditResults[p.slug]} />
+                  )}
+                </div>
               ))}
             </div>
           ) : (
             <div className="space-y-2">
               {filtered.map(p => (
-                <PlaybookListItem key={p.id} playbook={p}
-                  selected={selectedPlaybook?.id === p.id}
-                  onSelect={() => setSelectedPlaybook(p)}
-                  onActivate={() => handleActivate(p)} />
+                <div key={p.id}>
+                  <PlaybookListItem playbook={p}
+                    selected={selectedPlaybook?.id === p.id}
+                    onSelect={() => setSelectedPlaybook(p)}
+                    onActivate={() => handleActivate(p)}
+                    onFixIssues={() => setFixIssuesPlaybook(p)} />
+                  {auditResults[p.slug] && (
+                    <AuditResultCard result={auditResults[p.slug]} />
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -485,7 +590,14 @@ export default function PlaybooksPage() {
         {/* Right: Detail Panel */}
         <div className="w-[300px] flex-shrink-0">
           {selectedPlaybook ? (
-            <DetailPanel playbook={selectedPlaybook} onActivate={() => handleActivate(selectedPlaybook)} />
+            <DetailPanel
+              playbook={selectedPlaybook}
+              onActivate={() => handleActivate(selectedPlaybook)}
+              auditLoading={auditLoading === selectedPlaybook.slug}
+              auditResult={auditResults[selectedPlaybook.slug]}
+              onRunAudit={() => runRedTeamAudit(selectedPlaybook.slug)}
+              onFixIssues={() => setFixIssuesPlaybook(selectedPlaybook)}
+            />
           ) : (
             <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-6 text-center">
               <div className="w-12 h-12 rounded-full bg-[#1e2a3a] flex items-center justify-center mx-auto mb-4">
@@ -501,6 +613,133 @@ export default function PlaybooksPage() {
           )}
         </div>
       </div>
+
+      {/* ─── Fix Issues Drawer ─────────────────────────── */}
+      {fixIssuesPlaybook && (() => {
+        const p = fixIssuesPlaybook
+        const result = auditResults[p.slug]
+        const issues = result?.issues ?? FALLBACK_ISSUES
+        const resolved = fixResolved[p.slug] ?? new Set<string>()
+        const allResolved = issues.length > 0 && issues.every(i => resolved.has(i.category))
+        const score = result?.score ?? (p.redTeam === 'Failed' ? 58 : 75)
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setFixIssuesPlaybook(null)} />
+            <div className="fixed top-0 right-0 h-full w-[480px] bg-[#0D1117] border-l border-[#1e2a3a] z-50 overflow-y-auto shadow-2xl">
+              <div className="sticky top-0 bg-[#0D1117] border-b border-[#1e2a3a] px-5 py-4 flex items-start justify-between z-10">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider text-red-400 font-medium">Fix red-team issues</div>
+                  <div className="text-[15px] font-semibold text-white">{p.name}</div>
+                </div>
+                <button onClick={() => setFixIssuesPlaybook(null)} className="text-gray-500 hover:text-white text-xl" aria-label="Close">✕</button>
+              </div>
+
+              <div className="px-5 py-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="text-[11px]">
+                    <span className="text-gray-500">Score</span>{' '}
+                    <span className="font-bold text-red-400">{score}/100</span>
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    {issues.length} {issues.length === 1 ? 'issue' : 'issues'} to resolve
+                  </div>
+                </div>
+
+                <div className="space-y-3 mb-5">
+                  {issues.map(issue => {
+                    const key = issue.category
+                    const isResolved = resolved.has(key)
+                    const action = ACTION_FOR_DIMENSION[issue.category] ?? { label: 'Review recommendation →', href: null }
+                    return (
+                      <div key={key} className={`rounded-lg border p-3 ${isResolved ? 'bg-[#0F2E1A] border-[#1D9E75]/30' : 'bg-[#111827] border-[#1e2a3a]'}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-[12px] font-semibold text-[#e2e8f0]">{issue.category}</div>
+                          <span className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded ${issue.severity === 'critical' ? 'bg-red-900/50 text-red-400' : 'bg-amber-900/50 text-amber-400'}`}>
+                            {issue.severity}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-gray-400 leading-relaxed mt-1.5">{issue.description}</div>
+                        <div className="text-[11px] text-[#C9A84C] leading-relaxed mt-2">
+                          <span className="text-gray-500">Fix: </span>{issue.recommendation}
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#1e2a3a]/70">
+                          {action.href ? (
+                            <button
+                              onClick={() => { window.location.href = action.href! }}
+                              className="text-[11px] text-[#C9A84C] hover:underline"
+                            >
+                              {action.label}
+                            </button>
+                          ) : (
+                            <button
+                              className="text-[11px] text-[#C9A84C] hover:underline"
+                              onClick={() => setFixToast(`Inline editor not yet wired — follow the fix recommendation above.`)}
+                            >
+                              {action.label}
+                            </button>
+                          )}
+                          <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isResolved}
+                              onChange={() => {
+                                setFixResolved(prev => {
+                                  const next = new Set(prev[p.slug] ?? [])
+                                  if (isResolved) next.delete(key)
+                                  else next.add(key)
+                                  return { ...prev, [p.slug]: next }
+                                })
+                              }}
+                              className="accent-[#1D9E75]"
+                            />
+                            I've addressed this
+                          </label>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div className="mb-4">
+                  <div className="flex justify-between text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                    <span>Progress</span>
+                    <span>{resolved.size} of {issues.length} resolved</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2">
+                    <div className="bg-[#1D9E75] h-2 rounded-full transition-all" style={{ width: issues.length === 0 ? '0%' : `${(resolved.size / issues.length) * 100}%` }} />
+                  </div>
+                </div>
+
+                <button
+                  disabled={!allResolved || auditLoading === p.slug}
+                  onClick={async () => {
+                    await runRedTeamAudit(p.slug)
+                    const latest = await fetch(`/api/playbooks/${p.slug}/red-team`, { method: 'POST' })
+                      .then(r => r.ok ? r.json() as Promise<AuditResult> : null)
+                      .catch(() => null)
+                    if (latest?.passed) {
+                      setFixIssuesPlaybook(null)
+                      setFixToast('Red-team passed — playbook ready to activate')
+                      setTimeout(() => setFixToast(null), 4000)
+                    }
+                  }}
+                  className={`w-full py-2.5 rounded-lg text-sm font-semibold transition ${allResolved && auditLoading !== p.slug ? 'bg-[#C9A84C] text-[#0D1117] hover:bg-[#C9A84C]/90' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+                >
+                  {auditLoading === p.slug ? 'Re-running audit…' : 'Re-run audit'}
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
+      {/* ─── Success toast (post-fix re-run) ─────────────── */}
+      {fixToast && (
+        <div className="fixed bottom-6 right-6 z-[60] bg-[#0F2E1A] border border-[#1D9E75]/40 text-[#1D9E75] px-4 py-3 rounded-lg shadow-2xl text-[12px]">
+          {fixToast}
+        </div>
+      )}
 
       {/* ─── Readiness Modal ───────────────────────────── */}
       {showReadinessModal && activatingPlaybook && (
@@ -638,9 +877,11 @@ export default function PlaybooksPage() {
 }
 
 // ─── Playbook Card Component ─────────────────────────────────
-function PlaybookCard({ playbook: p, selected, onSelect, onActivate, composerMode, composerSelected, onComposerToggle }: {
+function PlaybookCard({ playbook: p, selected, onSelect, onActivate, composerMode, composerSelected, onComposerToggle, auditLoading, auditResult, onRunAudit, onFixIssues }: {
   playbook: Playbook; selected: boolean; onSelect: () => void; onActivate: () => void
   composerMode: boolean; composerSelected: boolean; onComposerToggle: () => void
+  auditLoading: boolean; auditResult?: AuditResult; onRunAudit: () => void
+  onFixIssues: () => void
 }) {
   const redTeamBg = p.redTeam === 'Passed' ? 'bg-emerald-900/50 text-emerald-400 border-emerald-700' : p.redTeam === 'Failed' ? 'bg-red-900/50 text-red-400 border-red-700' : 'bg-gray-800 text-gray-400 border-gray-700'
   const readinessColor = p.readiness >= 100 ? 'bg-emerald-500' : p.readiness >= 80 ? 'bg-[#C9A84C]' : 'bg-amber-500'
@@ -723,23 +964,69 @@ function PlaybookCard({ playbook: p, selected, onSelect, onActivate, composerMod
 
         {/* Actions */}
         <div className="flex gap-2">
-          {p.redTeam === 'Failed' ? (
-            <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/red-team?mode=fix` }} className="text-[11px] bg-red-900/50 text-red-400 border border-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-900/70 transition">Fix issues</button>
+          {p.redTeam === 'Failed' || (auditResult && !auditResult.passed) ? (
+            <button onClick={e => { e.stopPropagation(); onFixIssues() }} className="text-[11px] bg-red-900/50 text-red-400 border border-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-900/70 transition">Fix issues</button>
           ) : (
             <button onClick={e => { e.stopPropagation(); onActivate() }} className="text-[11px] bg-[#C9A84C] text-[#0D1117] font-medium px-3 py-1.5 rounded hover:bg-[#C9A84C]/90 transition">Activate</button>
           )}
           <button onClick={e => { e.stopPropagation(); onSelect() }} className="text-[11px] border border-gray-600 text-gray-300 px-3 py-1.5 rounded hover:border-gray-400 transition">View details</button>
           <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/customize` }} className="text-[11px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded hover:bg-[#C9A84C]/10 transition">Customize</button>
-          <button onClick={e => { e.stopPropagation(); window.location.href = `/playbooks/${p.slug}/red-team` }} className="text-[11px] border border-purple-700 text-purple-400 px-3 py-1.5 rounded hover:bg-purple-900/30 transition">Red-team</button>
+          <button
+            disabled={auditLoading}
+            onClick={e => { e.stopPropagation(); onRunAudit() }}
+            className="text-[11px] border border-purple-700 text-purple-400 px-3 py-1.5 rounded hover:bg-purple-900/30 transition disabled:opacity-60 flex items-center gap-1.5"
+          >
+            {auditLoading ? (
+              <><Spinner /> Running audit…</>
+            ) : auditResult ? (
+              'Re-run audit'
+            ) : (
+              'Red-team'
+            )}
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
+// ─── Small spinner ───────────────────────────────────────────
+function Spinner() {
+  return (
+    <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M21 12a9 9 0 00-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// ─── Audit result card (appears beneath playbook card) ───────
+function AuditResultCard({ result }: { result: AuditResult }) {
+  return (
+    <div className={`mt-3 rounded-lg p-4 border ${result.passed ? 'bg-[#0F2E1A] border-[#1D9E75]/30' : 'bg-[#1f0d0d] border-[#E24B4A]/30'}`}>
+      <div className={`text-[11px] font-semibold mb-3 ${result.passed ? 'text-[#1D9E75]' : 'text-[#E24B4A]'}`}>
+        Red-team audit: {result.passed ? 'Passed' : 'Failed'} · Score: {result.score}/100
+      </div>
+      {result.issues.map((issue, i) => (
+        <div key={i} className="flex gap-2 mb-2 last:mb-0">
+          <span className={issue.severity === 'critical' ? 'text-[#E24B4A]' : 'text-[#BA7517]'}>
+            {issue.severity === 'critical' ? '✗' : '!'}
+          </span>
+          <div>
+            <div className="text-[11px] font-medium text-[#e2e8f0]">{issue.category}</div>
+            <div className="text-[10px] text-[#8892a4] leading-relaxed">{issue.description}</div>
+            <div className="text-[10px] text-[#C9A84C] mt-0.5">Fix: {issue.recommendation}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─── List Item Component ─────────────────────────────────────
-function PlaybookListItem({ playbook: p, selected, onSelect, onActivate }: {
+function PlaybookListItem({ playbook: p, selected, onSelect, onActivate, onFixIssues }: {
   playbook: Playbook; selected: boolean; onSelect: () => void; onActivate: () => void
+  onFixIssues: () => void
 }) {
   const redTeamBg = p.redTeam === 'Passed' ? 'text-emerald-400' : p.redTeam === 'Failed' ? 'text-red-400' : 'text-gray-400'
   const readinessColor = p.readiness >= 100 ? 'bg-emerald-500' : p.readiness >= 80 ? 'bg-[#C9A84C]' : 'bg-amber-500'
@@ -768,7 +1055,7 @@ function PlaybookListItem({ playbook: p, selected, onSelect, onActivate }: {
         <span className="text-[#C9A84C] font-semibold">{p.price}</span>
         {p.activeClients > 0 && <span className="text-[#C9A84C] text-[10px]">{p.activeClients} active</span>}
         {p.redTeam === 'Failed' ? (
-          <button onClick={e => { e.stopPropagation() }} className="text-[10px] bg-red-900/50 text-red-400 border border-red-700 px-2 py-1 rounded">Fix</button>
+          <button onClick={e => { e.stopPropagation(); onFixIssues() }} className="text-[10px] bg-red-900/50 text-red-400 border border-red-700 px-2 py-1 rounded">Fix</button>
         ) : (
           <button onClick={e => { e.stopPropagation(); onActivate() }} className="text-[10px] bg-[#C9A84C] text-[#0D1117] font-medium px-2 py-1 rounded">Activate</button>
         )}
@@ -793,7 +1080,7 @@ function IntBadge({ label, active, color }: { label: string; active: boolean; co
 }
 
 // ─── Detail Panel ────────────────────────────────────────────
-function DetailPanel({ playbook: p, onActivate }: { playbook: Playbook; onActivate: () => void }) {
+function DetailPanel({ playbook: p, onActivate, auditLoading, auditResult, onRunAudit, onFixIssues }: { playbook: Playbook; onActivate: () => void; auditLoading: boolean; auditResult?: AuditResult; onRunAudit: () => void; onFixIssues: () => void }) {
   const readinessColor = p.readiness >= 100 ? 'bg-emerald-500' : p.readiness >= 80 ? 'bg-[#C9A84C]' : 'bg-amber-500'
   const readinessText = p.readiness >= 100 ? 'text-emerald-400' : p.readiness >= 80 ? 'text-[#C9A84C]' : 'text-amber-400'
 
@@ -859,13 +1146,30 @@ function DetailPanel({ playbook: p, onActivate }: { playbook: Playbook; onActiva
 
         {/* Action buttons */}
         <div className="space-y-2">
-          {p.redTeam === 'Failed' ? (
-            <button onClick={() => window.location.href = `/playbooks/${p.slug}/red-team?mode=fix`} className="w-full text-xs bg-red-900/50 text-red-400 border border-red-700 font-medium py-2 rounded-lg hover:bg-red-900/70 transition">Fix Red-team Issues</button>
+          {p.redTeam === 'Failed' || (auditResult && !auditResult.passed) ? (
+            <button onClick={onFixIssues} className="w-full text-xs bg-red-900/50 text-red-400 border border-red-700 font-medium py-2 rounded-lg hover:bg-red-900/70 transition">Fix Red-team Issues</button>
           ) : (
             <button onClick={onActivate} className="w-full text-xs bg-[#C9A84C] text-[#0D1117] font-medium py-2 rounded-lg hover:bg-[#C9A84C]/90 transition">Activate Playbook</button>
           )}
           <button onClick={() => window.location.href = `/playbooks/${p.slug}/customize`} className="w-full text-xs border border-[#C9A84C]/40 text-[#C9A84C] py-2 rounded-lg hover:bg-[#C9A84C]/10 transition">Customize</button>
-          <button onClick={() => window.location.href = `/playbooks/${p.slug}/red-team`} className="w-full text-xs border border-purple-700 text-purple-400 py-2 rounded-lg hover:bg-purple-900/30 transition">Run Red-team Audit</button>
+          <button
+            onClick={onRunAudit}
+            disabled={auditLoading}
+            className="w-full text-xs border border-purple-700 text-purple-400 py-2 rounded-lg hover:bg-purple-900/30 transition disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {auditLoading ? (
+              <><Spinner /> Running audit…</>
+            ) : auditResult ? (
+              'Re-run Red-team Audit'
+            ) : (
+              'Run Red-team Audit'
+            )}
+          </button>
+          {auditResult && (
+            <div className={`mt-2 rounded-lg p-3 border text-[11px] ${auditResult.passed ? 'bg-[#0F2E1A] border-[#1D9E75]/30 text-[#1D9E75]' : 'bg-[#1f0d0d] border-[#E24B4A]/30 text-[#E24B4A]'}`}>
+              {auditResult.passed ? 'Passed' : 'Failed'} · Score {auditResult.score}/100 · {auditResult.issues.length} issues
+            </div>
+          )}
         </div>
       </div>
     </div>

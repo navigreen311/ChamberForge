@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopBar from '../components/shared/TopBar'
 import CommandAIButton from '../components/shared/CommandAIButton'
 
@@ -149,6 +150,7 @@ const ATTENTION_IDS = new Set(['2', '5'])
 
 // ─── Page Component ──────────────────────────────────────────
 export default function OffersPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('Name A-Z')
@@ -157,6 +159,17 @@ export default function OffersPage() {
   const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null)
   const [showRedTeam, setShowRedTeam] = useState(false)
   const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [fullDrawerOffer, setFullDrawerOffer] = useState<Offer | null>(null)
+  const [revenueSliderClients, setRevenueSliderClients] = useState(5)
+
+  useEffect(() => {
+    if (!fullDrawerOffer) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullDrawerOffer(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullDrawerOffer])
 
   const toggleCheck = (id: string) => {
     const n = new Set(checked)
@@ -476,8 +489,8 @@ export default function OffersPage() {
 
                 {/* Actions */}
                 <div className="border-t border-[#1e2a3a] pt-3 mt-3 flex gap-2">
-                  <button onClick={() => alert(`Editing offer: ${selectedOffer?.name}`)} className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
-                  <button onClick={() => alert(`Full view: ${selectedOffer?.name}\n\nClient: ${selectedOffer?.client}\nMonthly: $${selectedOffer?.monthly ? (selectedOffer.monthly/1000).toFixed(0) + 'K' : '—'}\nDelivery: ${selectedOffer?.delivery}\nStatus: ${selectedOffer?.status}`)} className="flex-1 bg-[#1e2a3a] text-gray-300 text-xs py-2 rounded-lg hover:bg-[#1e2a3a]/80">View Full</button>
+                  <button onClick={() => router.push(`/offers/${selectedOffer?.id}/edit`)} className="flex-1 bg-[#C9A84C] text-[#0D1117] font-semibold text-xs py-2 rounded-lg hover:bg-[#C9A84C]/90">Edit Offer</button>
+                  <button onClick={() => { setFullDrawerOffer(selectedOffer); setRevenueSliderClients(5) }} className="flex-1 bg-[#1e2a3a] text-gray-300 text-xs py-2 rounded-lg hover:bg-[#1e2a3a]/80">View Full</button>
                 </div>
               </div>
             ) : (
@@ -528,6 +541,269 @@ export default function OffersPage() {
           </div>
         </div>
       </div>
+
+      {/* ── OfferFullDrawer ───────────────────────────── */}
+      {fullDrawerOffer && (() => {
+        const o = fullDrawerOffer
+        const annualMRR = o.monthly * 12
+        const revenueAtN = o.monthly * revenueSliderClients * 12
+        const kpisOk = o.kpisDefined === o.kpisTotal
+        const redTeamOk = o.redTeam === 'Passed'
+        const dealDeskOk = o.dealDesk.every(d => d.done)
+        const healthOk = (o.health ?? 0) >= 70
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setFullDrawerOffer(null)} />
+            <div className="fixed top-0 right-0 h-full w-[700px] bg-[#0D1117] border-l border-[#1e2a3a] z-50 overflow-y-auto shadow-2xl">
+              <div className="sticky top-0 bg-[#0D1117] border-b border-[#1e2a3a] z-10 px-6 py-4 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] px-2 py-0.5 rounded border ${STATUS_COLORS[o.status]}`}>{STATUS_LABELS[o.status]}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded border ${o.tier === 'UHNW' ? 'border-[#C9A84C] text-[#C9A84C]' : 'border-blue-500 text-blue-400'}`}>{o.tier}</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-white">{o.name}</h2>
+                  <div className="text-[12px] text-gray-400 mt-0.5">{o.client} · {o.delivery}</div>
+                </div>
+                <button onClick={() => setFullDrawerOffer(null)} className="text-gray-500 hover:text-white text-xl" aria-label="Close">✕</button>
+              </div>
+
+              <div className="px-6 py-5 grid grid-cols-5 gap-5">
+                {/* LEFT COLUMN 60% (3/5) */}
+                <div className="col-span-3 space-y-5">
+                  {/* Problem this solves */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">The problem this solves</div>
+                    <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="text-[13px] font-semibold text-[#C9A84C]">UHNW household cyber & impersonation risk</div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-400">Accelerating</span>
+                      </div>
+                      <p className="text-[12px] text-gray-300 leading-relaxed">
+                        Wealthy families face a 37% year-over-year increase in targeted cyber and AI-impersonation fraud, with median losses of $2.4M per incident. Most households lack a formal protocol to verify wire transfers, vet staff, or respond to voice-cloned requests.
+                      </p>
+                      <div className="flex items-center gap-4 mt-3 text-[11px]">
+                        <span className="text-gray-500">Credibility: <span className="text-emerald-400 font-semibold">9.2</span></span>
+                        <span className="text-gray-500">4 sources</span>
+                        <span className="text-gray-500">Last refreshed: 2d ago</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* What's included */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">What's included</div>
+                    <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4 space-y-2">
+                      {[
+                        { name: 'Quarterly household security audit', desc: 'Physical + digital surface review' },
+                        { name: 'Wire verification protocol', desc: 'Signed, rehearsed, documented' },
+                        { name: 'Staff + vendor vetting', desc: 'Ongoing background monitoring' },
+                        { name: 'Incident response on retainer', desc: '24/7 hotline, 2-hour SLA' },
+                        { name: 'Quarterly red-team drill', desc: 'Simulated phishing + voice-clone attempts' },
+                      ].map(item => (
+                        <div key={item.name} className="flex items-start gap-2">
+                          <span className="text-emerald-400 mt-0.5">✓</span>
+                          <div>
+                            <div className="text-[12px] text-gray-200">{item.name}</div>
+                            <div className="text-[11px] text-gray-500">{item.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Value Stack */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">Value stack</div>
+                    <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg overflow-hidden">
+                      <table className="w-full text-[12px]">
+                        <thead className="text-[10px] uppercase text-gray-500">
+                          <tr className="border-b border-[#1e2a3a]">
+                            <th className="text-left p-2">Deliverable</th>
+                            <th className="text-left p-2">Frequency</th>
+                            <th className="text-right p-2">hrs/wk</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { d: 'Security audit report', f: 'Quarterly', h: 4 },
+                            { d: 'Wire verification ops', f: 'Per transaction', h: 2 },
+                            { d: 'Staff vetting reports', f: 'Monthly', h: 3 },
+                            { d: 'Incident response standby', f: 'Continuous', h: 2 },
+                            { d: 'Red-team drill + report', f: 'Quarterly', h: 5 },
+                          ].map(r => (
+                            <tr key={r.d} className="border-b border-[#1e2a3a]/50 last:border-0">
+                              <td className="p-2 text-gray-300">{r.d}</td>
+                              <td className="p-2 text-gray-500">{r.f}</td>
+                              <td className="p-2 text-right font-mono text-gray-400">{r.h}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  {/* KPI Stack */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">KPI stack</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { k: 'Incidents detected / quarter', v: o.status === 'active' ? '2' : '—' },
+                        { k: 'Mean response time (min)', v: o.status === 'active' ? '18' : '—' },
+                        { k: 'Staff vetting coverage', v: o.status === 'active' ? '100%' : '—' },
+                        { k: 'Client NPS', v: o.status === 'active' ? '71' : '—' },
+                      ].map((k, i) => (
+                        <div key={i} className="bg-[#111827] border border-[#1e2a3a] rounded p-3">
+                          <div className="text-[10px] text-gray-500">{k.k}</div>
+                          <div className="text-base font-semibold text-white mt-0.5">{k.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* SOPs */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">SOPs (first 3)</div>
+                    <div className="space-y-2">
+                      {[
+                        { n: 'Wire verification callback protocol', s: '4 steps · ~12 min per execution' },
+                        { n: 'New household staff onboarding vet', s: '9 steps · 2-3 days' },
+                        { n: 'Voice-clone phishing incident handling', s: '6 steps · ≤2 hr from trigger' },
+                      ].map(sop => (
+                        <details key={sop.n} className="bg-[#111827] border border-[#1e2a3a] rounded-lg">
+                          <summary className="cursor-pointer px-3 py-2 text-[12px] text-gray-200 flex justify-between items-center">
+                            <span>{sop.n}</span>
+                            <span className="text-[10px] text-gray-500">{sop.s}</span>
+                          </summary>
+                          <div className="px-3 pb-3 text-[11px] text-gray-400 leading-relaxed">
+                            Full SOP available in the Playbooks page. This is a summary placeholder.
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                {/* RIGHT COLUMN 40% (2/5) */}
+                <div className="col-span-2 space-y-5">
+                  {/* Price */}
+                  <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500">Price</div>
+                    <div className="text-3xl font-bold text-[#C9A84C] mt-1">
+                      ${(o.monthly / 1000).toFixed(0)}K<span className="text-sm text-gray-500">/mo</span>
+                    </div>
+                    <div className="text-[11px] text-gray-400 mt-1">Monthly retainer · Net-15 terms</div>
+                    <div className="text-[11px] text-gray-500 mt-2">Annual value: <span className="font-mono text-gray-300">${(annualMRR / 1000).toFixed(0)}K</span></div>
+                  </section>
+
+                  {/* Revenue calculator */}
+                  <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Revenue at scale</div>
+                    <div className="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                      <span>Clients</span>
+                      <span className="font-mono text-white">{revenueSliderClients}</span>
+                    </div>
+                    <input
+                      type="range" min={1} max={20} value={revenueSliderClients}
+                      onChange={e => setRevenueSliderClients(Number(e.target.value))}
+                      className="w-full accent-[#C9A84C]"
+                    />
+                    <div className="mt-3 text-center">
+                      <div className="text-[10px] text-gray-500">Annual revenue</div>
+                      <div className="text-xl font-bold text-emerald-400 font-mono">${(revenueAtN / 1000).toFixed(0)}K</div>
+                    </div>
+                  </section>
+
+                  {/* Deal desk */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">Deal desk</div>
+                    <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 space-y-2">
+                      {o.dealDesk.map(d => (
+                        <div key={d.label} className="flex items-center justify-between text-[12px]">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${d.done ? 'bg-emerald-900/50 text-emerald-400' : 'bg-red-900/30 text-red-400'}`}>{d.done ? '✓' : '✗'}</span>
+                            <span className={d.done ? 'text-gray-300' : 'text-red-400'}>{d.label}</span>
+                          </div>
+                          <button className="text-[10px] text-[#C9A84C] hover:underline">
+                            {d.done ? 'View' : d.label === 'Proposal' ? 'Generate' : 'Upload'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Red-team status */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">Red-team</div>
+                    <div className={`border rounded-lg p-3 ${o.redTeam === 'Passed' ? 'bg-[#0F2E1A] border-emerald-700/40' : o.redTeam === 'Failed' ? 'bg-[#1f0d0d] border-red-700/40' : 'bg-[#111827] border-[#1e2a3a]'}`}>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className={o.redTeam === 'Passed' ? 'text-emerald-400' : o.redTeam === 'Failed' ? 'text-red-400' : 'text-gray-500'}>{o.redTeam}</span>
+                        <span className="text-[10px] text-gray-500">Last run: 2d ago</span>
+                      </div>
+                      {o.redTeam === 'Failed' && (
+                        <ul className="mt-2 text-[11px] text-gray-400 space-y-1">
+                          {RED_TEAM_ISSUES.slice(0, 2).map(i => (
+                            <li key={i.title}>• {i.title}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Health */}
+                  {o.health !== null && (
+                    <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-gray-500">Health score</div>
+                          <div className={`text-2xl font-bold font-mono ${healthColor(o.health)}`}>{o.health}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[11px] text-gray-500">Trend</div>
+                          <div className={`text-[13px] ${healthColor(o.health)}`}>{o.healthTrend || '—'}</div>
+                          <div className="text-[10px] text-gray-500 mt-1">Updated 1h ago</div>
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Renewal */}
+                  {o.renewalDate && (
+                    <section className={`border rounded-lg p-3 ${(o.renewalDays ?? 0) <= 30 ? 'bg-[#2a1d0a] border-amber-700/40' : 'bg-[#111827] border-[#1e2a3a]'}`}>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-500">Renewal</div>
+                      <div className="text-[13px] text-white mt-1">{o.renewalDate} · <span className={renewalColor(o.renewalDays)}>{o.renewalDays}d remaining</span></div>
+                      <button className="mt-2 w-full bg-[#C9A84C] text-[#0D1117] text-[11px] font-semibold py-1.5 rounded hover:bg-[#C9A84C]/90">Prepare renewal</button>
+                    </section>
+                  )}
+
+                  {/* Readiness checklist */}
+                  <section>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">Readiness</div>
+                    <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 space-y-1.5">
+                      {[
+                        { label: 'KPIs defined', ok: kpisOk },
+                        { label: 'Red-team passed', ok: redTeamOk },
+                        { label: 'Deal desk complete', ok: dealDeskOk },
+                        { label: 'Health ≥ 70', ok: healthOk },
+                      ].map(c => (
+                        <div key={c.label} className="flex items-center gap-2 text-[12px]">
+                          <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${c.ok ? 'bg-emerald-900/50 text-emerald-400' : 'bg-amber-900/30 text-amber-400'}`}>{c.ok ? '✓' : '!'}</span>
+                          <span className={c.ok ? 'text-gray-300' : 'text-amber-400'}>{c.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Next action */}
+                  <section className="bg-[#0F2E1A] border border-emerald-700/30 rounded-lg p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-medium mb-1">Next action — Command AI</div>
+                    <div className="text-[12px] text-gray-200 leading-relaxed">{o.nextAction}</div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      })()}
 
       {/* ── Red-Team Drawer ───────────────────────────── */}
       {showRedTeam && (
