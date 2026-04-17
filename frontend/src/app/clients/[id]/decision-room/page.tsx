@@ -44,6 +44,16 @@ interface ClientSummary {
     weakness: string
     counterPosition: string
   }[]
+  urgencySignals: { title: string; description: string; deadline: string }[]
+  actionItems: {
+    id: string
+    task: string
+    owner: string
+    dueDate: string
+    completed: boolean
+    link?: string
+    linkLabel?: string
+  }[]
 }
 
 const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
@@ -158,6 +168,60 @@ const FALLBACK: ClientSummary = {
         'Frame inaction as a choice, not a default. "The decision is not whether to spend the money — it is whether the household has a named owner for this surface."',
     },
   ],
+  urgencySignals: [
+    {
+      title: '$180M secondary deployment window',
+      description:
+        'Capital typically deployed within 60-90 days post-close. At day 22, the structured stewardship conversation is time-sensitive.',
+      deadline: '~38 days remaining',
+    },
+    {
+      title: 'Chief of staff vacancy',
+      description:
+        'Coordination gap widens every week without a replacement. Your offer fills this gap immediately.',
+      deadline: 'Ongoing — gets worse with time',
+    },
+    {
+      title: 'Competitor proposal likely time-limited',
+      description:
+        'Morgan Stanley proposals typically expire in 30 days. If she does not decide, she restarts the process.',
+      deadline: 'Est. 23 days remaining',
+    },
+  ],
+  actionItems: [
+    {
+      id: '1',
+      task: 'Send Trust Pack v2 with cyber incident data updated',
+      owner: 'You',
+      dueDate: 'Tomorrow',
+      completed: false,
+      link: '/offers/1',
+      linkLabel: 'View Trust Pack',
+    },
+    {
+      id: '2',
+      task: 'Request intro to family office CIO through estate attorney',
+      owner: 'You',
+      dueDate: '3 days',
+      completed: false,
+    },
+    {
+      id: '3',
+      task: 'Prepare Family Cyber Command demo scenario using Harrington Dynasty as proof',
+      owner: 'You',
+      dueDate: '5 days',
+      completed: false,
+      link: '/clients/3',
+      linkLabel: 'View Harrington case',
+    },
+    {
+      id: '4',
+      task: 'Follow up on pre-meeting brief sent 3 days ago',
+      owner: 'You',
+      dueDate: 'Today',
+      completed: true,
+    },
+  ],
 }
 
 interface BriefData {
@@ -199,6 +263,19 @@ export default function DecisionRoomPage() {
   const showToast = (msg: string) => {
     setToast(msg)
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const toggleAction = (actionId: string) => {
+    setClient(prev =>
+      prev
+        ? {
+            ...prev,
+            actionItems: prev.actionItems.map(a =>
+              a.id === actionId ? { ...a, completed: !a.completed } : a,
+            ),
+          }
+        : prev,
+    )
   }
 
   const updateDealStage = async (stageId: DealStageId) => {
@@ -479,6 +556,22 @@ export default function DecisionRoomPage() {
               )}
             </section>
 
+            <div className="bg-[#1f0d0d] border border-[#E24B4A]/20 rounded-lg p-4">
+              <div className="text-[10px] font-semibold text-[#E24B4A] uppercase tracking-wider mb-3">
+                Time-sensitive signals
+              </div>
+              {client.urgencySignals.map((signal, i) => (
+                <div key={i} className="flex gap-3 mb-3 last:mb-0">
+                  <div className="text-[#E24B4A] font-bold text-[14px] flex-shrink-0">!</div>
+                  <div>
+                    <div className="text-[11px] font-medium text-[#e2e8f0] mb-0.5">{signal.title}</div>
+                    <div className="text-[10px] text-[#8892a4] leading-relaxed">{signal.description}</div>
+                    <div className="text-[9px] text-[#E24B4A] mt-1 font-medium">{signal.deadline}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {(() => {
               const score = client.health ?? 0
               const dims = [
@@ -560,6 +653,45 @@ export default function DecisionRoomPage() {
                 ))}
               </div>
             </section>
+
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+              <div className="text-[10px] font-semibold text-[#C9A84C] uppercase tracking-wider mb-3">
+                Action plan — before next meeting
+              </div>
+              {client.actionItems.map((action, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={action.completed}
+                    onChange={() => toggleAction(action.id)}
+                    className="mt-0.5 flex-shrink-0 accent-[#C9A84C]"
+                  />
+                  <div className="flex-1">
+                    <div
+                      className={`text-[11px] font-medium mb-0.5 ${
+                        action.completed ? 'line-through text-[#4a5568]' : 'text-[#e2e8f0]'
+                      }`}
+                    >
+                      {action.task}
+                    </div>
+                    <div className="text-[10px] text-[#4a5568]">
+                      {action.owner} · Due {action.dueDate}
+                    </div>
+                    {action.link && (
+                      <a href={action.link} className="text-[9px] text-[#534AB7] hover:text-[#AFA9EC]">
+                        {action.linkLabel} →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button className="w-full mt-2 py-1.5 text-[10px] border border-[#2a3a4a] text-[#8892a4] rounded-lg hover:border-[#C9A84C]/40 hover:text-[#C9A84C]">
+                + Add action item
+              </button>
+            </div>
           </div>
 
           {/* ── RIGHT COLUMN ─ Decision tools ─────────────── */}
