@@ -298,6 +298,25 @@ export default function ClientsPage() {
     { key: 'alumni', label: 'Alumni' },
   ]
 
+  const tabTooltips: Record<string, string> = {
+    'All': 'Every client and prospect in your book — active retainers, prospects in pipeline, alumni, and at-risk relationships.',
+    'Active': 'Clients currently on a paid retainer. These are your revenue-generating relationships with ongoing delivery obligations.',
+    'Prospect': 'People you are in conversation with but have not yet signed. Track their last contact, wealth events, and pipeline value here.',
+    'At Risk': 'Active clients whose health score has dropped below 60 OR who have not been contacted in more than 7 days. Requires immediate action.',
+    'Renewal Due': 'Active clients whose retainer renewal is within the next 60 days. Prepare renewal conversations and updated value stack before this window closes.',
+    'Wealth Event': 'Clients and prospects who have had a detected wealth event in the last 30 days — exits, IPOs, inheritances, board appointments, liquidity events. These are high-priority outreach moments.',
+    'Alumni': 'Former clients whose retainer has ended. Track re-engagement opportunities, referral potential, and any new wealth events that reopen the conversation.',
+  }
+
+  const kpiTooltips: Record<string, string> = {
+    'ACTIVE CLIENTS': 'Clients currently paying a monthly retainer. Each represents ongoing delivery obligations and recurring revenue.',
+    'PROSPECTS': 'People in your pipeline who have not yet signed. Tracked by last contact date and estimated deal value.',
+    'TOTAL MRR': 'Monthly Recurring Revenue — the sum of all active client retainers. Does not include project fees or one-time payments.',
+    'AVG HEALTH': 'Average health score across all active clients (0-100). Scores below 60 trigger the At Risk flag. Calculated from 5 dimensions: last contact, KPI delivery, engagement, wealth alignment, and offer progress.',
+    'WEALTH EVENTS': 'Wealth events detected this week across clients and prospects — business exits, IPOs, inheritances, board appointments. Each is a high-priority outreach opportunity.',
+    'RENEWALS DUE': 'Active clients whose retainer renewal falls within the next 60 days. Begin renewal conversations at least 30 days before expiry.',
+  }
+
   return (
     <div className="min-h-screen bg-[#0D1117] text-white">
       {/* ── TopBar ─────────────────────────────────────── */}
@@ -326,10 +345,19 @@ export default function ClientsPage() {
         {/* ── KPI Strip ──────────────────────────────── */}
         <div className="grid grid-cols-6 gap-4 mb-6">
           {KPIS.map(k => (
-            <div key={k.label} className={`bg-[#111827] border rounded-lg p-4 ${k.gold ? 'border-[#C9A84C]/40' : k.amber ? 'border-amber-500/40' : 'border-[#1e2a3a]'}`}>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{k.label}</div>
-              <div className={`text-xl font-semibold mt-1 ${k.color}`}>{k.value}</div>
-              <div className={`text-[11px] mt-1 ${k.gold ? 'text-[#C9A84C]' : k.amber ? 'text-amber-400' : k.sub.startsWith('▲') ? 'text-emerald-400' : 'text-gray-500'}`}>{k.sub}</div>
+            <div key={k.label} className="relative group" title={kpiTooltips[k.label]}>
+              <div className={`bg-[#111827] border rounded-lg p-4 ${k.gold ? 'border-[#C9A84C]/40' : k.amber ? 'border-amber-500/40' : 'border-[#1e2a3a]'}`}>
+                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">{k.label}</div>
+                <div className={`text-xl font-semibold mt-1 ${k.color}`}>{k.value}</div>
+                <div className={`text-[11px] mt-1 ${k.gold ? 'text-[#C9A84C]' : k.amber ? 'text-amber-400' : k.sub.startsWith('▲') ? 'text-emerald-400' : 'text-gray-500'}`}>{k.sub}</div>
+              </div>
+              {kpiTooltips[k.label] && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 text-[10px] text-[#8892a4] leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity duration-150 shadow-xl">
+                  <div className="font-semibold text-[#e2e8f0] mb-1.5 text-[11px]">{k.label}</div>
+                  {kpiTooltips[k.label]}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#1e2a3a]" />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -337,10 +365,21 @@ export default function ClientsPage() {
         {/* ── Filter Tabs ────────────────────────────── */}
         <div className="flex gap-2 mb-4">
           {tabs.map(t => (
-            <button key={t.key} onClick={() => { setActiveTab(t.key); setSelectedClient(null) }}
-              className={`text-xs px-3 py-1.5 rounded-lg ${activeTab === t.key ? 'bg-[#C9A84C]/20 text-[#C9A84C] border border-[#C9A84C]' : 'bg-[#111827] text-gray-400 border border-[#1e2a3a] hover:border-gray-600'}`}>
-              {t.label} ({getFilterCount(t.key)})
-            </button>
+            <div key={t.key} className="relative group" title={tabTooltips[t.label]}>
+              <button
+                onClick={() => { setActiveTab(t.key); setSelectedClient(null) }}
+                className={`text-xs px-3 py-1.5 rounded-lg ${activeTab === t.key ? 'bg-[#C9A84C]/20 text-[#C9A84C] border border-[#C9A84C]' : 'bg-[#111827] text-gray-400 border border-[#1e2a3a] hover:border-gray-600'}`}
+              >
+                {t.label} ({getFilterCount(t.key)})
+              </button>
+              {tabTooltips[t.label] && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-[#111827] border border-[#1e2a3a] rounded-lg p-3 text-[10px] text-[#8892a4] leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity duration-150 shadow-xl">
+                  <div className="font-semibold text-[#e2e8f0] mb-1.5 text-[11px]">{t.label}</div>
+                  {tabTooltips[t.label]}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1e2a3a]" />
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
