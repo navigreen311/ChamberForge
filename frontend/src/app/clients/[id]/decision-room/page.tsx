@@ -25,6 +25,16 @@ interface ClientSummary {
   objections: { risk: string; response: string }[]
   dealStage: DealStageId
   daysInStage: number
+  lastContactScore: number
+  lastContactNote: string
+  kpiScore: number
+  kpiNote: string
+  engagementScore: number
+  engagementNote: string
+  wealthAlignScore: number
+  wealthNote: string
+  offerProgressScore: number
+  offerNote: string
 }
 
 const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
@@ -94,6 +104,16 @@ const FALLBACK: ClientSummary = {
   ],
   dealStage: 'evaluation',
   daysInStage: 9,
+  lastContactScore: 17,
+  lastContactNote: 'Last touchpoint 3d ago — within the 7d ideal window for active evaluation.',
+  kpiScore: 15,
+  kpiNote: 'Existing cyber audit retainer hitting 4 of 4 KPIs, but the governance KPI has been unreported for 45 days.',
+  engagementScore: 18,
+  engagementNote: 'Trust Pack v2 opened 3 times. Forwarded WSJ piece unprompted — strongest engagement signal in 90 days.',
+  wealthAlignScore: 19,
+  wealthNote: '$180M secondary + board exit = peak capital deployment window. Tier + liquidity profile aligns perfectly with retainer scope.',
+  offerProgressScore: 15,
+  offerNote: 'One active retainer, one proposal in review. Ecosystem suggests upsell is live; no contract friction yet.',
 }
 
 interface BriefData {
@@ -414,6 +434,60 @@ export default function DecisionRoomPage() {
                 </div>
               )}
             </section>
+
+            {(() => {
+              const score = client.health ?? 0
+              const dims = [
+                { label: 'Last contact', score: client.lastContactScore, max: 20, note: client.lastContactNote },
+                { label: 'KPI delivery', score: client.kpiScore, max: 20, note: client.kpiNote },
+                { label: 'Engagement', score: client.engagementScore, max: 20, note: client.engagementNote },
+                { label: 'Wealth alignment', score: client.wealthAlignScore, max: 20, note: client.wealthNote },
+                { label: 'Offer progress', score: client.offerProgressScore, max: 20, note: client.offerNote },
+              ]
+              return (
+                <div className="bg-[#111827] rounded-lg p-4 mb-4 border border-[#1e2a3a]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider">
+                      Health score breakdown
+                    </div>
+                    <div
+                      className="text-[22px] font-bold"
+                      style={{
+                        color: score >= 80 ? '#1D9E75' : score >= 60 ? '#C9A84C' : '#E24B4A',
+                      }}
+                    >
+                      {score}
+                    </div>
+                  </div>
+                  {dims.map((dim, i) => (
+                    <div key={i} className="mb-3 last:mb-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] text-[#8892a4]">{dim.label}</span>
+                        <span
+                          className="text-[10px] font-semibold"
+                          style={{
+                            color: dim.score >= 16 ? '#1D9E75' : dim.score >= 10 ? '#C9A84C' : '#E24B4A',
+                          }}
+                        >
+                          {dim.score}/{dim.max}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-[#1e2a3a] rounded-full mb-1">
+                        <div
+                          className="h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${(dim.score / dim.max) * 100}%`,
+                            background:
+                              dim.score >= 16 ? '#1D9E75' : dim.score >= 10 ? '#C9A84C' : '#E24B4A',
+                          }}
+                        />
+                      </div>
+                      <div className="text-[9px] text-[#4a5568] leading-relaxed">{dim.note}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
