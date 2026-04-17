@@ -275,6 +275,170 @@ const PLAYBOOKS: Playbook[] = [
   },
 ]
 
+// Plain-language descriptions for deliverables shown in the DetailPanel.
+const INCLUDED_DESCRIPTIONS: Record<string, string> = {
+  'Dedicated ops coordinator': 'A named person owning daily coordination across vendors, staff, and advisors — your single point of accountability.',
+  'Vendor management portal': 'Centralized dashboard for all vendor relationships, SLAs, performance scores, and payment status.',
+  'Weekly status briefings': 'A written brief every Friday summarizing the week — open items, risks, and decisions needed from you.',
+  'Crisis escalation protocol': 'A pre-agreed chain of command for urgent events (medical, security, staff, financial) with contact tree and response times.',
+  'Calendar orchestration': 'Coordinated calendar across principals, household, and advisors — conflict detection and priority routing.',
+  'Expense tracking dashboard': 'Real-time view of household, staff, and vendor spending with monthly variance reports.',
+  'Staff vetting pipeline': 'Structured background, reference, and credentialing flow before anyone gains household access.',
+  'Document vault access': 'Encrypted shared workspace for contracts, NDAs, and sensitive documents with audit log.',
+  'Travel coordination add-on': 'Optional add-on — trip logistics, security advance work, and destination intelligence briefs.',
+  'Medical liaison service': 'Optional add-on — coordinates second opinions, specialist referrals, and emergency medical response.',
+  'Multi-property coordination hub': 'Single operations view across every residence — staff, vendors, maintenance, and budget by property.',
+  'Vendor scoring & selection': 'Structured scoring against cost, reliability, discretion, and SLA adherence — with quarterly re-bids.',
+  'Cross-geography compliance': 'Tracks labor, tax, and privacy rules per jurisdiction; flags gaps before they become violations.',
+  'Quarterly strategic reviews': 'A 2-hour working session per quarter to realign priorities with the principal and chief of staff.',
+  'Real-time vendor dashboards': 'Live status panel per vendor — next scheduled visit, last incident, SLA posture.',
+  'SLA enforcement engine': 'Automated tracking of promised response times; generates credit memos on breach.',
+  'Budget consolidation reports': 'Roll-up of property, staff, and vendor costs across the portfolio with peer benchmarks.',
+  'Emergency response network': 'Pre-qualified responders (security, medical, legal, PR) on retainer across each geography.',
+  'Insurance coordination layer': 'Single-broker view of all household policies with gap analysis and claim advocacy.',
+  'Next-gen onboarding module': 'Structured program bringing adult children into the family office with clear roles and timelines.',
+  'Threat monitoring dashboard': 'A real-time dashboard showing all detected threats, monitoring status, and incident history. Shared with client weekly via portal.',
+  'AI impersonation detection': 'Automated monitoring for deepfake audio/video targeting the client\'s household. Alerts within 15 minutes of detection.',
+  'Wire fraud prevention protocol': 'A written verification protocol for all financial requests, including passphrase system and dual-authorization procedures.',
+  'Family device hardening': 'Secure configuration of phones, laptops, and home networks for every family member with quarterly re-hardening.',
+  'Dark web scanning': 'Continuous monitoring of leaks, credential dumps, and criminal forums for references to the household.',
+  'Incident response team': 'Named responder on 24/7 standby — triage, containment, and post-incident documentation.',
+  'Staff security training': 'Quarterly training for household and office staff on phishing, wire requests, and impersonation tactics.',
+  'Penetration testing quarterly': 'Simulated intrusion tests (digital and physical) to surface gaps before real attackers do.',
+  'Insurance claims support': 'Assistance preparing and filing cyber insurance claims with documentation chain of custody.',
+  'Legal liaison for breaches': 'Pre-negotiated breach counsel on retainer with defined notification and disclosure playbooks.',
+  'Data broker removal service': 'Systematic opt-out and suppression across 200+ data broker sites, tracked monthly.',
+  'OSINT vulnerability audit': 'A written audit of what can be learned about the principal and family from public sources.',
+  'Social media hygiene review': 'Review of all household members\' public social profiles with recommendations and hardening.',
+  'Property record obscuration': 'Trust and LLC structures to remove principal names from deed and tax records where legal.',
+  'Ongoing monitoring dashboard': 'Live view of where the principal\'s footprint is growing and which mitigations are in place.',
+  'Family member scan': 'Per-person privacy assessments for spouse and adult children with tailored mitigation plans.',
+  'Court record sealing support': 'Where legal, petitions to seal or redact court filings that surface personal information.',
+  'Digital alias management': 'Burner emails, aliases, and mail forwarding setups for high-exposure activities (bookings, subscriptions).',
+  'VPN & encrypted comms setup': 'Installed and maintained encrypted communications stack across household devices.',
+  'Annual re-assessment': 'A complete privacy re-audit every 12 months — new exposure surfaces, new mitigations.',
+  'Staff vetting & background checks': 'Structured background, reference, and credentialing flow before anyone gains household access.',
+  'NDA & contract management': 'Current, signed, jurisdiction-appropriate NDAs and employment agreements for every staff member.',
+  'Performance review framework': 'Quarterly review cadence with documented feedback, raise bands, and performance improvement plans.',
+  'Payroll compliance audit': 'Workers comp, tax withholding, and labor law compliance audit per jurisdiction.',
+  'Training program design': 'Role-specific onboarding curriculum and ongoing skills development.',
+  'Exit protocol & asset recovery': 'Documented off-boarding with asset return, credential revocation, and exit interview.',
+  'Workers comp management': 'Active management of workers compensation coverage, claims, and cost control across staff.',
+  'Succession planning for roles': 'Named backup for every key role — ready to step in if the primary leaves.',
+  'Cultural sensitivity training': 'Training across cultural, religious, and dietary considerations for multi-national households.',
+  'Holiday & absence tracking': 'Centralized PTO, sick day, and holiday coverage planning to avoid gaps.',
+  'Quarterly risk assessment': 'A structured review across cyber, physical, legal, reputational, and financial risk — each quarter.',
+  'Board-ready risk report': 'Board-formatted quarterly risk brief — heat map, trending risks, mitigation status.',
+  'Cross-domain risk matrix': 'Maps interdependencies between risks (e.g. cyber → reputation → regulatory) so you see cascade paths.',
+  'Scenario planning sessions': 'Two workshops per year stress-testing the household against named adverse scenarios.',
+  'Regulatory change monitoring': 'Active tracking of rules impacting UHNW families — 13f, CCPA, state tax, corporate transparency.',
+  'Insurance gap analysis': 'Policy-by-policy review identifying coverage gaps and over-insurance.',
+  'Vendor risk scoring': 'Risk scores per vendor based on data access, dependency, and replaceability.',
+  'Succession risk mapping': 'Identifies single points of failure in succession — roles, relationships, documents, access.',
+  'Geopolitical exposure brief': 'Quarterly brief on geopolitical exposure for assets, residences, and travel patterns.',
+  'Annual strategic risk offsite': 'Full-day offsite bringing family decision-makers and outside experts together annually.',
+  'Next-gen readiness assessment': 'Structured evaluation of each next-gen family member\'s readiness for expanding responsibility.',
+  'Family governance workshop': 'Facilitated 2-day workshop producing a shared governance framework and decision rights.',
+  'Values alignment session': 'Structured exercise to surface and document the family\'s shared values and non-negotiables.',
+  'Leadership development plan': 'Individualized development plan for each next-gen member — 12-24 month horizon.',
+  'Mentorship matching program': 'External mentors (not parents) matched to next-gen members based on goals and gaps.',
+  'Communication framework': 'Documented norms for how decisions get made, how conflict gets raised, how meetings run.',
+  'Decision-rights mapping': 'Explicit map of who decides what — operator decisions vs family decisions vs advisor input.',
+  'Philanthropy strategy module': 'Structured approach to giving — mission, criteria, governance, and impact measurement.',
+  'Family constitution draft': 'A living document codifying family values, governance, and conflict resolution — facilitated draft.',
+  'Annual family assembly plan': 'Pre-planned annual gathering agenda covering governance, performance, and relationship-building.',
+  'Medical records consolidation': 'Consolidated digital medical record per family member — accessible 24/7 in any emergency.',
+  'Second opinion coordination': 'On request: coordinated second or third opinions from world-class specialists within 72 hours.',
+  'Global specialist network': 'Access to a vetted network of specialists across the top 20 major health centers worldwide.',
+  'Emergency medical protocol': 'Documented per-person protocol covering meds, allergies, conditions, and preferred hospitals.',
+  'Family health dashboard': 'Private dashboard tracking preventive care, specialist follow-ups, and health metrics per family member.',
+  'Preventive care scheduling': 'Proactive scheduling of annual physicals, screenings, and age-appropriate preventive care.',
+  'Insurance claims advocacy': 'Assistance filing, appealing, and negotiating medical claims with insurers.',
+  'Mental health resource network': 'Confidential referrals to vetted psychiatrists, therapists, and specialized programs.',
+  'Medical travel coordination': 'Logistics for medical travel including accommodation, local support, and continuity of care.',
+  'End-of-life planning support': 'Structured conversations and documentation covering medical directives, palliative preferences, and family alignment.',
+  'Multi-property risk audit': 'Per-property audit of physical, climate, insurance, and security risk with prioritized remediation list.',
+  'Insurance coverage gap analysis': 'Line-by-line review of every policy across residences with gap and overlap identification.',
+  'Climate exposure assessment': 'Exposure modeling for wildfire, hurricane, flood, and subsidence per property with 10-year outlook.',
+  'Maintenance scheduling system': 'Calendar-based preventive maintenance per property with vendor routing and budget tracking.',
+  'Vendor coordination per property': 'Single coordinator per residence managing every local vendor — not 15 relationships per home.',
+  'Smart home security review': 'Audit of IoT devices, network segmentation, and physical access systems across properties.',
+  'Property value tracking': 'Quarterly AVM and appraisal tracking with tax assessment appeals where warranted.',
+  'Emergency response playbook': 'Per-property emergency plan covering evacuation, communications, and continuity of care.',
+  'Renovation project oversight': 'Project management for renovations — vendor vetting, budget control, scope adherence.',
+  'Art & collectibles protection': 'Specialized coverage and monitoring for art, wine, and collectibles including provenance documentation.',
+  'Itinerary risk assessment': 'Pre-trip risk review covering security, health, climate, political, and logistical factors.',
+  'Real-time travel monitoring': 'Active monitoring of principal\'s location, itinerary changes, and local events during travel.',
+  'Emergency evacuation protocol': 'Pre-arranged evacuation plans per destination — ground, air, and medical evacuation partners on standby.',
+  'Medical support abroad': 'Access to quality medical care in any destination via ISOS and regional medical providers.',
+  'Security advance work': 'Optional advance team reviewing hotels, routes, and venues before high-profile travel.',
+  'Private aviation coordination': 'Charter vetting, operator scoring, and real-time flight tracking with weather and disruption alerts.',
+  'Destination intelligence briefs': 'Pre-trip brief per destination covering current political, health, security, and logistical conditions.',
+  'Family tracking dashboard': 'Opt-in location visibility for traveling family members with emergency ping-and-confirm system.',
+  'Insurance claims while traveling': 'Hands-on claim filing support for medical, baggage, and trip-interruption claims.',
+  'Multi-timezone scheduling': 'Scheduling across multiple family members and time zones with auto-adjusting calendars.',
+}
+
+// Plain-language summaries of the key finding or stat each source contributes.
+const EVIDENCE_KEY_FINDINGS: Record<string, string> = {
+  'McKinsey Family Office Report 2024': '62% of family offices report coordination overload as the #1 unmet need across advisor, vendor, and staff layers.',
+  'UBS Global Wealth Survey': 'UHNW principals spend an average of 11 hours/week on coordination tasks that a skilled operator could absorb.',
+  'ChamberForge Client Interviews (n=15)': 'All 15 interviewed principals described the same pattern: "too many people reporting to me, not enough reporting to someone who reports to me".',
+  'Deloitte Family Enterprise Survey 2024': '71% of multi-residence families cite fragmented vendor networks as the largest operational pain.',
+  'Campden Wealth Global Report': 'Single-point-of-accountability operating models correlate with 3x higher principal satisfaction scores.',
+  'ChamberForge Pilot Data (n=8)': 'All 8 pilot families reduced advisor meeting hours by >40% within the first quarter of engagement.',
+  'FBI IC3 Annual Report 2024': 'UHNW households report 4.2x the median loss per cyber incident vs. broader HNW — $2.4M median.',
+  'Mandiant Threat Intelligence Brief': 'AI-enabled impersonation (voice + video) grew 420% YoY targeting private banking and family office flows.',
+  'Aon Cyber Risk Survey (UHNW)': 'Only 18% of UHNW households have a documented incident response plan — yet 73% have been targeted.',
+  'FTC Data Broker Report 2024': '4,000+ data brokers sell personally identifiable information in the US. Removal requires systematic, ongoing effort.',
+  'Privacy Rights Clearinghouse Study': 'Median time to clear a footprint across major data brokers without a professional service: 18 months.',
+  'ChamberForge Internal Analysis': 'Principals who completed a full footprint reduction reported a 67% drop in unsolicited fraud contact attempts.',
+  'Housekeeper.com Industry Report': 'Turnover in household staff averages 38% annually, driven by unclear expectations and compensation gaps.',
+  'Staffing Industry Analysts (SIA)': 'Average replacement cost for a senior household staff role is $42K — 45% of annual salary.',
+  'ChamberForge Client Survey (n=6)': 'Five of six clients surveyed had at least one workers-comp or payroll compliance gap within the prior 12 months.',
+  'EY Global Family Office Report': 'Only 34% of family offices have a formal non-investment risk governance body — despite 91% rating it a priority.',
+  'WEF Global Risks Report 2025': 'Family enterprise risk landscape shifted materially in 2024 — cyber, geopolitical, and climate now top concerns.',
+  'Institute for Family Governance': 'Families with documented risk councils report 2.8x faster incident resolution than those without.',
+  'Merrill Lynch Wealth Transfer Study': '70% of generational wealth transfers fail within two generations — almost always for non-financial reasons.',
+  'Williams Group Generational Wealth': 'Communication and trust, not tax or estate structure, account for 85% of wealth-transfer failures.',
+  'Family Business Review Journal': 'Families with documented governance frameworks are 5x more likely to preserve wealth across 3+ generations.',
+  'WHO Global Health Observatory': 'Coordinated multi-specialist care improves outcomes by 32% in complex cases vs. fragmented care.',
+  'Concierge Medicine Today Report': 'Principal-level concierge care reduces inappropriate ER visits by 58% and improves preventive-screening adherence.',
+  'ChamberForge Pilot Feedback (n=4)': 'All 4 pilot families cited centralized records access as the single most impactful feature within 90 days.',
+  'Swiss Re Climate Risk Report': '62% of HNW primary residences sit within regions with elevated climate risk per 10-year outlook — most are under-insured.',
+  'Knight Frank Wealth Report 2024': 'Multi-residence HNW families carry an average 18% insurance gap across their portfolio by replacement value.',
+  'AIG Private Client Group Data': 'Households with a coordinator managing all residences file 31% fewer claims and receive 24% faster settlements.',
+  'ISOS Travel Risk Report 2024': 'Medical evacuations from outside the US exceed $50K on average; most household policies do not adequately cover.',
+  'Global Rescue Incident Data': 'Political/civil unrest now affects 40+ countries annually — itinerary exposure changes week to week.',
+  'ChamberForge Market Interviews (n=10)': 'Seven of ten frequent-traveler principals had experienced at least one trip disruption requiring professional intervention in the past 24 months.',
+}
+
+const CLIENT_MATCHES_BY_ID: Record<number, { id: string; name: string; matchReason: string }[]> = {
+  // Private Ops Office — 3 active
+  1: [
+    { id: 'c-001', name: 'Jonathan Wellington III', matchReason: 'Coordination pain · UHNW' },
+    { id: 'c-002', name: 'Hiroshi Nakamura', matchReason: 'Cross-border · multi-vendor' },
+    { id: 'c-003', name: 'Elena Rivera', matchReason: 'Philanthropy ops load' },
+  ],
+  // Ecosystem Orchestrator — 2 active
+  2: [
+    { id: 'c-001', name: 'Jonathan Wellington III', matchReason: 'Multi-property' },
+    { id: 'c-007', name: 'Robert Kingsley', matchReason: 'Alternative investments ecosystem' },
+  ],
+  // Family Cyber Command — 1 active
+  3: [
+    { id: 'c-001', name: 'Jonathan Wellington III', matchReason: 'Household cyber surface' },
+  ],
+  // Family Risk Council — 1 active
+  6: [
+    { id: 'c-003', name: 'Elena Rivera', matchReason: 'Foundation governance · regulatory' },
+  ],
+  // Property Resilience — 1 active
+  9: [
+    { id: 'c-001', name: 'Jonathan Wellington III', matchReason: 'Multi-residence portfolio' },
+  ],
+}
+
 const CATEGORY_COLORS: Record<Category, string> = {
   Security: 'bg-red-500', Coordination: 'bg-teal-500', Governance: 'bg-purple-500',
   Privacy: 'bg-amber-500', Medical: 'bg-green-500', Travel: 'bg-blue-500', Property: 'bg-orange-500',
@@ -1102,15 +1266,20 @@ function DetailPanel({ playbook: p, onActivate, auditLoading, auditResult, onRun
         {/* What's Included */}
         <div className="mb-4">
           <p className="text-[10px] text-gray-500 font-medium tracking-wider mb-2">WHAT&apos;S INCLUDED</p>
-          <div className="space-y-1.5">
+          <div>
             {p.included.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-[11px]">
-                {item.done ? (
-                  <span className="text-emerald-400 flex-shrink-0">&#10003;</span>
-                ) : (
-                  <span className="text-gray-600 flex-shrink-0">&#10007;</span>
-                )}
-                <span className={item.done ? 'text-gray-300' : 'text-gray-600'}>{item.label}</span>
+              <div key={i} className="py-2.5 border-b border-[#1e2a3a] last:border-0">
+                <div className="flex gap-2 mb-1">
+                  {item.done ? (
+                    <span className="text-[#1D9E75] text-[11px] flex-shrink-0">&#10003;</span>
+                  ) : (
+                    <span className="text-gray-600 text-[11px] flex-shrink-0">&#10007;</span>
+                  )}
+                  <span className={`text-[11px] font-medium ${item.done ? 'text-[#e2e8f0]' : 'text-gray-600'}`}>{item.label}</span>
+                </div>
+                <div className="text-[10px] text-[#4a5568] leading-relaxed pl-4">
+                  {INCLUDED_DESCRIPTIONS[item.label] ?? 'Detailed deliverable included in the playbook scope.'}
+                </div>
               </div>
             ))}
           </div>
@@ -1119,20 +1288,45 @@ function DetailPanel({ playbook: p, onActivate, auditLoading, auditResult, onRun
         {/* Evidence Citations */}
         <div className="mb-4">
           <p className="text-[10px] text-gray-500 font-medium tracking-wider mb-2">TOP EVIDENCE</p>
-          <div className="space-y-2">
+          <div>
             {p.citations.map((c, i) => (
-              <div key={i} className="bg-[#0D1117] rounded p-2">
-                <p className="text-[10px] text-gray-300 mb-1">{c.source}</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-800 rounded-full h-1">
-                    <div className="bg-emerald-500 h-1 rounded-full" style={{ width: `${c.credibility}%` }} />
+              <div key={i} className="mb-3 pb-3 border-b border-[#1e2a3a] last:border-0 last:mb-0 last:pb-0">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-[10px] font-semibold text-[#e2e8f0]">{c.source}</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1 w-16 bg-[#1e2a3a] rounded-full">
+                      <div className="h-1 rounded-full bg-[#1D9E75]" style={{ width: `${c.credibility}%` }} />
+                    </div>
+                    <span className="text-[9px] text-[#1D9E75] font-semibold">{c.credibility}%</span>
                   </div>
-                  <span className="text-[9px] text-emerald-400">{c.credibility}%</span>
                 </div>
+                <div className="text-[9px] text-[#4a5568] mb-1.5">
+                  Credibility score — {c.credibility}% means this source is {c.credibility >= 85 ? 'a government or peer-reviewed study with high reliability' : c.credibility >= 70 ? 'an industry report from a credible institution' : 'a secondary source requiring corroboration'}
+                </div>
+                {EVIDENCE_KEY_FINDINGS[c.source] && (
+                  <div className="text-[10px] text-[#8892a4] leading-relaxed italic">
+                    &quot;{EVIDENCE_KEY_FINDINGS[c.source]}&quot;
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
+
+        {/* Matches your clients */}
+        {CLIENT_MATCHES_BY_ID[p.id]?.length > 0 && (
+          <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded-lg p-3 mb-4">
+            <div className="text-[9px] font-semibold text-[#1D9E75] uppercase tracking-wider mb-2">
+              Matches your clients
+            </div>
+            {CLIENT_MATCHES_BY_ID[p.id].map((c) => (
+              <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[#1D9E75]/10 last:border-0">
+                <span className="text-[10px] text-[#5DCAA5]">{c.name}</span>
+                <span className="text-[9px] text-[#0F6E56]">{c.matchReason}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Compatible Playbooks */}
         <div className="mb-4">
