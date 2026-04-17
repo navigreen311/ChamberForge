@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation'
 import TopBar from '../../../components/shared/TopBar'
 import CommandAIButton from '../../../components/shared/CommandAIButton'
 
+type DealStageId = 'awareness' | 'interest' | 'evaluation' | 'decision' | 'closed'
+
 interface ClientSummary {
   id: string
   name: string
@@ -17,11 +19,65 @@ interface ClientSummary {
   activeOffers: number
   wealthEvents: { label: string; amount?: string; when: string }[]
   intel: string[]
+  intelligenceBullets: { fact: string; implication: string }[]
   touchpoints: { type: string; desc: string; time: string }[]
+  conversationHistory: {
+    type: 'CALL' | 'EMAIL' | 'MEETING' | 'DOC' | string
+    subject: string
+    outcome: string
+    daysAgo: number
+    openItem?: string
+  }[]
   matchedProblem: { id: string; name: string; lifecycle: string; credibility: number }
   matchedOffer: { name: string; priceMonthly: number; rationale: string }
   objections: { risk: string; response: string }[]
+  dealStage: DealStageId
+  daysInStage: number
+  lastContactScore: number
+  lastContactNote: string
+  kpiScore: number
+  kpiNote: string
+  engagementScore: number
+  engagementNote: string
+  wealthAlignScore: number
+  wealthNote: string
+  offerProgressScore: number
+  offerNote: string
+  competitors: {
+    name: string
+    type: string
+    daysSincePitch: number
+    threat: 'high' | 'medium' | 'low'
+    offering: string
+    weakness: string
+    counterPosition: string
+  }[]
+  urgencySignals: { title: string; description: string; deadline: string }[]
+  actionItems: {
+    id: string
+    task: string
+    owner: string
+    dueDate: string
+    completed: boolean
+    link?: string
+    linkLabel?: string
+  }[]
+  documents: {
+    name: string
+    sentDaysAgo: number
+    viewCount: number
+    lastViewedDaysAgo: number | null
+  }[]
+  upsellAddOns: { label: string; monthly: number }[]
 }
+
+const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
+  { id: 'awareness', label: 'Awareness', desc: 'Client knows you exist' },
+  { id: 'interest', label: 'Interest', desc: 'Expressed willingness to learn more' },
+  { id: 'evaluation', label: 'Evaluating', desc: 'Comparing options actively' },
+  { id: 'decision', label: 'Decision', desc: 'Ready to commit or decline' },
+  { id: 'closed', label: 'Closed', desc: 'Retainer signed' },
+]
 
 const FALLBACK: ClientSummary = {
   id: 'unknown',
@@ -44,12 +100,79 @@ const FALLBACK: ClientSummary = {
     'Mentioned cybersecurity unease after peer-family fraud event in industry press.',
     'Lifestyle staff turnover (chief of staff resigned) — coordination gap widening.',
   ],
+  intelligenceBullets: [
+    {
+      fact: 'Recent $180M secondary — new capital looking for structured stewardship.',
+      implication:
+        'OPPORTUNITY: Pair the retainer conversation with a stewardship narrative. Frame this offer as part of how the capital gets deployed, not a separate spend.',
+    },
+    {
+      fact: 'Son joins family office in Q3 — next-gen governance conversations are live.',
+      implication:
+        'OPPORTUNITY: Position the next-gen studio add-on before he starts. First 90 days of his involvement is the highest-leverage window for succession planning conversations.',
+    },
+    {
+      fact: 'Competing advisor (Morgan Stanley PWM) pitched last week; relationship strained.',
+      implication:
+        'DO NOT rush to close. Her wariness after a hard sell creates an opening for a consultative approach — be the one who educates, not pitches.',
+    },
+    {
+      fact: 'Mentioned cybersecurity unease after peer-family fraud event in industry press.',
+      implication:
+        "This is the emotional trigger. Lead with empathy about the event, not statistics. Ask: 'How did that story land with your team?'",
+    },
+    {
+      fact: 'Lifestyle staff turnover (chief of staff resigned) — coordination gap widening.',
+      implication:
+        'OPPORTUNITY: Even without a CoS replacement, your retainer absorbs the highest-risk subset of what a CoS does (vendor/vetting/coordination). Price the offer against the hiring cost, not thin air.',
+    },
+  ],
   touchpoints: [
     { type: 'call', desc: 'Quarterly review — governance topic raised', time: '3d ago' },
     { type: 'email', desc: 'Forwarded WSJ piece on AI voice-clone fraud', time: '9d ago' },
     { type: 'meeting', desc: 'Dinner with son, informal intro to office', time: '21d ago' },
     { type: 'doc', desc: 'Shared Trust Pack v2 for review', time: '38d ago' },
     { type: 'call', desc: 'Kickoff on cyber audit scope', time: '49d ago' },
+  ],
+  conversationHistory: [
+    {
+      type: 'CALL',
+      subject: 'Quarterly review — governance topic raised',
+      outcome:
+        'Alexandra asked three unprompted questions about next-gen onboarding and succession. Temperature: warm, shifting toward advisory.',
+      daysAgo: 3,
+      openItem: 'Commit to send next-gen studio one-pager by end of week.',
+    },
+    {
+      type: 'EMAIL',
+      subject: 'Forwarded WSJ piece on AI voice-clone fraud',
+      outcome:
+        'She forwarded unprompted with the note "this is exactly what I worry about". Strongest signal of personal concern in 90 days.',
+      daysAgo: 9,
+      openItem: 'Reference this thread in the pitch opener — do not let the signal go stale.',
+    },
+    {
+      type: 'MEETING',
+      subject: 'Dinner with son, informal intro to office',
+      outcome:
+        'Son (incoming Q3) engaged, asked about governance-as-a-service. No commitments; relationship-building only.',
+      daysAgo: 21,
+    },
+    {
+      type: 'DOC',
+      subject: 'Shared Trust Pack v2 for review',
+      outcome:
+        'Opened 3 times, last view 2 days ago. Spent longest on the cyber incident response section (3:42 on page).',
+      daysAgo: 38,
+      openItem: 'Follow up specifically on the incident response section she re-read.',
+    },
+    {
+      type: 'CALL',
+      subject: 'Kickoff on cyber audit scope',
+      outcome:
+        'Scoped the existing retainer. Alexandra flagged wire-verification as her #1 concern. No objections raised.',
+      daysAgo: 49,
+    },
   ],
   matchedProblem: {
     id: 'prob-014',
@@ -80,18 +203,187 @@ const FALLBACK: ClientSummary = {
         'Median single-incident loss among UHNW households is $2.4M (FinCEN, 2025). One prevented incident pays for 7 years of retainer. This is insurance you can actively operate.',
     },
   ],
+  dealStage: 'evaluation',
+  daysInStage: 9,
+  lastContactScore: 17,
+  lastContactNote: 'Last touchpoint 3d ago — within the 7d ideal window for active evaluation.',
+  kpiScore: 15,
+  kpiNote: 'Existing cyber audit retainer hitting 4 of 4 KPIs, but the governance KPI has been unreported for 45 days.',
+  engagementScore: 18,
+  engagementNote: 'Trust Pack v2 opened 3 times. Forwarded WSJ piece unprompted — strongest engagement signal in 90 days.',
+  wealthAlignScore: 19,
+  wealthNote: '$180M secondary + board exit = peak capital deployment window. Tier + liquidity profile aligns perfectly with retainer scope.',
+  offerProgressScore: 15,
+  offerNote: 'One active retainer, one proposal in review. Ecosystem suggests upsell is live; no contract friction yet.',
+  competitors: [
+    {
+      name: 'Morgan Stanley PWM',
+      type: 'Large institutional advisor',
+      daysSincePitch: 7,
+      threat: 'high',
+      offering: 'Full wealth management + family office services, AUM-based fee',
+      weakness:
+        'Generalist approach — same RM handles 40+ client relationships, no household-specific security or coordination expertise.',
+      counterPosition:
+        'Morgan Stanley manages the money. You manage the household. Different job, different expertise, different team. Position as a complement, not a competitor — then show the cyber incident data.',
+    },
+    {
+      name: 'Private Family Office Consortium',
+      type: 'Boutique peer network referral',
+      daysSincePitch: 21,
+      threat: 'medium',
+      offering: 'Shared chief-of-staff pool across 6 family offices, event-driven engagement model',
+      weakness:
+        'Shared staff means divided loyalty and no dedicated household protocol. Quality of the assigned operator varies widely week to week.',
+      counterPosition:
+        'Named operator, dedicated retainer, documented SLA. Ask: "When the wire-verification call comes at 9pm, who picks up — and are they yours?"',
+    },
+    {
+      name: 'Status quo (do nothing)',
+      type: 'Internal inertia',
+      daysSincePitch: 0,
+      threat: 'low',
+      offering: 'Keep current patchwork — CISO at op-co, bank fraud monitoring, informal staff screening.',
+      weakness:
+        'The patchwork is exactly what FinCEN identified as the failure mode — no single accountable owner for household surface, median $2.4M loss when it breaks.',
+      counterPosition:
+        'Frame inaction as a choice, not a default. "The decision is not whether to spend the money — it is whether the household has a named owner for this surface."',
+    },
+  ],
+  urgencySignals: [
+    {
+      title: '$180M secondary deployment window',
+      description:
+        'Capital typically deployed within 60-90 days post-close. At day 22, the structured stewardship conversation is time-sensitive.',
+      deadline: '~38 days remaining',
+    },
+    {
+      title: 'Chief of staff vacancy',
+      description:
+        'Coordination gap widens every week without a replacement. Your offer fills this gap immediately.',
+      deadline: 'Ongoing — gets worse with time',
+    },
+    {
+      title: 'Competitor proposal likely time-limited',
+      description:
+        'Morgan Stanley proposals typically expire in 30 days. If she does not decide, she restarts the process.',
+      deadline: 'Est. 23 days remaining',
+    },
+  ],
+  actionItems: [
+    {
+      id: '1',
+      task: 'Send Trust Pack v2 with cyber incident data updated',
+      owner: 'You',
+      dueDate: 'Tomorrow',
+      completed: false,
+      link: '/offers/1',
+      linkLabel: 'View Trust Pack',
+    },
+    {
+      id: '2',
+      task: 'Request intro to family office CIO through estate attorney',
+      owner: 'You',
+      dueDate: '3 days',
+      completed: false,
+    },
+    {
+      id: '3',
+      task: 'Prepare Family Cyber Command demo scenario using Harrington Dynasty as proof',
+      owner: 'You',
+      dueDate: '5 days',
+      completed: false,
+      link: '/clients/3',
+      linkLabel: 'View Harrington case',
+    },
+    {
+      id: '4',
+      task: 'Follow up on pre-meeting brief sent 3 days ago',
+      owner: 'You',
+      dueDate: 'Today',
+      completed: true,
+    },
+  ],
+  documents: [
+    { name: 'Trust Pack v1', sentDaysAgo: 14, viewCount: 3, lastViewedDaysAgo: 2 },
+    { name: 'Family Cyber Command proposal', sentDaysAgo: 7, viewCount: 5, lastViewedDaysAgo: 1 },
+    { name: 'FBI IC3 2025 report', sentDaysAgo: 7, viewCount: 0, lastViewedDaysAgo: null },
+    { name: 'NDA for review', sentDaysAgo: 3, viewCount: 1, lastViewedDaysAgo: 3 },
+  ],
+  upsellAddOns: [
+    { label: 'Governance add-on potential', monthly: 8000 },
+    { label: 'Next-gen studio', monthly: 12000 },
+  ],
+}
+
+interface BriefData {
+  summary: string
+  painSignals: string[]
+  opener: string
+  objections: { risk: string; response: string }[]
+  proofPoint: string
 }
 
 export default function DecisionRoomPage() {
   const router = useRouter()
   const params = useParams()
   const id = String(params?.id ?? '')
+  const clientId = id
 
   const [client, setClient] = useState<ClientSummary | null>(null)
-  const [loadingPitch, setLoadingPitch] = useState(false)
-  const [pitch, setPitch] = useState<string | null>(null)
-  const [brief, setBrief] = useState<string | null>(null)
+  const [pitchOpener, setPitchOpener] = useState('')
+  const [pitchLoading, setPitchLoading] = useState(false)
+  const [brief, setBrief] = useState<BriefData | null>(null)
+  const [briefLoading, setBriefLoading] = useState(false)
   const [decisionLogged, setDecisionLogged] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  // Schedule Meeting modal
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [meetingType, setMeetingType] = useState('Discovery follow-up')
+  const [meetingDateTime, setMeetingDateTime] = useState('')
+  const [meetingAgenda, setMeetingAgenda] = useState('')
+  const [savingMeeting, setSavingMeeting] = useState(false)
+
+  // Log Decision modal
+  const [showLog, setShowLog] = useState(false)
+  const [logOutcome, setLogOutcome] = useState<string | null>(null)
+  const [logNotes, setLogNotes] = useState('')
+  const [logFollowUp, setLogFollowUp] = useState('')
+  const [savingLog, setSavingLog] = useState(false)
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const toggleAction = (actionId: string) => {
+    setClient(prev =>
+      prev
+        ? {
+            ...prev,
+            actionItems: prev.actionItems.map(a =>
+              a.id === actionId ? { ...a, completed: !a.completed } : a,
+            ),
+          }
+        : prev,
+    )
+  }
+
+  const updateDealStage = async (stageId: DealStageId) => {
+    if (!client) return
+    setClient({ ...client, dealStage: stageId, daysInStage: 0 })
+    try {
+      await fetch(`/api/clients/${clientId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealStage: stageId, stageUpdatedAt: new Date().toISOString() }),
+      })
+    } catch {
+      /* soft-fail */
+    }
+    showToast(`Deal stage advanced to ${DEAL_STAGES.find(s => s.id === stageId)?.label ?? stageId}`)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -112,57 +404,111 @@ export default function DecisionRoomPage() {
     }
   }, [id])
 
-  const generatePitch = async () => {
+  const generatePitchOpener = async () => {
     if (!client) return
-    setLoadingPitch(true)
-    setPitch(null)
+    setPitchLoading(true)
     try {
-      const res = await fetch(`/api/clients/${id}/generate-pitch`, {
+      const res = await fetch(`/api/clients/${clientId}/generate-pitch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: client.name,
+          clientName: client.name,
           company: client.company,
           tier: client.tier,
-          problem: client.matchedProblem.name,
-          wealthEvent: client.wealthEvents[0] ?? null,
-          pain: client.painFocus[0],
+          wealthEvents: client.wealthEvents,
+          painCategory: client.painFocus[0],
+          offerName: client.matchedOffer.name,
+          competitorContext: client.intel.filter(x => /morgan stanley|competing|competitor/i.test(x)),
         }),
       })
       if (!res.ok) throw new Error('not ok')
       const data = await res.json()
-      setPitch(data.pitch ?? null)
+      setPitchOpener(
+        data.pitchOpener ??
+          `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. Would Thursday work for a 20-minute walk-through of what a readiness audit would look like?`,
+      )
     } catch {
-      setPitch(
-        `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. I'd like to walk you through what a 30-day readiness audit would look like — nothing to buy, just a clear map of your surface. Would Thursday work?`,
+      setPitchOpener(
+        `Alexandra — I saw the WSJ piece on the peer fraud incident, and it struck me because we've just finished a household cyber review for two other single-family offices in your tier. Given the $180M that landed in the office last month, this is the exact window where the protocol gap becomes most expensive. Would Thursday work for a 20-minute walk-through of what a readiness audit would look like?`,
       )
     } finally {
-      setLoadingPitch(false)
+      setPitchLoading(false)
     }
   }
 
-  const generateBrief = () => {
+  const generateBrief = async () => {
     if (!client) return
-    setBrief(
-      `Pre-meeting brief for ${client.name} (${client.company}): Tier ${client.tier}, health ${client.health ?? '—'}. Last contact ${client.lastContact}. Open thread: ${client.intel[0]} Recommended opener: lead with the peer-fraud angle and move to the retainer scope only if she surfaces the question.`,
-    )
+    setBriefLoading(true)
+    try {
+      const res = await fetch(`/api/clients/${clientId}/generate-brief`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'quick', context: 'decision_room' }),
+      })
+      if (!res.ok) throw new Error('not ok')
+      const data = await res.json()
+      setBrief(
+        (data.brief as BriefData) ??
+          buildFallbackBrief(client, pitchOpener),
+      )
+    } catch {
+      setBrief(buildFallbackBrief(client, pitchOpener))
+    } finally {
+      setBriefLoading(false)
+    }
   }
 
-  const logDecision = async () => {
+  const saveMeeting = async () => {
     if (!client) return
+    setSavingMeeting(true)
     try {
-      await fetch(`/api/clients/${id}/touchpoints`, {
+      await fetch(`/api/deliver/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'decision-room',
-          desc: `Decision room session (pitch ${pitch ? 'generated' : 'not generated'}, brief ${brief ? 'reviewed' : 'not reviewed'}).`,
+          clientId,
+          name: `Meeting: ${client.name}`,
+          type: 'meeting',
+          meetingType,
+          dueAt: meetingDateTime || null,
+          notes: meetingAgenda,
         }),
       })
     } catch {
-      /* soft-fail — local UX still succeeds */
+      /* soft-fail */
     }
+    setSavingMeeting(false)
+    setShowSchedule(false)
+    setMeetingAgenda('')
+    setMeetingDateTime('')
+    setMeetingType('Discovery follow-up')
+    showToast('Meeting scheduled and added to task list')
+  }
+
+  const saveDecisionLog = async () => {
+    if (!client) return
+    setSavingLog(true)
+    try {
+      await fetch(`/api/clients/${clientId}/touchpoints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'decision_room',
+          outcome: logOutcome,
+          notes: logNotes,
+          followUpDate: logFollowUp || null,
+        }),
+      })
+    } catch {
+      /* soft-fail */
+    }
+    setSavingLog(false)
     setDecisionLogged(true)
+    setShowLog(false)
+    setLogOutcome(null)
+    setLogNotes('')
+    setLogFollowUp('')
+    showToast('Decision logged to client history')
   }
 
   if (!client) {
@@ -223,6 +569,55 @@ export default function DecisionRoomPage() {
           </div>
         </div>
 
+        {/* ── Deal Stage Tracker ─────────────── */}
+        {(() => {
+          const currentStageIndex = DEAL_STAGES.findIndex(s => s.id === client.dealStage)
+          return (
+            <div className="flex items-center gap-0 mb-6 bg-[#111827] rounded-xl p-4 border border-[#1e2a3a]">
+              {DEAL_STAGES.map((stage, i) => (
+                <div key={stage.id} className="flex items-center flex-1">
+                  <div className="flex flex-col items-center flex-1">
+                    <div
+                      onClick={() => updateDealStage(stage.id)}
+                      title={stage.desc}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-semibold cursor-pointer transition ${
+                        i < currentStageIndex
+                          ? 'bg-[#1D9E75] text-white'
+                          : i === currentStageIndex
+                          ? 'bg-[#C9A84C] text-[#0D1117]'
+                          : 'bg-[#1e2a3a] text-[#4a5568]'
+                      }`}
+                    >
+                      {i < currentStageIndex ? '✓' : i + 1}
+                    </div>
+                    <div
+                      className={`text-[9px] mt-1 font-medium text-center ${
+                        i === currentStageIndex
+                          ? 'text-[#C9A84C]'
+                          : i < currentStageIndex
+                          ? 'text-[#1D9E75]'
+                          : 'text-[#4a5568]'
+                      }`}
+                    >
+                      {stage.label}
+                    </div>
+                    {i === currentStageIndex && (
+                      <div className="text-[8px] text-[#4a5568]">{client.daysInStage}d here</div>
+                    )}
+                  </div>
+                  {i < DEAL_STAGES.length - 1 && (
+                    <div
+                      className={`h-0.5 flex-1 ${
+                        i < currentStageIndex ? 'bg-[#1D9E75]' : 'bg-[#1e2a3a]'
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+
         <div className="grid grid-cols-2 gap-6">
           {/* ── LEFT COLUMN ─ Client context ─────────────── */}
           <div className="space-y-4">
@@ -253,33 +648,175 @@ export default function DecisionRoomPage() {
               )}
             </section>
 
-            <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
-                Intelligence brief — Command AI
+            <div className="bg-[#1f0d0d] border border-[#E24B4A]/20 rounded-lg p-4">
+              <div className="text-[10px] font-semibold text-[#E24B4A] uppercase tracking-wider mb-3">
+                Time-sensitive signals
               </div>
-              <ul className="text-[12px] text-gray-300 space-y-1.5 leading-relaxed">
-                {client.intel.map((line, i) => (
-                  <li key={i}>• {line}</li>
-                ))}
-              </ul>
-            </section>
+              {client.urgencySignals.map((signal, i) => (
+                <div key={i} className="flex gap-3 mb-3 last:mb-0">
+                  <div className="text-[#E24B4A] font-bold text-[14px] flex-shrink-0">!</div>
+                  <div>
+                    <div className="text-[11px] font-medium text-[#e2e8f0] mb-0.5">{signal.title}</div>
+                    <div className="text-[10px] text-[#8892a4] leading-relaxed">{signal.description}</div>
+                    <div className="text-[9px] text-[#E24B4A] mt-1 font-medium">{signal.deadline}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {(() => {
+              const score = client.health ?? 0
+              const dims = [
+                { label: 'Last contact', score: client.lastContactScore, max: 20, note: client.lastContactNote },
+                { label: 'KPI delivery', score: client.kpiScore, max: 20, note: client.kpiNote },
+                { label: 'Engagement', score: client.engagementScore, max: 20, note: client.engagementNote },
+                { label: 'Wealth alignment', score: client.wealthAlignScore, max: 20, note: client.wealthNote },
+                { label: 'Offer progress', score: client.offerProgressScore, max: 20, note: client.offerNote },
+              ]
+              return (
+                <div className="bg-[#111827] rounded-lg p-4 mb-4 border border-[#1e2a3a]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider">
+                      Health score breakdown
+                    </div>
+                    <div
+                      className="text-[22px] font-bold"
+                      style={{
+                        color: score >= 80 ? '#1D9E75' : score >= 60 ? '#C9A84C' : '#E24B4A',
+                      }}
+                    >
+                      {score}
+                    </div>
+                  </div>
+                  {dims.map((dim, i) => (
+                    <div key={i} className="mb-3 last:mb-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] text-[#8892a4]">{dim.label}</span>
+                        <span
+                          className="text-[10px] font-semibold"
+                          style={{
+                            color: dim.score >= 16 ? '#1D9E75' : dim.score >= 10 ? '#C9A84C' : '#E24B4A',
+                          }}
+                        >
+                          {dim.score}/{dim.max}
+                        </span>
+                      </div>
+                      <div className="h-1.5 bg-[#1e2a3a] rounded-full mb-1">
+                        <div
+                          className="h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${(dim.score / dim.max) * 100}%`,
+                            background:
+                              dim.score >= 16 ? '#1D9E75' : dim.score >= 10 ? '#C9A84C' : '#E24B4A',
+                          }}
+                        />
+                      </div>
+                      <div className="text-[9px] text-[#4a5568] leading-relaxed">{dim.note}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
-                Conversation history (last 5)
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
+                Intelligence brief — Command AI
               </div>
-              <div className="space-y-2 text-[12px]">
-                {client.touchpoints.slice(0, 5).map((t, i) => (
-                  <div key={i} className="flex justify-between gap-3 border-b border-[#1e2a3a]/50 pb-1.5 last:border-0">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500 mr-2">{t.type}</span>
-                      <span className="text-gray-300">{t.desc}</span>
+              <div>
+                {client.intelligenceBullets.map((bullet, i) => (
+                  <div
+                    key={i}
+                    className="mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                  >
+                    <div className="flex gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] flex-shrink-0 mt-1.5"></div>
+                      <div>
+                        <div className="text-[11px] text-[#e2e8f0] leading-relaxed mb-1">{bullet.fact}</div>
+                        <div className="text-[10px] text-[#C9A84C] leading-relaxed">
+                          → {bullet.implication}
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-gray-500 whitespace-nowrap">{t.time}</span>
                   </div>
                 ))}
               </div>
             </section>
+
+            <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
+                Conversation history (last 5)
+              </div>
+              <div>
+                {client.conversationHistory.slice(0, 5).map((tp, i) => (
+                  <div key={i} className="flex gap-3 py-3 border-b border-[#1e2a3a] last:border-0">
+                    <div
+                      className={`text-[9px] font-semibold px-2 py-0.5 rounded h-fit flex-shrink-0 ${
+                        tp.type === 'CALL'
+                          ? 'bg-[#0a1a2e] text-[#85B7EB]'
+                          : tp.type === 'EMAIL'
+                          ? 'bg-[#1e1a2e] text-[#AFA9EC]'
+                          : tp.type === 'MEETING'
+                          ? 'bg-[#0F2E1A] text-[#1D9E75]'
+                          : 'bg-[#1e2a3a] text-[#8892a4]'
+                      }`}
+                    >
+                      {tp.type}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1">
+                        <div className="text-[11px] font-medium text-[#e2e8f0]">{tp.subject}</div>
+                        <div className="text-[9px] text-[#4a5568] flex-shrink-0 ml-2">
+                          {tp.daysAgo}d ago
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-[#4a5568] leading-relaxed mb-1">{tp.outcome}</div>
+                      {tp.openItem && (
+                        <div className="text-[9px] text-[#BA7517]">Open: {tp.openItem}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+              <div className="text-[10px] font-semibold text-[#C9A84C] uppercase tracking-wider mb-3">
+                Action plan — before next meeting
+              </div>
+              {client.actionItems.map((action, i) => (
+                <div
+                  key={i}
+                  className="flex gap-3 mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={action.completed}
+                    onChange={() => toggleAction(action.id)}
+                    className="mt-0.5 flex-shrink-0 accent-[#C9A84C]"
+                  />
+                  <div className="flex-1">
+                    <div
+                      className={`text-[11px] font-medium mb-0.5 ${
+                        action.completed ? 'line-through text-[#4a5568]' : 'text-[#e2e8f0]'
+                      }`}
+                    >
+                      {action.task}
+                    </div>
+                    <div className="text-[10px] text-[#4a5568]">
+                      {action.owner} · Due {action.dueDate}
+                    </div>
+                    {action.link && (
+                      <a href={action.link} className="text-[9px] text-[#534AB7] hover:text-[#AFA9EC]">
+                        {action.linkLabel} →
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <button className="w-full mt-2 py-1.5 text-[10px] border border-[#2a3a4a] text-[#8892a4] rounded-lg hover:border-[#C9A84C]/40 hover:text-[#C9A84C]">
+                + Add action item
+              </button>
+            </div>
           </div>
 
           {/* ── RIGHT COLUMN ─ Decision tools ─────────────── */}
@@ -298,6 +835,81 @@ export default function DecisionRoomPage() {
               <div className="text-[11px] text-gray-400 mt-2 leading-relaxed">{client.matchedOffer.rationale}</div>
             </section>
 
+            {(() => {
+              const monthlyValue = client.matchedOffer.priceMonthly || 28000
+              return (
+                <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+                  <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider mb-3">
+                    Deal value
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+                    <div>
+                      <div className="text-[16px] font-bold text-[#C9A84C]">
+                        ${monthlyValue.toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">per month</div>
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-bold text-[#1D9E75]">
+                        ${(monthlyValue * 12).toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">year one</div>
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-bold text-[#AFA9EC]">
+                        ${(monthlyValue * 36).toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">3-year LTV</div>
+                    </div>
+                  </div>
+                  {client.upsellAddOns.length > 0 && (
+                    <div className="border-t border-[#1e2a3a] pt-3 text-[10px] text-[#4a5568] leading-relaxed">
+                      {client.upsellAddOns.map((a, i) => (
+                        <span key={i}>
+                          {i > 0 && <span className="mx-2">·</span>}
+                          {a.label}:{' '}
+                          <span className="text-[#C9A84C] font-medium">
+                            +${(a.monthly / 1000).toFixed(0)}K/mo
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+              <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider mb-3">
+                Documents shared
+              </div>
+              {client.documents.map((doc, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2.5 border-b border-[#1e2a3a] last:border-0"
+                >
+                  <div>
+                    <div className="text-[11px] font-medium text-[#e2e8f0]">{doc.name}</div>
+                    <div className="text-[9px] text-[#4a5568]">Sent {doc.sentDaysAgo}d ago</div>
+                  </div>
+                  <div className="text-right">
+                    {doc.viewCount > 0 ? (
+                      <div>
+                        <div className="text-[9px] font-semibold text-[#1D9E75]">
+                          Viewed {doc.viewCount}x
+                        </div>
+                        <div className="text-[8px] text-[#4a5568]">
+                          Last: {doc.lastViewedDaysAgo}d ago
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-[#E24B4A]">Not opened</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
                 Objection anticipator
@@ -312,51 +924,160 @@ export default function DecisionRoomPage() {
               </div>
             </section>
 
-            <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500">Pitch opener</div>
-                <button
-                  onClick={generatePitch}
-                  disabled={loadingPitch}
-                  className="text-[11px] bg-[#C9A84C] text-[#0D1117] font-semibold px-3 py-1.5 rounded hover:bg-[#C9A84C]/90 disabled:opacity-60"
-                >
-                  {loadingPitch ? 'Generating…' : pitch ? 'Regenerate' : 'Generate'}
-                </button>
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#BA7517]/20">
+              <div className="text-[10px] font-semibold text-[#BA7517] uppercase tracking-wider mb-3">
+                Competitor intelligence
               </div>
-              {pitch ? (
-                <div className="text-[12px] text-gray-200 bg-[#0D1117] border border-[#1e2a3a] rounded p-3 leading-relaxed">
-                  {pitch}
+              {client.competitors.map((comp, i) => (
+                <div
+                  key={i}
+                  className="mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-0 border-[#1e2a3a]"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="text-[12px] font-semibold text-[#e2e8f0]">{comp.name}</div>
+                      <div className="text-[10px] text-[#4a5568]">
+                        {comp.type}
+                        {comp.daysSincePitch > 0 ? ` · Pitched ${comp.daysSincePitch}d ago` : ''}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full font-medium ${
+                        comp.threat === 'high'
+                          ? 'bg-[#1f0d0d] text-[#E24B4A]'
+                          : comp.threat === 'medium'
+                          ? 'bg-[#1f1500] text-[#BA7517]'
+                          : 'bg-[#0F2E1A] text-[#1D9E75]'
+                      }`}
+                    >
+                      {comp.threat === 'high'
+                        ? 'High threat'
+                        : comp.threat === 'medium'
+                        ? 'Medium threat'
+                        : 'Low threat'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[#8892a4] mb-2 leading-relaxed">
+                    <strong className="text-[#e2e8f0]">What they offered:</strong> {comp.offering}
+                  </div>
+                  <div className="text-[10px] text-[#8892a4] mb-2 leading-relaxed">
+                    <strong className="text-[#e2e8f0]">Their weakness:</strong> {comp.weakness}
+                  </div>
+                  <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded px-3 py-2">
+                    <div className="text-[9px] font-semibold text-[#1D9E75] mb-1">
+                      Your counter-position
+                    </div>
+                    <div className="text-[10px] text-[#5DCAA5] leading-relaxed">{comp.counterPosition}</div>
+                  </div>
+                </div>
+              ))}
+              <button className="w-full mt-2 py-1.5 text-[10px] border border-[#2a3a4a] text-[#8892a4] rounded-lg hover:border-[#C9A84C]/40 hover:text-[#C9A84C]">
+                + Log new competitor
+              </button>
+            </div>
+
+            <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
+              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Pitch opener</div>
+              {pitchOpener ? (
+                <div className="bg-[#0F2E1A] border border-[#1D9E75]/20 rounded-lg p-4">
+                  <div className="text-[12px] text-[#5DCAA5] leading-relaxed italic mb-3">
+                    &ldquo;{pitchOpener}&rdquo;
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(pitchOpener)}
+                      className="text-[10px] border border-[#2a3a4a] text-[#8892a4] px-3 py-1.5 rounded"
+                    >
+                      Copy
+                    </button>
+                    <button
+                      onClick={generatePitchOpener}
+                      disabled={pitchLoading}
+                      className="text-[10px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded disabled:opacity-60"
+                    >
+                      {pitchLoading ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-[11px] text-gray-500 italic">
-                  Click generate — Command AI will produce a 2-3 sentence opener tailored to {client.name}.
-                </div>
+                <button
+                  onClick={generatePitchOpener}
+                  disabled={pitchLoading}
+                  className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+                >
+                  {pitchLoading ? 'Generating...' : 'Generate'}
+                </button>
               )}
             </section>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-3">
                 <div className="text-[10px] uppercase tracking-wider text-gray-500">Pre-meeting brief</div>
-                <button
-                  onClick={generateBrief}
-                  className="text-[11px] text-[#C9A84C] hover:underline"
-                >
-                  {brief ? 'Refresh' : 'Generate'}
-                </button>
+                {brief && (
+                  <button
+                    onClick={generateBrief}
+                    disabled={briefLoading}
+                    className="text-[10px] border border-[#C9A84C]/40 text-[#C9A84C] px-3 py-1.5 rounded disabled:opacity-60"
+                  >
+                    {briefLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                )}
               </div>
               {brief ? (
-                <div className="text-[11px] text-gray-300 leading-relaxed">{brief}</div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Client summary</div>
+                    <div className="text-[11px] text-gray-200 leading-relaxed">{brief.summary}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Pain signals</div>
+                    {brief.painSignals.map((s, i) => (
+                      <div key={i} className="flex gap-2 mb-1">
+                        <span className="w-1 h-1 rounded-full bg-[#C9A84C] mt-1.5 flex-shrink-0" />
+                        <div className="text-[10px] text-gray-300 leading-relaxed">{s}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Conversation opener</div>
+                    <div className="text-[10px] text-[#5DCAA5] italic leading-relaxed">&ldquo;{brief.opener}&rdquo;</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-semibold text-[#4a5568] uppercase tracking-wider mb-1">Top 2 objections</div>
+                    <div className="space-y-2">
+                      {brief.objections.map((o, i) => (
+                        <div key={i} className="border-l-2 border-amber-500/40 pl-3">
+                          <div className="text-[11px] text-amber-300 italic">{o.risk}</div>
+                          <div className="text-[10px] text-gray-300 mt-0.5 leading-relaxed">{o.response}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-[#0D1117] border border-[#C9A84C]/30 rounded p-3">
+                    <div className="text-[9px] font-semibold text-[#C9A84C] uppercase tracking-wider mb-1">Closing proof point</div>
+                    <div className="text-[11px] text-gray-200 leading-relaxed">{brief.proofPoint}</div>
+                  </div>
+                </div>
               ) : (
-                <div className="text-[11px] text-gray-500 italic">Inline brief will appear here.</div>
+                <button
+                  onClick={generateBrief}
+                  disabled={briefLoading}
+                  className="px-4 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+                >
+                  {briefLoading ? 'Generating...' : 'Generate'}
+                </button>
               )}
             </section>
 
             <div className="flex gap-2">
-              <button className="flex-1 bg-[#1e2a3a] text-gray-200 text-[12px] py-2 rounded-lg hover:bg-[#2a3a4a]">
+              <button
+                onClick={() => setShowSchedule(true)}
+                className="flex-1 bg-[#1e2a3a] text-gray-200 text-[12px] py-2 rounded-lg hover:bg-[#2a3a4a]"
+              >
                 Schedule next meeting
               </button>
               <button
-                onClick={logDecision}
+                onClick={() => setShowLog(true)}
                 disabled={decisionLogged}
                 className="flex-1 bg-purple-900/50 text-purple-200 border border-purple-500/40 text-[12px] py-2 rounded-lg hover:bg-purple-900/70 disabled:opacity-60"
               >
@@ -366,6 +1087,139 @@ export default function DecisionRoomPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Schedule Meeting Modal ─────────────── */}
+      {showSchedule && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowSchedule(false)}>
+          <div className="bg-[#111827] border border-[#1e2a3a] rounded-xl p-6 w-96" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[14px] font-semibold text-[#e2e8f0] mb-4">Schedule next meeting</h3>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Meeting type</label>
+              <select
+                value={meetingType}
+                onChange={e => setMeetingType(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              >
+                <option>Discovery follow-up</option>
+                <option>Proposal presentation</option>
+                <option>Contract review</option>
+                <option>Quarterly review</option>
+                <option>Relationship check-in</option>
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={meetingDateTime}
+                onChange={e => setMeetingDateTime(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Notes / agenda</label>
+              <textarea
+                rows={3}
+                placeholder="Key topics to cover..."
+                value={meetingAgenda}
+                onChange={e => setMeetingAgenda(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={saveMeeting}
+                disabled={savingMeeting}
+                className="flex-1 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+              >
+                {savingMeeting ? 'Saving…' : 'Schedule'}
+              </button>
+              <button
+                onClick={() => setShowSchedule(false)}
+                className="py-2 px-4 border border-[#2a3a4a] text-[#8892a4] rounded-lg text-[12px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Log Decision Modal ─────────────── */}
+      {showLog && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowLog(false)}>
+          <div className="bg-[#111827] border border-[#1e2a3a] rounded-xl p-6 w-96" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[14px] font-semibold text-[#e2e8f0] mb-4">Log this decision session</h3>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Outcome</label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {['Moving forward', 'Still evaluating', 'Needs more time', 'Not interested'].map(o => (
+                  <button
+                    key={o}
+                    onClick={() => setLogOutcome(o)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] border transition ${
+                      logOutcome === o
+                        ? 'border-[#C9A84C] text-[#C9A84C] bg-[#1B2340]'
+                        : 'border-[#2a3a4a] text-[#8892a4]'
+                    }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">What happened</label>
+              <textarea
+                rows={3}
+                placeholder="Key points discussed, commitments made, concerns raised..."
+                value={logNotes}
+                onChange={e => setLogNotes(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Follow-up date</label>
+              <input
+                type="date"
+                value={logFollowUp}
+                onChange={e => setLogFollowUp(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={saveDecisionLog}
+                disabled={savingLog || !logOutcome}
+                className="flex-1 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+              >
+                {savingLog ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setShowLog(false)}
+                className="py-2 px-4 border border-[#2a3a4a] text-[#8892a4] rounded-lg text-[12px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast ─────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] bg-[#0F2E1A] border border-[#1D9E75]/40 text-[#1D9E75] px-4 py-3 rounded-lg shadow-2xl text-[12px]">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
@@ -377,4 +1231,22 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-gray-200">{value}</span>
     </div>
   )
+}
+
+function buildFallbackBrief(client: ClientSummary, pitchOpener: string): BriefData {
+  const topWealth = client.wealthEvents[0]
+  return {
+    summary: `${client.name} (${client.company}) is a ${client.tier} client, health ${client.health ?? '—'}, last contact ${client.lastContact}. Pain focus: ${client.painFocus.join(', ') || 'n/a'}.`,
+    painSignals: [
+      topWealth ? `Recent ${topWealth.label}${topWealth.amount ? ` (${topWealth.amount})` : ''} — ${topWealth.when}.` : client.intel[0] ?? 'Intelligence pipeline has not surfaced a priority signal yet.',
+      client.intel[1] ?? 'No secondary intel point available.',
+      client.intel[2] ?? 'No tertiary intel point available.',
+    ],
+    opener:
+      pitchOpener ||
+      `Open with the peer-family fraud event — ask how it landed with her team before pivoting to the retainer scope.`,
+    objections: client.objections.slice(0, 2),
+    proofPoint:
+      'Median single-incident loss among UHNW households is $2.4M (FinCEN, 2025). One prevented incident pays for 7 years of retainer.',
+  }
 }
