@@ -54,6 +54,13 @@ interface ClientSummary {
     link?: string
     linkLabel?: string
   }[]
+  documents: {
+    name: string
+    sentDaysAgo: number
+    viewCount: number
+    lastViewedDaysAgo: number | null
+  }[]
+  upsellAddOns: { label: string; monthly: number }[]
 }
 
 const DEAL_STAGES: { id: DealStageId; label: string; desc: string }[] = [
@@ -221,6 +228,16 @@ const FALLBACK: ClientSummary = {
       dueDate: 'Today',
       completed: true,
     },
+  ],
+  documents: [
+    { name: 'Trust Pack v1', sentDaysAgo: 14, viewCount: 3, lastViewedDaysAgo: 2 },
+    { name: 'Family Cyber Command proposal', sentDaysAgo: 7, viewCount: 5, lastViewedDaysAgo: 1 },
+    { name: 'FBI IC3 2025 report', sentDaysAgo: 7, viewCount: 0, lastViewedDaysAgo: null },
+    { name: 'NDA for review', sentDaysAgo: 3, viewCount: 1, lastViewedDaysAgo: 3 },
+  ],
+  upsellAddOns: [
+    { label: 'Governance add-on potential', monthly: 8000 },
+    { label: 'Next-gen studio', monthly: 12000 },
   ],
 }
 
@@ -709,6 +726,81 @@ export default function DecisionRoomPage() {
               </div>
               <div className="text-[11px] text-gray-400 mt-2 leading-relaxed">{client.matchedOffer.rationale}</div>
             </section>
+
+            {(() => {
+              const monthlyValue = client.matchedOffer.priceMonthly || 28000
+              return (
+                <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+                  <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider mb-3">
+                    Deal value
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+                    <div>
+                      <div className="text-[16px] font-bold text-[#C9A84C]">
+                        ${monthlyValue.toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">per month</div>
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-bold text-[#1D9E75]">
+                        ${(monthlyValue * 12).toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">year one</div>
+                    </div>
+                    <div>
+                      <div className="text-[16px] font-bold text-[#AFA9EC]">
+                        ${(monthlyValue * 36).toLocaleString()}
+                      </div>
+                      <div className="text-[9px] text-[#4a5568]">3-year LTV</div>
+                    </div>
+                  </div>
+                  {client.upsellAddOns.length > 0 && (
+                    <div className="border-t border-[#1e2a3a] pt-3 text-[10px] text-[#4a5568] leading-relaxed">
+                      {client.upsellAddOns.map((a, i) => (
+                        <span key={i}>
+                          {i > 0 && <span className="mx-2">·</span>}
+                          {a.label}:{' '}
+                          <span className="text-[#C9A84C] font-medium">
+                            +${(a.monthly / 1000).toFixed(0)}K/mo
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            <div className="bg-[#111827] rounded-lg p-4 border border-[#1e2a3a]">
+              <div className="text-[10px] font-semibold text-[#4a5568] uppercase tracking-wider mb-3">
+                Documents shared
+              </div>
+              {client.documents.map((doc, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2.5 border-b border-[#1e2a3a] last:border-0"
+                >
+                  <div>
+                    <div className="text-[11px] font-medium text-[#e2e8f0]">{doc.name}</div>
+                    <div className="text-[9px] text-[#4a5568]">Sent {doc.sentDaysAgo}d ago</div>
+                  </div>
+                  <div className="text-right">
+                    {doc.viewCount > 0 ? (
+                      <div>
+                        <div className="text-[9px] font-semibold text-[#1D9E75]">
+                          Viewed {doc.viewCount}x
+                        </div>
+                        <div className="text-[8px] text-[#4a5568]">
+                          Last: {doc.lastViewedDaysAgo}d ago
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-[#E24B4A]">Not opened</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <section className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4">
               <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
