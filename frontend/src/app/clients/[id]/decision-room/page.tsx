@@ -102,6 +102,26 @@ export default function DecisionRoomPage() {
   const [brief, setBrief] = useState<BriefData | null>(null)
   const [briefLoading, setBriefLoading] = useState(false)
   const [decisionLogged, setDecisionLogged] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+
+  // Schedule Meeting modal
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [meetingType, setMeetingType] = useState('Discovery follow-up')
+  const [meetingDateTime, setMeetingDateTime] = useState('')
+  const [meetingAgenda, setMeetingAgenda] = useState('')
+  const [savingMeeting, setSavingMeeting] = useState(false)
+
+  // Log Decision modal
+  const [showLog, setShowLog] = useState(false)
+  const [logOutcome, setLogOutcome] = useState<string | null>(null)
+  const [logNotes, setLogNotes] = useState('')
+  const [logFollowUp, setLogFollowUp] = useState('')
+  const [savingLog, setSavingLog] = useState(false)
+
+  const showToast = (msg: string) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3500)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -176,21 +196,57 @@ export default function DecisionRoomPage() {
     }
   }
 
-  const logDecision = async () => {
+  const saveMeeting = async () => {
     if (!client) return
+    setSavingMeeting(true)
     try {
-      await fetch(`/api/clients/${id}/touchpoints`, {
+      await fetch(`/api/deliver/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'decision-room',
-          desc: `Decision room session (pitch ${pitch ? 'generated' : 'not generated'}, brief ${brief ? 'reviewed' : 'not reviewed'}).`,
+          clientId,
+          name: `Meeting: ${client.name}`,
+          type: 'meeting',
+          meetingType,
+          dueAt: meetingDateTime || null,
+          notes: meetingAgenda,
         }),
       })
     } catch {
-      /* soft-fail — local UX still succeeds */
+      /* soft-fail */
     }
+    setSavingMeeting(false)
+    setShowSchedule(false)
+    setMeetingAgenda('')
+    setMeetingDateTime('')
+    setMeetingType('Discovery follow-up')
+    showToast('Meeting scheduled and added to task list')
+  }
+
+  const saveDecisionLog = async () => {
+    if (!client) return
+    setSavingLog(true)
+    try {
+      await fetch(`/api/clients/${clientId}/touchpoints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'decision_room',
+          outcome: logOutcome,
+          notes: logNotes,
+          followUpDate: logFollowUp || null,
+        }),
+      })
+    } catch {
+      /* soft-fail */
+    }
+    setSavingLog(false)
     setDecisionLogged(true)
+    setShowLog(false)
+    setLogOutcome(null)
+    setLogNotes('')
+    setLogFollowUp('')
+    showToast('Decision logged to client history')
   }
 
   if (!client) {
@@ -434,11 +490,14 @@ export default function DecisionRoomPage() {
             </section>
 
             <div className="flex gap-2">
-              <button className="flex-1 bg-[#1e2a3a] text-gray-200 text-[12px] py-2 rounded-lg hover:bg-[#2a3a4a]">
+              <button
+                onClick={() => setShowSchedule(true)}
+                className="flex-1 bg-[#1e2a3a] text-gray-200 text-[12px] py-2 rounded-lg hover:bg-[#2a3a4a]"
+              >
                 Schedule next meeting
               </button>
               <button
-                onClick={logDecision}
+                onClick={() => setShowLog(true)}
                 disabled={decisionLogged}
                 className="flex-1 bg-purple-900/50 text-purple-200 border border-purple-500/40 text-[12px] py-2 rounded-lg hover:bg-purple-900/70 disabled:opacity-60"
               >
@@ -448,6 +507,139 @@ export default function DecisionRoomPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Schedule Meeting Modal ─────────────── */}
+      {showSchedule && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowSchedule(false)}>
+          <div className="bg-[#111827] border border-[#1e2a3a] rounded-xl p-6 w-96" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[14px] font-semibold text-[#e2e8f0] mb-4">Schedule next meeting</h3>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Meeting type</label>
+              <select
+                value={meetingType}
+                onChange={e => setMeetingType(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              >
+                <option>Discovery follow-up</option>
+                <option>Proposal presentation</option>
+                <option>Contract review</option>
+                <option>Quarterly review</option>
+                <option>Relationship check-in</option>
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Date &amp; Time</label>
+              <input
+                type="datetime-local"
+                value={meetingDateTime}
+                onChange={e => setMeetingDateTime(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Notes / agenda</label>
+              <textarea
+                rows={3}
+                placeholder="Key topics to cover..."
+                value={meetingAgenda}
+                onChange={e => setMeetingAgenda(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={saveMeeting}
+                disabled={savingMeeting}
+                className="flex-1 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+              >
+                {savingMeeting ? 'Saving…' : 'Schedule'}
+              </button>
+              <button
+                onClick={() => setShowSchedule(false)}
+                className="py-2 px-4 border border-[#2a3a4a] text-[#8892a4] rounded-lg text-[12px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Log Decision Modal ─────────────── */}
+      {showLog && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" onClick={() => setShowLog(false)}>
+          <div className="bg-[#111827] border border-[#1e2a3a] rounded-xl p-6 w-96" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[14px] font-semibold text-[#e2e8f0] mb-4">Log this decision session</h3>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Outcome</label>
+              <div className="flex gap-2 mt-1 flex-wrap">
+                {['Moving forward', 'Still evaluating', 'Needs more time', 'Not interested'].map(o => (
+                  <button
+                    key={o}
+                    onClick={() => setLogOutcome(o)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] border transition ${
+                      logOutcome === o
+                        ? 'border-[#C9A84C] text-[#C9A84C] bg-[#1B2340]'
+                        : 'border-[#2a3a4a] text-[#8892a4]'
+                    }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">What happened</label>
+              <textarea
+                rows={3}
+                placeholder="Key points discussed, commitments made, concerns raised..."
+                value={logNotes}
+                onChange={e => setLogNotes(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="text-[10px] text-[#4a5568] uppercase tracking-wider">Follow-up date</label>
+              <input
+                type="date"
+                value={logFollowUp}
+                onChange={e => setLogFollowUp(e.target.value)}
+                className="w-full mt-1 bg-[#0D1117] border border-[#1e2a3a] text-[#e2e8f0] rounded-lg p-2 text-[12px]"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={saveDecisionLog}
+                disabled={savingLog || !logOutcome}
+                className="flex-1 py-2 bg-[#C9A84C] text-[#0D1117] rounded-lg text-[12px] font-semibold disabled:opacity-60"
+              >
+                {savingLog ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setShowLog(false)}
+                className="py-2 px-4 border border-[#2a3a4a] text-[#8892a4] rounded-lg text-[12px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast ─────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[60] bg-[#0F2E1A] border border-[#1D9E75]/40 text-[#1D9E75] px-4 py-3 rounded-lg shadow-2xl text-[12px]">
+          {toast}
+        </div>
+      )}
     </div>
   )
 }
