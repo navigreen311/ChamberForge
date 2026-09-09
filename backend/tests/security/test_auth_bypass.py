@@ -11,7 +11,6 @@ from jose import jwt
 
 from app.core.config import settings
 
-
 # Endpoints that require authentication (representative sample)
 PROTECTED_ENDPOINTS = [
     ("GET", "/api/v1/problems/"),

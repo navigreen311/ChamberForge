@@ -8,7 +8,6 @@ import anthropic
 
 from app.core.config import settings
 
-
 SAMPLE_PROBLEMS: list[dict[str, Any]] = [
     {
         "title": "Cross-Border Estate Tax Complexity",

@@ -1,12 +1,11 @@
 """Conftest for Docker-based integration tests against real Postgres, Redis, ES."""
 import os
 import uuid
-from datetime import datetime, timezone
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
 
 # Override env vars BEFORE importing app modules
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5433/chamberforge_test")
@@ -17,35 +16,35 @@ os.environ.setdefault("APP_ENV", "testing")
 
 from app.db.session import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.ai_usage import AIUsageLog as _AIU  # noqa: F401
+from app.models.audit_log import AuditLog as _AL  # noqa: F401
+from app.models.automation_rule import AutomationRule as _AR  # noqa: F401
+from app.models.billing import Subscription as _Sub  # noqa: F401
+from app.models.client import Client as _Client  # noqa: F401
+from app.models.consent import ConsentRecord as _Consent  # noqa: F401
+from app.models.crisis_incident import CrisisIncident as _CI  # noqa: F401
+from app.models.deletion_request import DeletionRequest as _DR  # noqa: F401
+from app.models.document import Document as _Doc  # noqa: F401
+from app.models.drip_status import DripStatus as _DS  # noqa: F401
+from app.models.email_log import EmailLog as _EL  # noqa: F401
+from app.models.evidence import Evidence as _Evidence  # noqa: F401
+from app.models.feature_flag import FeatureFlag as _FF  # noqa: F401
+from app.models.household_graph import HouseholdGraph as _HG  # noqa: F401
+from app.models.legal_hold import LegalHold as _LH  # noqa: F401
+from app.models.message import SecureMessage as _Msg  # noqa: F401
+from app.models.notification import Notification as _Notif  # noqa: F401
+from app.models.offer import Offer as _Offer  # noqa: F401
+from app.models.playbook import Playbook as _PB  # noqa: F401
+from app.models.playbook_activation import PlaybookActivation as _PBA  # noqa: F401
+from app.models.problem import Problem as _Problem  # noqa: F401
+from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
+from app.models.retention_policy import RetentionPolicy as _RP  # noqa: F401
+from app.models.risk_review import RiskReview as _RR  # noqa: F401
+from app.models.template_version import TemplateVersion as _TV  # noqa: F401
 
 # Import ALL models so Base.metadata knows every table.
 from app.models.user import User as _User  # noqa: F401
 from app.models.workspace import Workspace as _Workspace  # noqa: F401
-from app.models.problem import Problem as _Problem  # noqa: F401
-from app.models.evidence import Evidence as _Evidence  # noqa: F401
-from app.models.offer import Offer as _Offer  # noqa: F401
-from app.models.billing import Subscription as _Sub, Invoice as _Inv, Referral as _Ref  # noqa: F401
-from app.models.client import Client as _Client  # noqa: F401
-from app.models.consent import ConsentRecord as _Consent  # noqa: F401
-from app.models.notification import Notification as _Notif  # noqa: F401
-from app.models.playbook import Playbook as _PB  # noqa: F401
-from app.models.playbook_activation import PlaybookActivation as _PBA  # noqa: F401
-from app.models.risk_review import RiskReview as _RR  # noqa: F401
-from app.models.household_graph import HouseholdGraph as _HG  # noqa: F401
-from app.models.audit_log import AuditLog as _AL  # noqa: F401
-from app.models.ai_usage import AIUsageLog as _AIU  # noqa: F401
-from app.models.automation_rule import AutomationRule as _AR  # noqa: F401
-from app.models.crisis_incident import CrisisIncident as _CI  # noqa: F401
-from app.models.deletion_request import DeletionRequest as _DR  # noqa: F401
-from app.models.document import Document as _Doc  # noqa: F401
-from app.models.email_log import EmailLog as _EL  # noqa: F401
-from app.models.feature_flag import FeatureFlag as _FF  # noqa: F401
-from app.models.legal_hold import LegalHold as _LH  # noqa: F401
-from app.models.message import SecureMessage as _Msg  # noqa: F401
-from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
-from app.models.retention_policy import RetentionPolicy as _RP  # noqa: F401
-from app.models.template_version import TemplateVersion as _TV  # noqa: F401
-from app.models.drip_status import DripStatus as _DS  # noqa: F401
 
 
 @pytest.fixture(scope="session")

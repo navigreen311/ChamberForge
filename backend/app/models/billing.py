@@ -1,10 +1,8 @@
 """Billing models — subscriptions, invoices, and referrals."""
 import uuid
-from datetime import date, datetime
 
 import sqlalchemy as sa
-from sqlalchemy import Column, Date, DateTime, Float, JSON, String, func
-
+from sqlalchemy import JSON, Column, Date, DateTime, Float, String, func
 
 from app.db.session import Base
 

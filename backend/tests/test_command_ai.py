@@ -1,6 +1,6 @@
 """Tests for CommandAI agent — mocked Claude, field validation, sorting."""
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 

@@ -1,6 +1,7 @@
 """Clients dashboard endpoints — KPIs, at-risk clients, wealth events."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.db.session import get_db
 
 router = APIRouter(prefix="/api/v1/clients-dashboard", tags=["clients-dashboard"])

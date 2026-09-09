@@ -3,14 +3,12 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 
 from app.models.community_insight import CommunityInsight
-
 
 _VALID_INSIGHT_TYPES = {"market_signal", "pricing_intel", "objection_pattern", "delivery_tip"}
 _VALID_VOTES = {"upvote", "downvote"}

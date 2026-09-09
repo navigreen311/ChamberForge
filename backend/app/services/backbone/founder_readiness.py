@@ -1,9 +1,6 @@
 """FounderReadiness — Skill, credential, and network assessment for premium-service founders."""
 from __future__ import annotations
 
-from typing import Any
-
-
 # Weight allocation (must sum to 1.0)
 _WEIGHTS = {
     "skills": 0.40,

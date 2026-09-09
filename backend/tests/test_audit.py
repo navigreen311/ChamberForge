@@ -3,16 +3,15 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import create_engine, Column, String, DateTime, JSON, Uuid, text
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy import JSON, Column, DateTime, String, Uuid, create_engine, text
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-from app.services.backbone.audit_service import AuditService
 from app.middleware.audit import (
-    _extract_resource_type,
     _extract_resource_id,
+    _extract_resource_type,
     _should_skip,
 )
-
+from app.services.backbone.audit_service import AuditService
 
 # ── Isolated Base to avoid pg.UUID ↔ SQLite conflict ────────────────────────
 # The production AuditLog model uses pg.UUID which conflicts with other models
@@ -40,7 +39,8 @@ class AuditLogTest(_TestBase):
 
 
 # Monkey-patch AuditService to use our test model for the duration of tests.
-import app.services.backbone.audit_service as _audit_mod
+import app.services.backbone.audit_service as _audit_mod  # noqa: E402
+
 _OrigAuditLog = _audit_mod.AuditLog
 _audit_mod.AuditLog = AuditLogTest  # type: ignore[assignment]
 

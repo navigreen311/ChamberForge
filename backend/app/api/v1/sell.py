@@ -3,25 +3,24 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.core.dependencies import get_workspace_id
-
 from app.services.agents.copy_ai import CopyAI
 from app.services.agents.relationship_ai import RelationshipAI
-from app.services.backbone.marketing_engine import MarketingEngine
-from app.services.backbone.revenue_projector import RevenueProjector
-from app.services.backbone.partner_builder import PartnerBuilder
-from app.services.backbone.trust_network import TrustNetwork, GatekeeperType, ReferralStatus
-from app.services.backbone.gtm_lab import GTMLab
 from app.services.backbone.authority_positioning import AuthorityPositioning
-from app.services.backbone.outcome_intelligence import OutcomeIntelligence
 from app.services.backbone.client_onboarding import ClientOnboarding
-from app.services.backbone.persona_simulator import PersonaSimulator
 from app.services.backbone.client_retention import ClientRetention
 from app.services.backbone.decision_room import DecisionRoom
-from app.services.backbone.proof_reputation import ProofReputation
 from app.services.backbone.expert_network import ExpertNetwork
+from app.services.backbone.gtm_lab import GTMLab
+from app.services.backbone.marketing_engine import MarketingEngine
+from app.services.backbone.outcome_intelligence import OutcomeIntelligence
+from app.services.backbone.partner_builder import PartnerBuilder
+from app.services.backbone.persona_simulator import PersonaSimulator
+from app.services.backbone.proof_reputation import ProofReputation
+from app.services.backbone.revenue_projector import RevenueProjector
+from app.services.backbone.trust_network import TrustNetwork
 
 router = APIRouter(prefix="/api/v1/sell", tags=["sell"])
 

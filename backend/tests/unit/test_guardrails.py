@@ -1,5 +1,4 @@
 """Tests for GuardrailsEngine — verify all 6 rules."""
-import pytest
 
 from app.services.backbone.guardrails_engine import GuardrailsEngine
 

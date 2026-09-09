@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Generic, List, TypeVar
+from typing import Any, List, TypeVar
 
 from pydantic import BaseModel, Field
 

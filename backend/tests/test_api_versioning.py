@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 
 from app.core.api_versioning import check_api_version, deprecated_endpoint
 
-
 # ---------------------------------------------------------------------------
 # Fixtures — lightweight FastAPI app with a version-checked endpoint
 # ---------------------------------------------------------------------------

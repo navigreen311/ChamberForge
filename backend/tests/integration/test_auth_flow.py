@@ -1,5 +1,4 @@
 """Integration tests for the full authentication flow."""
-import pytest
 
 
 class TestRegister:

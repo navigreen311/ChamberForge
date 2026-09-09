@@ -2,24 +2,22 @@
 import uuid
 from datetime import datetime
 
-import sqlalchemy as sa
-from sqlalchemy import Column, String, Integer, Float, Text, DateTime, Enum, Index
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import Column, DateTime, Enum, Float, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
 from app.models.enums import (
-    WealthTier,
     BuyerType,
-    LifeStage,
-    TriggerEvent,
-    PainCategory,
-    WTPProfile,
-    TrustChannel,
     ComplianceRisk,
     DeliveryModel,
-    ProofMetric,
     LifecycleStage,
+    LifeStage,
+    PainCategory,
+    ProofMetric,
+    TriggerEvent,
+    TrustChannel,
+    WealthTier,
+    WTPProfile,
 )
 
 

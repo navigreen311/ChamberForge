@@ -1,7 +1,6 @@
 """Tests for Stripe webhook endpoint and event routing."""
 import json
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app

@@ -1,7 +1,7 @@
 """Playbook model — stores vertical playbook templates."""
 import uuid
 
-from sqlalchemy import Column, String, Float, JSON
+from sqlalchemy import JSON, Column, Float, String
 
 from app.db.session import Base
 from app.models.types import GUID

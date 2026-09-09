@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.security import get_password_hash, verify_password
 from app.core.dependencies import get_current_user
+from app.core.security import get_password_hash
 from app.db.session import get_db
 from app.main import app
 from app.models.user import User

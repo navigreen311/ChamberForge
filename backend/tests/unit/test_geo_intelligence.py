@@ -1,5 +1,4 @@
 """Tests for GeoIntelligence — jurisdiction rules and compliance checking."""
-import pytest
 
 from app.services.backbone.geo_intelligence import GeoIntelligence
 

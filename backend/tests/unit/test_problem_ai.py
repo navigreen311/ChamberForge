@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # We patch settings BEFORE importing ProblemAI so the module-level
 # settings.ANTHROPIC_API_KEY is controlled by us.

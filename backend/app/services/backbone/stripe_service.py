@@ -1,8 +1,6 @@
 """Stripe billing service with automatic mock fallback when no API key is configured."""
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import logging
 import time
@@ -10,7 +8,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import extract, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings

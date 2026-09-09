@@ -7,17 +7,15 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_workspace_id
-from app.core.exceptions import NotFoundError, ValidationError, ConflictError
+from app.core.dependencies import get_workspace_id
+from app.core.exceptions import NotFoundError, ValidationError
 from app.db.session import get_db
 from app.models.client import Client
 from app.models.offer import Offer
-from app.models.user import User
 from app.schemas.offer import OfferCreate, OfferRead, OfferUpdate
 from app.services.agents.offer_ai import OfferAI
 from app.services.agents.pricing_ai import PricingAI
-from app.services.backbone.search_indices import OFFER_INDEX
-from app.services.backbone.search_sync import remove_from_index, sync_offer
+from app.services.backbone.search_sync import sync_offer
 from app.services.backbone.service_design import ServiceDesignStudio
 
 router = APIRouter(prefix="/api/v1/offers", tags=["offers"])

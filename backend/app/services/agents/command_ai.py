@@ -7,8 +7,7 @@ briefs.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
-from typing import Any
+from datetime import date
 
 from app.services.agents.base_agent import BaseAgent
 

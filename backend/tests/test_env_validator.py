@@ -1,8 +1,6 @@
 """Tests for startup environment variable validation."""
 from unittest.mock import patch
 
-import pytest
-
 from app.core.env_validator import validate_environment
 
 

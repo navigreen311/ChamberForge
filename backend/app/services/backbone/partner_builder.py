@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 # Pre-defined ecosystem maps by pain category
 _ECOSYSTEM_MAP: dict[str, list[dict]] = {
     "revenue_growth": [

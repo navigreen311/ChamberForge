@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.integrations.visionaudio_client import VisionAudioForgeClient
 from app.services.integrations.visionaudio_brand import BrandStudio
+from app.services.integrations.visionaudio_client import VisionAudioForgeClient
 
 
 @pytest.fixture

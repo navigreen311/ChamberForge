@@ -1,8 +1,5 @@
 """Integration tests for the Evidence API — CRUD, linking, analyst queue."""
 import uuid
-from datetime import date
-
-import pytest
 
 
 def _make_evidence(client, **overrides):

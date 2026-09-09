@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy.dialects.postgresql import JSON
 
 from app.db.session import Base
 

@@ -1,6 +1,5 @@
 """Tests for EmailService — send, template rendering, batch."""
 import pytest
-import pytest_asyncio
 
 from app.services.backbone.email_service import EmailService
 

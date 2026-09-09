@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -10,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.core.cache import cache
 from app.db.session import get_db
-from app.services.backbone.playbook_engine import PlaybookEngine
 from app.services.backbone.cross_playbook import CrossPlaybookComposer
+from app.services.backbone.playbook_engine import PlaybookEngine
 
 router = APIRouter(prefix="/api/v1/playbooks", tags=["playbooks"])
 

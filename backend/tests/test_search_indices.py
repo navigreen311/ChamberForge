@@ -1,11 +1,11 @@
 """Tests for search index definitions."""
 from app.services.backbone.search_indices import (
-    PROBLEM_MAPPING,
-    EVIDENCE_MAPPING,
-    OFFER_MAPPING,
     CLIENT_MAPPING,
-    PARTNER_MAPPING,
+    EVIDENCE_MAPPING,
     EXPERT_MAPPING,
+    OFFER_MAPPING,
+    PARTNER_MAPPING,
+    PROBLEM_MAPPING,
     get_all_indices,
 )
 

@@ -1,6 +1,6 @@
 """Tests for RetainerOps service."""
+
 import pytest
-from unittest.mock import patch
 
 from app.services.backbone.retainer_ops import RetainerOps
 

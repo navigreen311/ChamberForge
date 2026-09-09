@@ -8,16 +8,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import Base
-from app.models.audit_log import AuditLog
-from app.models.client import Client
-from app.models.email_log import EmailLog
 from app.models.evidence import Evidence
 from app.models.legal_hold import LegalHold
-from app.models.notification import Notification
 from app.models.offer import Offer
 from app.models.retention_policy import RetentionPolicy
 from app.services.backbone.records_governance import RecordsGovernance
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

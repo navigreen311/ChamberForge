@@ -1,6 +1,6 @@
 """Celery tasks for email drip sequence processing."""
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.jobs.celery_app import celery_app
 
@@ -66,7 +66,7 @@ def enqueue_onboarding(self, user_id: str) -> dict:
     """
     from app.db.session import SessionLocal
     from app.models.drip_status import DripStatus
-    from app.services.backbone.email_drip import advance_drip, get_drip_sequence
+    from app.services.backbone.email_drip import advance_drip
 
     db = SessionLocal()
     try:

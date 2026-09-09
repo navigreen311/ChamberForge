@@ -3,12 +3,10 @@
 Run with: pytest tests/integration/test_real_postgres.py -c conftest_docker.py
 """
 import uuid
-import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from sqlalchemy import text, inspect
-
+from sqlalchemy import inspect, text
 
 # These tests require a real Postgres instance (Docker)
 pytestmark = pytest.mark.skipif(
@@ -144,6 +142,7 @@ class TestConcurrentWrites:
     def test_concurrent_workspace_creation(self, docker_engine):
         """Multiple threads can create workspaces concurrently without conflict."""
         from sqlalchemy.orm import sessionmaker
+
         from app.models.workspace import Workspace
 
         Session = sessionmaker(bind=docker_engine)

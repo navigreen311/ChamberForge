@@ -3,10 +3,10 @@ import logging
 import re
 import uuid
 
+from starlette.background import BackgroundTask
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.background import BackgroundTask
 
 from app.db.session import SessionLocal
 from app.services.backbone.audit_service import AuditService

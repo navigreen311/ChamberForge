@@ -1,8 +1,6 @@
 """Integration tests for the Notifications API — CRUD, read status, filtering."""
 import uuid
 
-import pytest
-
 from app.services.backbone.notifications import NotificationService
 
 

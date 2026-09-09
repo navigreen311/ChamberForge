@@ -5,9 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
-from app.models.user import User
 from app.services.backbone.notifications import NotificationService
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])

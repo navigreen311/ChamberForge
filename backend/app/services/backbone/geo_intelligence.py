@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 _JURISDICTION_RULES: dict[str, dict[str, Any]] = {
     "US": {
         "country": "United States",

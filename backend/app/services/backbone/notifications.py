@@ -41,7 +41,7 @@ class NotificationService:
         """Get unread notifications for a user."""
         return (
             db.query(Notification)
-            .filter(Notification.user_id == user_id, Notification.is_read == False)
+            .filter(Notification.user_id == user_id, not Notification.is_read)
             .order_by(Notification.created_at.desc())
             .limit(limit)
             .all()
@@ -76,7 +76,7 @@ class NotificationService:
         """Mark all notifications as read for a user. Returns count marked."""
         count = (
             db.query(Notification)
-            .filter(Notification.user_id == user_id, Notification.is_read == False)
+            .filter(Notification.user_id == user_id, not Notification.is_read)
             .update({"is_read": True})
         )
         db.commit()
@@ -87,7 +87,7 @@ class NotificationService:
         """Get count of unread notifications for a user."""
         return (
             db.query(func.count(Notification.id))
-            .filter(Notification.user_id == user_id, Notification.is_read == False)
+            .filter(Notification.user_id == user_id, not Notification.is_read)
             .scalar()
         )
 

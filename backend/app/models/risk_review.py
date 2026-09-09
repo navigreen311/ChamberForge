@@ -3,8 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
-from sqlalchemy import Column, String, Text, DateTime
-
+from sqlalchemy import Column, DateTime, String, Text
 
 from app.db.session import Base
 

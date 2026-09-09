@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from app.models.white_label import WhiteLabelConfig
 
-
 # Valid hex color pattern
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 

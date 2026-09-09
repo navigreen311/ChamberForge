@@ -1,10 +1,8 @@
 """Tests for database backup Celery tasks."""
-import os
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # automated_db_backup
@@ -39,7 +37,7 @@ class TestAutomatedDbBackup:
         # Create a temp file so os.path.getsize works
         import tempfile
 
-        tmp_dir = tempfile.gettempdir()
+        tempfile.gettempdir()
         # We need the file to exist when getsize is called
         with patch("app.jobs.tasks.backup_tasks.os.path.getsize", return_value=1024):
             with patch("app.jobs.tasks.backup_tasks.os.path.exists", return_value=True):
@@ -186,7 +184,7 @@ class TestRotateOldBackups:
 
     def test_deletion_when_over_limit(self):
         """Old backups beyond retention count are deleted."""
-        from app.jobs.tasks.backup_tasks import _rotate_old_backups, RETENTION_COUNT
+        from app.jobs.tasks.backup_tasks import RETENTION_COUNT, _rotate_old_backups
 
         mock_s3 = MagicMock()
         total = RETENTION_COUNT + 5

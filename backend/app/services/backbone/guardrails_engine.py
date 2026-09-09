@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
-
 
 _LICENSED_ROLES = {"lawyer", "doctor", "financial_advisor", "licensed_security",
                    "attorney", "physician", "cpa", "registered_investment_advisor"}

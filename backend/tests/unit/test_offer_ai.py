@@ -1,10 +1,10 @@
 """Tests for OfferAI service."""
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.agents.offer_ai import OfferAI, SAMPLE_OFFER, SAMPLE_VALUE_STACK
+from app.services.agents.offer_ai import SAMPLE_OFFER, SAMPLE_VALUE_STACK, OfferAI
 
 
 class TestOfferAINoKey:

@@ -3,19 +3,16 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.cache import cache
+from app.core.dependencies import get_workspace_id
 from app.core.exceptions import NotFoundError, ValidationError
 from app.db.session import get_db
 from app.models.enums import LifecycleStage, PainCategory, WealthTier
-from app.models.user import User
 from app.schemas.problem import ProblemCreate, ProblemList, ProblemRead, ProblemUpdate
 from app.services.backbone.problem_library import ProblemLibrary
-from app.services.backbone.search_indices import PROBLEM_INDEX
-from app.core.cache import cache
-from app.services.backbone.search_sync import remove_from_index, sync_problem
 
 router = APIRouter(prefix="/api/v1/problems", tags=["problems"])
 library = ProblemLibrary()

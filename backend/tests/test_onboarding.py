@@ -1,6 +1,7 @@
 """Tests for OnboardingService — status, complete, skip, dismiss."""
 import pytest
-from app.services.backbone.onboarding import OnboardingService, TOTAL_STEPS
+
+from app.services.backbone.onboarding import TOTAL_STEPS, OnboardingService
 
 
 class TestGetOnboardingStatus:

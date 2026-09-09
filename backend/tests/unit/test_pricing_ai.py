@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.agents.pricing_ai import PricingAI, MARKET_BENCHMARKS
+from app.services.agents.pricing_ai import PricingAI
 
 
 class TestSimulateMargins:

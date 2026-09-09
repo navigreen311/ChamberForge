@@ -1,5 +1,4 @@
 """Integration tests for the Problems API — full CRUD and filtering."""
-import pytest
 
 
 class TestProblemsCRUD:

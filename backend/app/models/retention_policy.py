@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Column, DateTime, Integer, String
 
-
 from app.db.session import Base
 
 

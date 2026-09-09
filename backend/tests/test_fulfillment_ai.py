@@ -1,9 +1,9 @@
 """Tests for FulfillmentAI service."""
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
 
 from app.services.agents.fulfillment_ai import FulfillmentAI
-
 
 SAMPLE_OFFER = {
     "name": "Family Office CFO Services",

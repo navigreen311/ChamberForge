@@ -1,9 +1,7 @@
 """Tests for PlaybookEngine service layer."""
 import uuid
 
-import pytest
-
-from app.services.backbone.playbook_engine import PlaybookEngine, DEFAULT_SECTIONS
+from app.services.backbone.playbook_engine import DEFAULT_SECTIONS, PlaybookEngine
 
 
 class TestGetPlaybooks:

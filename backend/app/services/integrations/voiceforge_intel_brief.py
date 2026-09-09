@@ -90,7 +90,7 @@ class IntelBriefAudio:
                     "channels": 1,
                     "sentence_count": sentence_count,
                     "estimated_file_size_kb": round(duration * 24),  # ~192kbps mono
-                    "generated_at": f"2026-04-03T12:00:00Z",
+                    "generated_at": "2026-04-03T12:00:00Z",
                 },
             }
 

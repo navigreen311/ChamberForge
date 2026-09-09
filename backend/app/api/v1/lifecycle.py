@@ -5,17 +5,16 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from app.core.dependencies import get_workspace_id
-
 from app.services.backbone import (
-    IntelBrief,
-    ClientHealth,
-    OfferBrand,
     AlumniSystem,
+    ClientHealth,
+    IntelBrief,
     MoatTracker,
+    MobileAccess,
+    OfferBrand,
+    ScenarioPlanner,
     SunsetProtocol,
     TeamTrainer,
-    ScenarioPlanner,
-    MobileAccess,
 )
 
 router = APIRouter(prefix="/api/v1/lifecycle", tags=["lifecycle"])

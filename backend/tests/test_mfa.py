@@ -266,7 +266,7 @@ class TestLoginWithMFA:
         assert "mfa_token" in data
 
     def test_mfa_verify_completes_login(self, mfa_client, mfa_user, mfa_db):
-        headers = _auth_header(mfa_user)
+        _auth_header(mfa_user)
 
         # Enable MFA directly via service to avoid TOTP window conflicts
         result = MFAService.generate_secret(user_id=str(mfa_user.id), db=mfa_db)
@@ -292,7 +292,7 @@ class TestLoginWithMFA:
         assert "refresh_token" in data
 
     def test_mfa_verify_with_backup_code(self, mfa_client, mfa_user, mfa_db):
-        headers = _auth_header(mfa_user)
+        _auth_header(mfa_user)
 
         # Enable MFA directly via service
         result = MFAService.generate_secret(user_id=str(mfa_user.id), db=mfa_db)

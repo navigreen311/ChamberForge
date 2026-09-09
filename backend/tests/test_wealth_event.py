@@ -1,10 +1,11 @@
 """Tests for Wealth Event Monitor service."""
 import uuid
-import pytest
 from datetime import datetime
 
-from app.services.backbone.wealth_event_monitor import WealthEventMonitor
+import pytest
+
 from app.models.wealth_event import WealthEvent
+from app.services.backbone.wealth_event_monitor import WealthEventMonitor
 
 
 @pytest.fixture()

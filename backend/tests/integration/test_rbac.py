@@ -1,5 +1,4 @@
 """Integration tests for RBAC — verify role-based access control on endpoints."""
-import pytest
 from tests.conftest import make_auth_header
 
 

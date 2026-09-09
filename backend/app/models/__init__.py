@@ -2,7 +2,7 @@
 from app.models.ai_usage import AIUsageLog  # noqa: F401
 from app.models.audit_log import AuditLog  # noqa: F401
 from app.models.automation_rule import AutomationRule  # noqa: F401
-from app.models.billing import Subscription, Invoice, Referral  # noqa: F401
+from app.models.billing import Invoice, Referral, Subscription  # noqa: F401
 from app.models.client import Client  # noqa: F401
 from app.models.client_portal import ClientPortalAccess  # noqa: F401
 from app.models.community_insight import CommunityInsight  # noqa: F401

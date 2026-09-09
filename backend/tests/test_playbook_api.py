@@ -1,16 +1,14 @@
 """Tests for playbook API endpoints."""
-import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models import Playbook, PlaybookActivation  # noqa: F401 — register models
 from app.db.session import Base, get_db
 from app.main import app
+from app.models import Playbook, PlaybookActivation  # noqa: F401 — register models
 from app.services.backbone.playbook_engine import PlaybookEngine
-
 
 WORKSPACE_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 

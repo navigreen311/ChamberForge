@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.db.session import get_db
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/v1/deliver", tags=["deliver"])
 

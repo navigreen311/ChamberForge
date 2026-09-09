@@ -1,9 +1,7 @@
 """Evidence model for the Evidence Graph."""
 import uuid
-from datetime import date, datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, Index, JSON, String, func
-
+from sqlalchemy import JSON, Column, Date, DateTime, Float, Index, String, func
 
 from app.db.session import Base
 

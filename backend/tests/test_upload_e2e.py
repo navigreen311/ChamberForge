@@ -3,8 +3,6 @@ import io
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
-
 
 WORKSPACE_ID = "00000000-0000-0000-0000-000000000001"
 

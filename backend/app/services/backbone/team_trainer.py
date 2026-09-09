@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # Role-specific curriculum definitions
 CURRICULA: dict[str, dict[str, Any]] = {
     "relationship_manager": {

@@ -6,6 +6,7 @@ import pytest
 
 from app.jobs.celery_app import celery_app
 
+
 # Use fixture to enable eager mode only during these tests
 @pytest.fixture(autouse=True)
 def _celery_eager():

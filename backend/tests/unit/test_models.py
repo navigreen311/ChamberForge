@@ -1,24 +1,33 @@
 """Tests for SQLAlchemy models and enums."""
 import uuid
-from datetime import datetime, date
 
-import pytest
-
+from app.models.audit_log import AuditLog
+from app.models.client import Client
 from app.models.enums import (
-    WealthTier, BuyerType, LifeStage, TriggerEvent, PainCategory,
-    WTPProfile, TrustChannel, ComplianceRisk, DeliveryModel, ProofMetric,
-    LifecycleStage, UserRole, WorkspacePlan, OfferStatus, ClientStatus, SourceType,
+    BuyerType,
+    ClientStatus,
+    ComplianceRisk,
+    DeliveryModel,
+    LifecycleStage,
+    LifeStage,
+    OfferStatus,
+    PainCategory,
+    ProofMetric,
+    SourceType,
+    TriggerEvent,
+    TrustChannel,
+    UserRole,
+    WealthTier,
+    WorkspacePlan,
+    WTPProfile,
 )
+from app.models.evidence import Evidence
+from app.models.household_graph import HouseholdGraph
+from app.models.offer import Offer
+from app.models.playbook import Playbook
+from app.models.problem import Problem
 from app.models.user import User
 from app.models.workspace import Workspace
-from app.models.problem import Problem
-from app.models.evidence import Evidence
-from app.models.offer import Offer
-from app.models.client import Client
-from app.models.household_graph import HouseholdGraph
-from app.models.playbook import Playbook
-from app.models.audit_log import AuditLog
-
 
 # ---------- Enum tests ----------
 
@@ -140,7 +149,7 @@ class TestProblemModel:
 
     def test_problem_has_relationship_attrs(self):
         """Problem should declare evidences and offers relationships."""
-        p = Problem(
+        Problem(
             id=uuid.uuid4(),
             workspace_id=uuid.uuid4(),
             title="Rel test",

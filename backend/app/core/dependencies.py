@@ -1,11 +1,11 @@
 """FastAPI dependency injection helpers for auth and RBAC."""
 from fastapi import Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AuthenticationError, AuthorizationError
-from app.db.session import get_db
 from app.core.security import decode_access_token
+from app.db.session import get_db
 from app.models.user import User
 
 security_scheme = HTTPBearer()

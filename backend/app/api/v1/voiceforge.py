@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.services.integrations.voiceforge_client import VoiceForgeClient
-from app.services.integrations.voiceforge_persona_sim import PersonaSimIntegration
-from app.services.integrations.voiceforge_intel_brief import IntelBriefAudio
 from app.services.integrations.voiceforge_crisis import CrisisEscalation
 from app.services.integrations.voiceforge_health import VoiceHealthAnalysis
+from app.services.integrations.voiceforge_intel_brief import IntelBriefAudio
+from app.services.integrations.voiceforge_persona_sim import PersonaSimIntegration
 from app.services.integrations.voiceforge_trainer import VoiceTrainer
 
 router = APIRouter(prefix="/api/v1/voiceforge", tags=["voiceforge"])

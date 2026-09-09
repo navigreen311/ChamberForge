@@ -61,7 +61,7 @@ class DealDesk:
     def generate_sow(offer_data: dict) -> dict:
         """Generate a scope-of-work document structure."""
         offer_name = offer_data.get("name", "Premium Service")
-        value_stack = offer_data.get("value_stack", [])
+        offer_data.get("value_stack", [])
 
         phases = [
             {

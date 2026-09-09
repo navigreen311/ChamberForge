@@ -1,8 +1,6 @@
 """Integration tests for the Compliance API — consent lifecycle and audit trail."""
 import uuid
 
-import pytest
-
 CLIENT_ID = str(uuid.uuid4())
 
 
@@ -171,7 +169,7 @@ class TestConsentQuery:
 
     def test_get_deletion_candidates(self, authed_client):
         resp = authed_client.get(
-            f"/api/v1/compliance/consent/deletion-candidates"
+            "/api/v1/compliance/consent/deletion-candidates"
         )
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
@@ -196,6 +194,6 @@ class TestExplainability:
 class TestAuditTrail:
     def test_get_comms_audit_trail(self, authed_client):
         resp = authed_client.get(
-            f"/api/v1/compliance/comms/audit-trail"
+            "/api/v1/compliance/comms/audit-trail"
         )
         assert resp.status_code == 200

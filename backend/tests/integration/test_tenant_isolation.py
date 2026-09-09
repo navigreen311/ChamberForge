@@ -14,7 +14,6 @@ from sqlalchemy.pool import StaticPool
 from app.db.session import Base, get_db
 from app.main import app
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -118,7 +117,7 @@ class TestProblemIsolation:
             headers=tenant_a["headers"],
         )
         assert resp.status_code == 201
-        problem_id = resp.json()["id"]
+        resp.json()["id"]
 
         # User A can see it
         resp_a = isolated_client.get("/api/v1/problems/", headers=tenant_a["headers"])

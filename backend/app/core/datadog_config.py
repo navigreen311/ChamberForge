@@ -2,8 +2,6 @@
 
 import os
 
-from app.core.config import settings
-
 
 def init_datadog():
     """Initialize Datadog tracing and auto-instrumentation.
@@ -16,7 +14,7 @@ def init_datadog():
         return
 
     try:
-        from ddtrace import tracer, patch_all  # type: ignore[import-untyped]
+        from ddtrace import patch_all, tracer  # type: ignore[import-untyped]
 
         tracer.configure(
             hostname=os.environ.get("DD_AGENT_HOST", "localhost"),

@@ -1,8 +1,6 @@
 """Integration tests for the Billing API — customers, subscriptions, invoices, revenue."""
 import uuid
 
-import pytest
-
 CLIENT_ID = str(uuid.uuid4())
 
 

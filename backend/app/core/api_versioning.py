@@ -1,7 +1,6 @@
 """API versioning utilities — version header validation and deprecation decorator."""
 from fastapi import Header, HTTPException
 
-
 SUPPORTED_VERSIONS = ["2026-04-01"]
 
 

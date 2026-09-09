@@ -1,5 +1,6 @@
 """Tests for IntelBrief service."""
 import pytest
+
 from app.services.backbone.intel_brief import IntelBrief
 
 

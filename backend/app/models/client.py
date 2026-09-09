@@ -3,11 +3,10 @@ import uuid
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
-from sqlalchemy import Column, String, DateTime, Float
-
+from sqlalchemy import Column, DateTime, Float, String
 
 from app.db.session import Base
-from app.models.enums import WealthTier, ClientStatus
+from app.models.enums import ClientStatus, WealthTier
 
 
 class Client(Base):

@@ -141,9 +141,8 @@ class AIEvalLab:
         expected_summary, actual_summary}]}.
         """
         from app.services.backbone.golden_test_runner import (
-            load_test_cases,
-            evaluate_output,
             _summarise,
+            load_test_cases,
         )
 
         active = AIEvalLab.get_active_prompt(db, agent_name)

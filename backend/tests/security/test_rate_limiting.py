@@ -1,5 +1,4 @@
 """Tests for rate-limiting middleware."""
-import time
 
 import jwt
 from fastapi import FastAPI

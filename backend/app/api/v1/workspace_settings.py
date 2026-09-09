@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, require_role
 from app.core.security import get_password_hash
 from app.db.session import get_db
+from app.models.ai_usage import AIUsageLog
+from app.models.offer import Offer
+from app.models.problem import Problem
 from app.models.user import User
 from app.models.workspace import Workspace
-from app.models.problem import Problem
-from app.models.offer import Offer
-from app.models.ai_usage import AIUsageLog
 
 router = APIRouter(prefix="/api/v1/workspace-settings", tags=["workspace-settings"])
 

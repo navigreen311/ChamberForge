@@ -3,11 +3,10 @@ import uuid
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
-from sqlalchemy import Column, String, DateTime, JSON, Text
-
+from sqlalchemy import JSON, Column, DateTime, String, Text
 
 from app.db.session import Base
-from app.models.enums import OfferStatus, DeliveryModel
+from app.models.enums import DeliveryModel, OfferStatus
 
 
 class Offer(Base):

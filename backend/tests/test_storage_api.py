@@ -1,14 +1,12 @@
 """Tests for storage API endpoints."""
-import io
 import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.db.session import get_db
-
+from app.main import app
 
 # ---------------------------------------------------------------------------
 # Fixtures

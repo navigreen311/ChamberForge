@@ -1,11 +1,11 @@
 """Tests for SearchService — graceful degradation and mocked ES."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.backbone.search_service import SearchService
+import pytest
 
+from app.services.backbone.search_service import SearchService
 
 # ── Unavailable ES returns empty results ─────────────────────────────
 

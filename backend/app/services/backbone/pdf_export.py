@@ -4,19 +4,17 @@ from __future__ import annotations
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    PageBreak,
 )
 
 logger = logging.getLogger(__name__)
@@ -133,7 +131,7 @@ class PDFExportService:
         watermark_text = f"CF-WM|user={user_id}|ws={workspace_id}|ts={timestamp}"
 
         # Rebuild a single-page watermark overlay and prepend metadata
-        buf = io.BytesIO(pdf_bytes)
+        io.BytesIO(pdf_bytes)
         # Inject watermark into PDF metadata via the /Info dict hack:
         # We append a PDF comment that survives most viewers.
         watermark_comment = f"\n% ChamberForge-Watermark: {watermark_text}\n".encode()

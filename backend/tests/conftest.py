@@ -3,45 +3,44 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import Base, get_db
 from app.main import app
-from app.services.backbone.playbook_engine import PlaybookEngine
+from app.models.ai_usage import AIUsageLog as _AIU  # noqa: F401
+from app.models.audit_log import AuditLog as _AL  # noqa: F401
+from app.models.automation_rule import AutomationRule as _AR  # noqa: F401
+from app.models.billing import Subscription as _Sub  # noqa: F401
+from app.models.client import Client as _Client  # noqa: F401
+from app.models.consent import ConsentRecord as _Consent  # noqa: F401
+from app.models.crisis_incident import CrisisIncident as _CI  # noqa: F401
+from app.models.deletion_request import DeletionRequest as _DR  # noqa: F401
+from app.models.document import Document as _Doc  # noqa: F401
+from app.models.drip_status import DripStatus as _DS  # noqa: F401
+from app.models.email_log import EmailLog as _EL  # noqa: F401
+from app.models.evidence import Evidence as _Evidence  # noqa: F401
+from app.models.feature_flag import FeatureFlag as _FF  # noqa: F401
+from app.models.household_graph import HouseholdGraph as _HG  # noqa: F401
+from app.models.legal_hold import LegalHold as _LH  # noqa: F401
+from app.models.message import SecureMessage as _Msg  # noqa: F401
+from app.models.notification import Notification as _Notif  # noqa: F401
+from app.models.offer import Offer as _Offer  # noqa: F401
+from app.models.playbook import Playbook as _PB  # noqa: F401
+from app.models.playbook_activation import PlaybookActivation as _PBA  # noqa: F401
+from app.models.problem import Problem as _Problem  # noqa: F401
+from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
+from app.models.retention_policy import RetentionPolicy as _RP  # noqa: F401
+from app.models.risk_review import RiskReview as _RR  # noqa: F401
+from app.models.template_version import TemplateVersion as _TV  # noqa: F401
 
 # Import ALL models so Base.metadata knows every table before create_all.
 # Use "from ... import ..." form to avoid rebinding the name ``app``.
 from app.models.user import User as _User  # noqa: F401
-from app.models.workspace import Workspace as _Workspace  # noqa: F401
-from app.models.problem import Problem as _Problem  # noqa: F401
-from app.models.evidence import Evidence as _Evidence  # noqa: F401
-from app.models.offer import Offer as _Offer  # noqa: F401
-from app.models.billing import Subscription as _Sub, Invoice as _Inv, Referral as _Ref  # noqa: F401
-from app.models.client import Client as _Client  # noqa: F401
-from app.models.consent import ConsentRecord as _Consent  # noqa: F401
-from app.models.notification import Notification as _Notif  # noqa: F401
-from app.models.playbook import Playbook as _PB  # noqa: F401
-from app.models.playbook_activation import PlaybookActivation as _PBA  # noqa: F401
-from app.models.risk_review import RiskReview as _RR  # noqa: F401
-from app.models.household_graph import HouseholdGraph as _HG  # noqa: F401
-from app.models.audit_log import AuditLog as _AL  # noqa: F401
-from app.models.ai_usage import AIUsageLog as _AIU  # noqa: F401
-from app.models.automation_rule import AutomationRule as _AR  # noqa: F401
-from app.models.crisis_incident import CrisisIncident as _CI  # noqa: F401
-from app.models.deletion_request import DeletionRequest as _DR  # noqa: F401
-from app.models.document import Document as _Doc  # noqa: F401
-from app.models.email_log import EmailLog as _EL  # noqa: F401
-from app.models.feature_flag import FeatureFlag as _FF  # noqa: F401
-from app.models.legal_hold import LegalHold as _LH  # noqa: F401
-from app.models.message import SecureMessage as _Msg  # noqa: F401
-from app.models.prompt_version import PromptVersion as _PV  # noqa: F401
-from app.models.retention_policy import RetentionPolicy as _RP  # noqa: F401
-from app.models.template_version import TemplateVersion as _TV  # noqa: F401
-from app.models.drip_status import DripStatus as _DS  # noqa: F401
 from app.models.user_mfa import MFAConfig as _MFA  # noqa: F401
-
+from app.models.workspace import Workspace as _Workspace  # noqa: F401
+from app.services.backbone.playbook_engine import PlaybookEngine
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -101,8 +100,9 @@ def _patch_uuid_for_sqlite():
     when the caller passes a plain string.  We replace the bind/result
     processors so that both str and uuid.UUID inputs are handled.
     """
-    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
     import uuid as _uuid
+
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
     _orig_bind_processor = PG_UUID.bind_processor
     _orig_result_processor = PG_UUID.result_processor
@@ -251,10 +251,10 @@ def authed_client(db_session):
     Provides a pre-authenticated admin user whose ``workspace_id`` is a
     deterministic value so tests can assert on it.
     """
+    from app.core.dependencies import get_current_user, get_workspace_id
+    from app.core.security import get_password_hash
     from app.models.user import User
     from app.models.workspace import Workspace
-    from app.core.security import get_password_hash
-    from app.core.dependencies import get_current_user, get_workspace_id
 
     ws_id = str(uuid.uuid4())
     ws = Workspace(id=ws_id, name="Auto Workspace", slug="auto-ws", plan="core", settings={})
@@ -307,9 +307,9 @@ def workspace_id():
 @pytest.fixture()
 def admin_user(db_session):
     """Create an admin user in the test database."""
+    from app.core.security import get_password_hash
     from app.models.user import User
     from app.models.workspace import Workspace
-    from app.core.security import get_password_hash
 
     ws = Workspace(
         id=str(uuid.uuid4()),
@@ -339,8 +339,8 @@ def admin_user(db_session):
 @pytest.fixture()
 def operator_user(db_session, admin_user):
     """Create an operator user in the same workspace."""
-    from app.models.user import User
     from app.core.security import get_password_hash
+    from app.models.user import User
 
     user = User(
         id=str(uuid.uuid4()),
@@ -359,8 +359,8 @@ def operator_user(db_session, admin_user):
 @pytest.fixture()
 def viewer_user(db_session, admin_user):
     """Create a viewer user in the same workspace."""
-    from app.models.user import User
     from app.core.security import get_password_hash
+    from app.models.user import User
 
     user = User(
         id=str(uuid.uuid4()),

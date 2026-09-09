@@ -1,6 +1,6 @@
 """Tests for AI cost tracking service."""
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest

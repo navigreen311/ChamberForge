@@ -2,9 +2,7 @@
 
 Verify that passwords, API keys, internal IDs, and stack traces are never leaked.
 """
-import json
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import settings

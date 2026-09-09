@@ -1,8 +1,6 @@
 """Tests for Offers API endpoints."""
 import uuid
 
-import pytest
-
 
 class TestOffersCRUD:
     def test_create_offer(self, authed_client, sample_offer_payload):

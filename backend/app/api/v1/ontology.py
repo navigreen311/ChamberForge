@@ -1,8 +1,6 @@
 """Ontology API — Problem Ontology Engine endpoints."""
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session

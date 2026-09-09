@@ -5,7 +5,6 @@ from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy import Column, DateTime, String, Text
 
-
 from app.db.session import Base
 
 

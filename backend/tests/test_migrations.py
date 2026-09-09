@@ -2,11 +2,10 @@
 import os
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.pool import StaticPool
 
+from alembic import command
 
 # All tables expected after running all migrations through head.
 EXPECTED_TABLES = {

@@ -2,9 +2,7 @@
 
 Verify that parameterized queries prevent injection on all text-input endpoints.
 """
-import pytest
 from fastapi.testclient import TestClient
-
 
 SQL_PAYLOADS = [
     "' OR 1=1--",

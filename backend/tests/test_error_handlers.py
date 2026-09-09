@@ -1,6 +1,6 @@
 """Tests for standardized error responses — exception classes and global handlers."""
 import pytest
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field
@@ -20,7 +20,6 @@ from app.core.exceptions import (
     RateLimitError,
     ValidationError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers — tiny FastAPI app wired with our handlers
