@@ -142,3 +142,9 @@ jobs:
           python-version: "3.12"
       - name: Check every model has a table in the revision chain
         run: python scripts/check_migration_drift.py --baseline scripts/migration_drift_baseline.txt
+      # P-01 (D4). Prisma owns the domain models. Ten still exist as
+      # SQLAlchemy models with 25 files importing them; this ratchets that
+      # set down rather than letting new code join it. Ownership map is
+      # docs/data-architecture.md. P-26 asserts the baseline is empty.
+      - name: Check nothing new depends on a Prisma-owned model
+        run: python scripts/check_domain_ownership.py
