@@ -28,7 +28,7 @@ database query.
 | # | Package | PR | Merge SHA | Suite | Reverts | When |
 |---|---------|----|-----------|-------|---------|------|
 | 1 | P-00 Coordinator | [#19](https://github.com/navigreen311/ChamberForge/pull/19) | `593333a` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
-| 2 | P-01 Schema Reconciliation | _in flight_ | — | see PR | 0 | 2026-09-10 |
+| 2 | P-01 Schema Reconciliation | [#20](https://github.com/navigreen311/ChamberForge/pull/20) | `d996f14` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
 
 ---
 
@@ -173,6 +173,28 @@ layout — that is the seam.
 concurrent migrations produce two heads with the same parent and Alembic
 refuses to run. **Never add a dependency** — P-00 landed every one the run
 needs. Both are escalations, not edits.
+
+---
+
+## Known-red: the E2E workflow
+
+`E2E Tests` fails on every PR and **is not a gate**. It has never passed —
+0 of 5 runs before P-00, which made it *runnable* by declaring the missing
+`@playwright/test`. It still fails, for a structural reason:
+
+> `beforeEach` login hooks time out on `locator.fill`. The workflow runs
+> `npm run dev` with **no Postgres service and no `DATABASE_URL`**, so
+> NextAuth cannot authenticate against Prisma and no test gets past login.
+
+**Owner: P-26**, together with the seven Phase 3 suites. Fixing it needs two
+things: a `postgres` service plus migrate-and-seed steps in `e2e.yml` (P-00
+territory — the coordinator lands it as an amendment), and specs that assert
+against seeded data rather than fixtures.
+
+**The gate is the `CI` workflow**, whose four jobs must all be green. Do not
+treat an e2e failure as a merge blocker until P-26 lands, and do not treat it
+as permission to ignore a *new* e2e failure either — if the failure mode
+changes from "timeout at login" to anything else, investigate.
 
 ---
 
