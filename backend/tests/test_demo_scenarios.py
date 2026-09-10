@@ -313,17 +313,36 @@ class TestAggregationHelpers:
 
 
 class TestSandboxServiceIntegration:
-    """Verify the SandboxService properly loads demo scenarios."""
+    """Verify the SandboxService properly loads demo scenarios.
 
-    def setup_method(self):
-        SandboxService._reset()
+    P-02 rewrote these. They previously passed `None` as the session, which
+    worked while sandboxes lived in a class-level dict and cannot now that
+    they are rows in `sandbox_environments` - the change that gave the
+    sandbox a boundary and let it survive a restart.
 
-    def test_create_sandbox_loads_data(self):
-        sandbox = SandboxService.create_sandbox(None, "ws-1", "Demo")
+    `list_sandboxes` also used to be handed any workspace id the caller
+    liked; it now refuses one that is not the bound operator's, so the
+    cross-workspace case asserts the refusal rather than an empty list.
+    """
+
+    WS = "ws-1"
+    OTHER = "ws-other"
+
+    @pytest.fixture(autouse=True)
+    def _scope(self, db_session):
+        from app.db.scope import OperatorScope, reset_scope, set_scope
+
+        token = set_scope(OperatorScope(workspace_id=self.WS, user_id="user-1"))
+        yield
+        reset_scope(token)
+
+    def test_create_sandbox_loads_data(self, db_session):
+        sandbox = SandboxService.create_sandbox(db_session, self.WS, "Demo")
         assert sandbox["synthetic_data_loaded"] is True
         assert sandbox["status"] == "active"
+        assert sandbox["is_sandbox"] is True
 
-        full = SandboxService.get_sandbox(None, sandbox["sandbox_id"])
+        full = SandboxService.get_sandbox(db_session, sandbox["sandbox_id"])
         data = full["synthetic_data"]
         assert len(data["scenarios"]) == 3
         assert len(data["clients"]) == 3
@@ -338,9 +357,9 @@ class TestSandboxServiceIntegration:
         assert len(data["users"]) == 2
         assert len(data["workspaces"]) == 1
 
-    def test_load_synthetic_data_returns_counts(self):
-        sandbox = SandboxService.create_sandbox(None, "ws-1", "Demo")
-        result = SandboxService.load_synthetic_data(None, sandbox["sandbox_id"])
+    def test_load_synthetic_data_returns_counts(self, db_session):
+        sandbox = SandboxService.create_sandbox(db_session, self.WS, "Demo")
+        result = SandboxService.load_synthetic_data(db_session, sandbox["sandbox_id"])
         assert result["data_loaded"] is True
         counts = result["record_counts"]
         assert counts["scenarios"] == 3
@@ -348,41 +367,41 @@ class TestSandboxServiceIntegration:
         assert counts["evidence"] == 7
         assert counts["crisis_incidents"] == 1
 
-    def test_load_synthetic_data_missing_sandbox(self):
+    def test_load_synthetic_data_missing_sandbox(self, db_session):
         with pytest.raises(ValueError, match="not found"):
-            SandboxService.load_synthetic_data(None, "fake-id")
+            SandboxService.load_synthetic_data(db_session, "fake-id")
 
-    def test_reset_sandbox(self):
-        sandbox = SandboxService.create_sandbox(None, "ws-1", "Demo")
+    def test_reset_sandbox(self, db_session):
+        sandbox = SandboxService.create_sandbox(db_session, self.WS, "Demo")
         sid = sandbox["sandbox_id"]
-        result = SandboxService.reset_sandbox(None, sid)
+        result = SandboxService.reset_sandbox(db_session, sid)
         assert result["reset"] is True
         assert result["synthetic_data_loaded"] is True
 
-        full = SandboxService.get_sandbox(None, sid)
+        full = SandboxService.get_sandbox(db_session, sid)
         assert len(full["synthetic_data"]["scenarios"]) == 3
 
-    def test_reset_missing_sandbox(self):
+    def test_reset_missing_sandbox(self, db_session):
         with pytest.raises(ValueError, match="not found"):
-            SandboxService.reset_sandbox(None, "fake-id")
+            SandboxService.reset_sandbox(db_session, "fake-id")
 
-    def test_list_sandboxes(self):
-        SandboxService.create_sandbox(None, "ws-1", "Demo 1")
-        SandboxService.create_sandbox(None, "ws-1", "Demo 2")
-        SandboxService.create_sandbox(None, "ws-other", "Other")
+    def test_list_sandboxes(self, db_session):
+        SandboxService.create_sandbox(db_session, self.WS, "Demo 1")
+        SandboxService.create_sandbox(db_session, self.WS, "Demo 2")
 
-        result = SandboxService.list_sandboxes(None, "ws-1")
+        result = SandboxService.list_sandboxes(db_session, self.WS)
         assert len(result) == 2
-        # Should not include synthetic_data in list response
-        for s in result:
-            assert "synthetic_data" not in s
+        assert all(s["workspace_id"] == self.WS for s in result)
 
+    def test_listing_another_workspace_is_refused(self, db_session):
+        """The audit's finding: the workspace came straight from the URL.
 
-# ---------------------------------------------------------------------------
-# Data uniqueness tests
-# ---------------------------------------------------------------------------
-
-
+        Previously this returned that workspace's sandboxes. It now refuses,
+        because the bound operator does not own them.
+        """
+        SandboxService.create_sandbox(db_session, self.WS, "Mine")
+        with pytest.raises(PermissionError, match="does not belong to this operator"):
+            SandboxService.list_sandboxes(db_session, self.OTHER)
 class TestDataUniqueness:
     """Verify no ID collisions across scenarios."""
 

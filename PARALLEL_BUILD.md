@@ -179,7 +179,7 @@ needs. Both are escalations, not edits.
 ## The two progress counters
 
 **Auth coverage** — `tests/security/test_auth_coverage.py` counts routes
-with no auth dependency. **206 → 0** across merges 13–18. Advisory today;
+with no auth dependency. **206 → 187** after P-02 closed the primitives router; **→ 0** across merges 13–18. Advisory today;
 P-26 sets `AUTH_COVERAGE_ENFORCING=1` and it becomes a gate. Router
 packages must not edit the allowlist to make a slice pass.
 

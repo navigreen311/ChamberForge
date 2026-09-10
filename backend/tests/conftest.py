@@ -287,9 +287,28 @@ def authed_client(db_session):
     app.dependency_overrides[get_current_user] = override_current_user
     app.dependency_overrides[get_workspace_id] = override_workspace_id
     _reset_rate_limiter()
+
+    # P-02: also send a REAL access token.
+    #
+    # Dependency overrides are resolved by the router, which runs after the
+    # middleware stack. TenantMiddleware now refuses a request with no
+    # resolvable identity, and it cannot see an override - so a fixture that
+    # authenticates only by override would be testing every route with the
+    # security layer effectively disabled. Issuing a genuine token means the
+    # suite exercises the real chain: middleware decodes it, binds the
+    # operator scope, and the overrides then keep the rest of the test
+    # hermetic.
+    from app.core.security import create_access_token
+
+    token = create_access_token(
+        {"sub": user.id, "workspace_id": ws_id, "role": user.role}
+    )
+
     with TestClient(app) as c:
+        c.headers.update({"Authorization": f"Bearer {token}"})
         c._test_user = user
         c._test_workspace_id = ws_id
+        c._test_token = token
         yield c
     app.dependency_overrides.clear()
 
