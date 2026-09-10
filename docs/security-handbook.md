@@ -290,3 +290,67 @@ By accessing ChamberForge systems, you acknowledge that you have read, understoo
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
 | 2026-04-03 | 1.0 | Engineering | Initial security handbook |
+
+## Audit trail integrity (P-03)
+
+ChamberForge keeps **two audit surfaces** and never unifies them (D5a):
+
+| | Prisma `AuditLog` | FastAPI `audit_logs` |
+|---|---|---|
+| Records | operator actions in the UI | system-layer mutations |
+| Written by | `frontend/src/lib/audit.ts` | `AuditMiddleware` |
+
+> **Operator audit trail: Prisma `AuditLog`. System audit trail: FastAPI `audit_logs`. Full compliance export joins both by timestamp range.**
+
+### Three properties, and what enforces each
+
+**Nothing is dropped.** The middleware used to return early whenever it could
+not attribute a mutation to a workspace. With 187 routes still accepting
+anonymous requests, that made the least-authenticated surface in the platform
+also the least audited - an attacker's requests were the ones leaving no
+trace. Anonymous mutations are now recorded against a sentinel workspace.
+A row saying "we do not know who did this" is worth far more than no row.
+
+**Tampering is detectable.** Each entry hashes its content together with the
+previous entry's hash. Change a field and that entry stops matching; remove
+an entry and the next one points at nothing. `verify_chain` names the first
+row where the trail stops adding up, and reports every break rather than
+stopping at the first - one tampered row makes every later link mismatch, and
+being told only about the first makes a single edit look like a rewrite.
+
+This is what the database trigger cannot give you. P-01's trigger stops
+UPDATE and DELETE against the live database; the chain catches a restore from
+a doctored backup, or a migration that dropped the trigger.
+
+**A failed write is reported.** Previously the exception was logged and
+swallowed, so audit loss was invisible to monitoring - the one failure mode
+nobody notices is the trail quietly stopping. Failures now raise a Sentry
+event and a `chamberforge.audit.write_failed` metric.
+
+### The cross-language contract
+
+Both surfaces use the same construction, so either can be verified alone and
+a joined export verifies end to end. `canonical_payload` /
+`canonicalPayload` and `compute_entry_hash` / `computeEntryHash` must stay
+byte-identical; both test suites pin the same vector, so a change to one side
+alone fails both.
+
+Two deliberate choices in that payload:
+
+- **Timestamps are epoch milliseconds, not ISO strings.** A tz-aware datetime
+  written to the column came back naive, so Python hashed one string on write
+  and a different one on read and every entry failed to verify. Python and
+  JavaScript also format ISO differently (`+00:00` versus `Z`). An integer
+  has one representation in both.
+- **`details` is excluded.** It is free-form JSON whose serialisation differs
+  between the two languages; a chain that breaks on key ordering catches
+  nothing but itself.
+
+### Verifying a trail
+
+```python
+AuditService.verify_chain(db, workspace_id)   # FastAPI surface
+```
+```ts
+await verifyChain(userId)                     // operator surface
+```

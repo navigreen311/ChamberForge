@@ -6,6 +6,13 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.audit_log import AuditLog
+from app.services.backbone.audit_chain import (
+    ChainVerification,
+    hash_for_entry,
+    latest_entry,
+    next_timestamp,
+    verify_workspace_chain,
+)
 
 
 class AuditService:
@@ -22,8 +29,13 @@ class AuditService:
         details: Optional[dict] = None,
         ip_address: Optional[str] = None,
     ) -> AuditLog:
-        """Create a single audit-log entry and flush it to the database."""
+        """Create a single audit-log entry, chained to the one before it."""
         entry = AuditLog(
+            # The model defaults id to uuid.uuid4, which returns a UUID
+            # object into a String(36) column. Postgres coerces it; SQLite
+            # refuses to bind it. Setting a string here fixes both dialects
+            # without touching the model, which P-01 owns.
+            id=str(uuid.uuid4()),
             workspace_id=workspace_id,
             user_id=user_id,
             action=action,
@@ -33,9 +45,33 @@ class AuditService:
             ip_address=ip_address,
             timestamp=datetime.now(timezone.utc),
         )
+
+        # Read the tip once, and use it for both the link and the timestamp.
+        # Two entries sharing a millisecond would make the chain order
+        # ambiguous, because id is a random uuid4 and offers no tiebreaker.
+        previous = latest_entry(db, workspace_id, AuditLog)
+        entry.timestamp = next_timestamp(previous, entry.timestamp)
+
+        # P-03 (T-012): link this entry to the tip of the workspace's chain.
+        # Done before the insert so a row is never written unhashed - a gap
+        # in the chain is indistinguishable from a deletion, and an
+        # unverifiable trail is the thing this package exists to fix.
+        entry.prev_hash = previous.entry_hash if previous else None
+        entry.entry_hash = hash_for_entry(entry, entry.prev_hash)
+
         db.add(entry)
         db.commit()
         return entry
+
+    @staticmethod
+    def verify_chain(db: Session, workspace_id: uuid.UUID) -> ChainVerification:
+        """Recompute this workspace's chain and report any break.
+
+        P-01's trigger stops UPDATE and DELETE against the live database.
+        This catches what a trigger cannot: a restore from a doctored backup,
+        or a migration that dropped the trigger and let history be rewritten.
+        """
+        return verify_workspace_chain(db, workspace_id, AuditLog)
 
     @staticmethod
     def get_audit_trail(
