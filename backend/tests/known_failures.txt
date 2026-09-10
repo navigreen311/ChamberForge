@@ -138,10 +138,6 @@ tests/test_household_graph.py::test_create_household_graph
 tests/test_household_graph.py::test_get_household_graph
 tests/test_household_graph.py::test_get_risk_summary
 tests/test_household_graph.py::test_update_merges_members
-tests/test_migrations.py::test_all_model_tables_created
-tests/test_migrations.py::test_table_count
-tests/test_migrations.py::test_upgrade_downgrade_upgrade_idempotent
-tests/test_migrations.py::test_upgrade_head
 tests/test_notifications.py::TestNotificationServiceCount::test_unread_count
 tests/test_notifications.py::TestNotificationServiceCount::test_unread_count_after_read
 tests/test_notifications.py::TestNotificationServiceCreate::test_create_critical

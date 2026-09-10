@@ -1,0 +1,34 @@
+# Files that still import a Prisma-owned domain model.
+#
+# D4 makes Prisma source of truth for these; FastAPI must stop reading
+# and writing its own copies. The check fails when this set GROWS, so
+# new code cannot start depending on a legacy table while the existing
+# dependants are migrated package by package.
+#
+# DELETE your lines when your package migrates them. Never add one.
+# Ownership map: docs/data-architecture.md. P-26 asserts this is empty.
+backend/app/api/v1/audit.py User
+backend/app/api/v1/auth.py User
+backend/app/api/v1/clients_dashboard.py Client
+backend/app/api/v1/dashboard.py Client,Offer,Problem
+backend/app/api/v1/discovery.py WealthEvent
+backend/app/api/v1/mfa.py User
+backend/app/api/v1/offers.py Client,Offer
+backend/app/api/v1/playbooks.py Playbook
+backend/app/api/v1/profile.py User
+backend/app/api/v1/storage.py Document
+backend/app/api/v1/users.py User
+backend/app/api/v1/workspace_settings.py Offer,Problem,User
+backend/app/api/v1/workspaces.py User
+backend/app/core/dependencies.py User
+backend/app/services/backbone/mfa_service.py User
+backend/app/services/backbone/notifications.py Notification
+backend/app/services/backbone/ontology_engine.py Problem
+backend/app/services/backbone/playbook_engine.py Offer,Playbook
+backend/app/services/backbone/problem_library.py Problem
+backend/app/services/backbone/records_governance.py Client,Notification,Offer
+backend/app/services/backbone/risk_review_queue.py RiskReview
+backend/app/services/backbone/rules_engine.py AutomationRule
+backend/app/services/backbone/system_health.py Problem,User
+backend/app/services/backbone/trend_radar.py Problem
+backend/app/services/backbone/wealth_event_monitor.py WealthEvent

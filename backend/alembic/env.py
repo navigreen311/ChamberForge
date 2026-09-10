@@ -13,13 +13,25 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url from environment variable if set
-database_url = os.environ.get(
-    "DATABASE_URL",
-    config.get_main_option("sqlalchemy.url"),
+# Resolve the database URL, most specific first:
+#
+#   1. config.attributes["sqlalchemy.url"] - set programmatically by a caller
+#      that knows exactly which database it wants. tests/test_migrations.py
+#      uses this to point at a fresh tmp_path SQLite file.
+#   2. DATABASE_URL from the environment - how the app and CI run.
+#   3. alembic.ini - the local dev default.
+#
+# P-01: (1) did not exist before, so the environment always won and the
+# migration tests had their URL silently ignored. Every one of them ran
+# against whatever DATABASE_URL happened to be, which is why the second run
+# collided with tables the first had created.
+_url = (
+    config.attributes.get("sqlalchemy.url")
+    or os.environ.get("DATABASE_URL")
+    or config.get_main_option("sqlalchemy.url")
 )
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+if _url:
+    config.set_main_option("sqlalchemy.url", _url)
 
 # Import Base and all models so metadata is populated
 from app.db.session import Base  # noqa: E402

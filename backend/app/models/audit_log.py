@@ -20,6 +20,14 @@ class AuditLog(Base):
     ip_address = sa.Column(sa.String, nullable=True)
     timestamp = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
 
+    # P-01 (D5a). The hash chain that makes this trail verifiable rather than
+    # merely stored. P-03 fills both in on write and provides verify_chain();
+    # the append-only trigger added in revision 003 is what stops a row being
+    # rewritten afterwards. The Prisma AuditLog carries the same two columns
+    # so either surface can be verified on its own.
+    prev_hash = sa.Column(sa.String(64), nullable=True)
+    entry_hash = sa.Column(sa.String(64), nullable=True, index=True)
+
     __table_args__ = (
         sa.Index("ix_audit_logs_workspace_timestamp", "workspace_id", "timestamp"),
     )

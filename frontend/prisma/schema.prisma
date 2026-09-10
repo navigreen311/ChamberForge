@@ -78,84 +78,88 @@ model Client {
   deliverables    Deliverable[]
   tasks           Task[]
   notifications   Notification[]
+  // P-01: back-relations for the P-29 billing and P-30 portal models.
+  subscriptions   Subscription[]
+  invoices        Invoice[]
+  portalAccesses  PortalAccess[]
   createdAt       DateTime       @default(now())
 }
 
 model Problem {
-  id              String   @id @default(cuid())
-  userId          String
-  title           String
-  description     String?  @db.Text
-  painCategory    String
-  wealthTier      String
-  buyerType       String?
-  lifecycleStage  String   @default("Emerging")
-  urgencyScore    Float    @default(5)
-  credibilityScore Float   @default(5)
-  wtpSignal       Float    @default(5)
-  compositeScore  Float    @default(5)
-  wtpRange        String?
-  citations       Int      @default(0)
-  status          String   @default("active")
-  complianceRisk  String   @default("none")
+  id                  String   @id @default(cuid())
+  userId              String
+  title               String
+  description         String?  @db.Text
+  painCategory        String
+  wealthTier          String
+  buyerType           String?
+  lifecycleStage      String   @default("Emerging")
+  urgencyScore        Float    @default(5)
+  credibilityScore    Float    @default(5)
+  wtpSignal           Float    @default(5)
+  compositeScore      Float    @default(5)
+  wtpRange            String?
+  citations           Int      @default(0)
+  status              String   @default("active")
+  complianceRisk      String   @default("none")
   qualificationStatus String?
-  createdAt       DateTime @default(now())
+  createdAt           DateTime @default(now())
 }
 
 model Offer {
-  id              String   @id @default(cuid())
-  userId          String
-  clientId        String?
-  client          Client?  @relation(fields: [clientId], references: [id])
-  problemId       String?
-  playbookId      String?
-  name            String
-  tagline         String?
-  deliverables    Json     @default("[]")
-  priceMin        Int?
-  priceMax        Int?
-  pricingModel    String   @default("retainer")
-  deliveryModel   String   @default("solo")
-  kpis            Json     @default("[]")
-  status          String   @default("draft")
-  healthScore     Int?
-  healthTrend     Int?
-  renewalDate     DateTime?
-  stripePriceId   String?
-  createdAt       DateTime @default(now())
+  id            String    @id @default(cuid())
+  userId        String
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id])
+  problemId     String?
+  playbookId    String?
+  name          String
+  tagline       String?
+  deliverables  Json      @default("[]")
+  priceMin      Int?
+  priceMax      Int?
+  pricingModel  String    @default("retainer")
+  deliveryModel String    @default("solo")
+  kpis          Json      @default("[]")
+  status        String    @default("draft")
+  healthScore   Int?
+  healthTrend   Int?
+  renewalDate   DateTime?
+  stripePriceId String?
+  createdAt     DateTime  @default(now())
 }
 
 model Playbook {
-  id              String   @id @default(cuid())
-  name            String
-  slug            String   @unique
-  category        String
-  targetBuyer     String
-  corePain        String   @db.Text
-  wealthTier      String[]
-  deliveryModel   String
-  pricingModel    String
-  priceMin        Int
-  priceMax        Int
-  lifecycleStage  String   @default("Emerging")
-  evidenceScore   Float    @default(5)
-  wtpScore        Float    @default(5)
-  activationMins  Int      @default(45)
-  redTeamStatus   String   @default("not_run")
-  readinessPct    Int      @default(50)
-  voiceforgeReady Boolean  @default(false)
-  visionAudioReady Boolean @default(false)
-  dealDeskReady   Boolean  @default(false)
-  trustPackReady  Boolean  @default(false)
-  kpiCount        Int      @default(0)
-  complianceRisk  String   @default("none")
-  activeDeployments Int    @default(0)
-  isTemplate      Boolean  @default(true)
-  isCustom        Boolean  @default(false)
-  isComposite     Boolean  @default(false)
-  composedFrom    String[]
-  citations       Citation[]
-  createdAt       DateTime @default(now())
+  id                String     @id @default(cuid())
+  name              String
+  slug              String     @unique
+  category          String
+  targetBuyer       String
+  corePain          String     @db.Text
+  wealthTier        String[]
+  deliveryModel     String
+  pricingModel      String
+  priceMin          Int
+  priceMax          Int
+  lifecycleStage    String     @default("Emerging")
+  evidenceScore     Float      @default(5)
+  wtpScore          Float      @default(5)
+  activationMins    Int        @default(45)
+  redTeamStatus     String     @default("not_run")
+  readinessPct      Int        @default(50)
+  voiceforgeReady   Boolean    @default(false)
+  visionAudioReady  Boolean    @default(false)
+  dealDeskReady     Boolean    @default(false)
+  trustPackReady    Boolean    @default(false)
+  kpiCount          Int        @default(0)
+  complianceRisk    String     @default("none")
+  activeDeployments Int        @default(0)
+  isTemplate        Boolean    @default(true)
+  isCustom          Boolean    @default(false)
+  isComposite       Boolean    @default(false)
+  composedFrom      String[]
+  citations         Citation[]
+  createdAt         DateTime   @default(now())
 }
 
 model Citation {
@@ -169,21 +173,21 @@ model Citation {
 }
 
 model Deliverable {
-  id              String    @id @default(cuid())
-  userId          String
-  clientId        String
-  client          Client    @relation(fields: [clientId], references: [id])
-  name            String
-  type            String
-  status          String    @default("in_progress")
-  priority        String    @default("medium")
-  slaDate         DateTime
-  deliveredAt     DateTime?
-  assignee        String?
-  qaScore         Int       @default(0)
-  qaTotal         Int       @default(4)
-  portalStatus    String    @default("not_sent")
-  createdAt       DateTime  @default(now())
+  id           String    @id @default(cuid())
+  userId       String
+  clientId     String
+  client       Client    @relation(fields: [clientId], references: [id])
+  name         String
+  type         String
+  status       String    @default("in_progress")
+  priority     String    @default("medium")
+  slaDate      DateTime
+  deliveredAt  DateTime?
+  assignee     String?
+  qaScore      Int       @default(0)
+  qaTotal      Int       @default(4)
+  portalStatus String    @default("not_sent")
+  createdAt    DateTime  @default(now())
 }
 
 model Task {
@@ -212,18 +216,18 @@ model WealthEvent {
 }
 
 model RiskReviewItem {
-  id          String    @id @default(cuid())
-  userId      String
-  title       String
-  description String    @db.Text
-  type        String
+  id           String    @id @default(cuid())
+  userId       String
+  title        String
+  description  String    @db.Text
+  type         String
   sourceModule String
-  riskLevel   String    @default("medium")
-  status      String    @default("pending")
-  reviewer    String?
-  reviewNotes String?   @db.Text
-  createdAt   DateTime  @default(now())
-  reviewedAt  DateTime?
+  riskLevel    String    @default("medium")
+  status       String    @default("pending")
+  reviewer     String?
+  reviewNotes  String?   @db.Text
+  createdAt    DateTime  @default(now())
+  reviewedAt   DateTime?
 }
 
 model Notification {
@@ -237,4 +241,224 @@ model Notification {
   entityUrl String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// P-01 (Schema Reconciliation). Under D4 Prisma is source of truth for the
+// domain models. The six models below were named in that ruling but had never
+// been written, plus the models P-29 (Stripe billing) and P-30 (client
+// delivery portal) will need.
+//
+// Conventions follow the existing models: cuid() ids, `userId` as the single
+// operator scope (D2 - one operator per instance; a workspace dimension can be
+// added later without moving anything), camelCase fields, no @@map.
+//
+// The ownership contract is docs/data-architecture.md. Read it before writing
+// a query against any of these.
+// ---------------------------------------------------------------------------
+
+/// Operator-facing audit trail. D5a: this is one of TWO audit surfaces.
+/// Everything an operator does in the UI lands here and appears under
+/// Settings -> Security -> Audit Log. System-layer mutations (agents, Celery,
+/// indexing, ingestion) go to FastAPI's audit_logs instead. A full compliance
+/// export joins both by timestamp range.
+///
+/// prevHash/entryHash carry the same chain construction P-03 builds on the
+/// FastAPI side, so either trail can be verified on its own.
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String
+  action       String
+  resourceType String
+  resourceId   String?
+  details      Json     @default("{}")
+  ipAddress    String?
+  prevHash     String?
+  entryHash    String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([resourceType, resourceId])
+}
+
+/// User-configurable if/then triggers.
+model AutomationRule {
+  id            String             @id @default(cuid())
+  userId        String
+  name          String
+  description   String?            @db.Text
+  triggerType   String
+  triggerConfig Json               @default("{}")
+  actionType    String
+  actionConfig  Json               @default("{}")
+  enabled       Boolean            @default(true)
+  lastRunAt     DateTime?
+  runCount      Int                @default(0)
+  runs          AutomationRunLog[]
+  createdAt     DateTime           @default(now())
+
+  @@index([userId, enabled])
+}
+
+/// One row per rule firing. Kept separate from the rule so a busy rule does
+/// not rewrite its own row on every execution.
+model AutomationRunLog {
+  id         String         @id @default(cuid())
+  ruleId     String
+  rule       AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  userId     String
+  status     String         @default("success")
+  message    String?        @db.Text
+  durationMs Int?
+  createdAt  DateTime       @default(now())
+
+  @@index([ruleId, createdAt])
+}
+
+/// Thumbs up/down on an AI output, carrying the prompt version that produced
+/// it so the Eval Lab can correlate feedback with a specific prompt.
+model AIFeedback {
+  id            String   @id @default(cuid())
+  userId        String
+  agentName     String
+  outputId      String?
+  promptVersion String?
+  rating        String
+  comment       String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([agentName, rating])
+}
+
+/// Referral and delivery partners.
+model Partner {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  company       String?
+  type          String   @default("referral")
+  status        String   @default("active")
+  email         String?
+  commissionPct Float    @default(0)
+  totalReferred Int      @default(0)
+  totalPaidOut  Int      @default(0)
+  payouts       Payout[]
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([userId, status])
+}
+
+/// D5b: Prisma owns the STATE, FastAPI owns the EXECUTION.
+/// POST /api/exports/generate writes this row and returns its id. The Celery
+/// worker picks it up, renders, uploads to S3, then writes status, s3Key and
+/// completedAt back here by direct Postgres write on the shared connection
+/// string. That is the one intentional cross-stack write in the platform -
+/// see docs/data-architecture.md.
+model ExportJob {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String
+  entityIds    String[]
+  format       String    @default("pdf")
+  // status and s3Key written by FastAPI export worker
+  status       String    @default("queued")
+  s3Key        String?
+  errorMessage String?   @db.Text
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([userId, status])
+}
+
+// --- P-29: Stripe billing (Phase 3 section 6) ------------------------------
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  clientId             String?
+  client               Client?   @relation(fields: [clientId], references: [id])
+  stripeSubscriptionId String?   @unique
+  stripeCustomerId     String?
+  plan                 String
+  status               String    @default("active")
+  amountCents          Int
+  interval             String    @default("month")
+  currentPeriodEnd     DateTime?
+  cancelAt             DateTime?
+  invoices             Invoice[]
+  createdAt            DateTime  @default(now())
+
+  @@index([userId, status])
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  userId          String
+  clientId        String?
+  client          Client?       @relation(fields: [clientId], references: [id])
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  stripeInvoiceId String?       @unique
+  number          String?
+  status          String        @default("draft")
+  amountCents     Int
+  currency        String        @default("usd")
+  hostedUrl       String?
+  issuedAt        DateTime?
+  paidAt          DateTime?
+  dueAt           DateTime?
+  createdAt       DateTime      @default(now())
+
+  @@index([userId, status])
+}
+
+model Payout {
+  id               String    @id @default(cuid())
+  userId           String
+  partnerId        String
+  partner          Partner   @relation(fields: [partnerId], references: [id])
+  stripeTransferId String?   @unique
+  amountCents      Int
+  status           String    @default("pending")
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([partnerId, status])
+}
+
+// --- P-30: client delivery portal (Phase 3 section 8) ----------------------
+
+/// Magic-link access to the client portal. The token is stored HASHED - a
+/// leaked database row must not grant portal access. P-30 asserts single-use,
+/// expiry and rate limiting against this model.
+model PortalAccess {
+  id         String          @id @default(cuid())
+  userId     String
+  clientId   String
+  client     Client          @relation(fields: [clientId], references: [id])
+  tokenHash  String          @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  revokedAt  DateTime?
+  lastSeenAt DateTime?
+  messages   PortalMessage[]
+  createdAt  DateTime        @default(now())
+
+  @@index([clientId, expiresAt])
+}
+
+model PortalMessage {
+  id         String       @id @default(cuid())
+  accessId   String
+  access     PortalAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+  clientId   String
+  senderType String
+  body       String       @db.Text
+  readAt     DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([accessId, createdAt])
 }

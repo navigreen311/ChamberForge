@@ -158,7 +158,153 @@ async function main() {
   }
   console.log(`  ✓ Playbooks: ${playbooks.length} created`)
 
-  console.log('\n✅ Seed complete — 3 clients, 8 problems, 5 offers, 6 deliverables, 8 tasks, 3 events, 2 risk items, 12 notifications, 10 playbooks')
+
+  // ── P-01: the models added for D4 and Phase 3 ─────────────────────────
+  // Seeded so the BFF packages (P-19..P-23) have rows to query on day one.
+  // A handler test that passes against an empty table is not a test.
+  //
+  // Note on money: the existing models store whole dollars (monthlyRetainer:
+  // 22000). The billing models added here store CENTS, because Stripe does,
+  // and converting at the boundary once is safer than converting on every
+  // read. P-29 must not "fix" this to match.
+
+  const uid = ivan.id
+  const days = (n: number) => new Date(Date.now() + n * 86400000)
+  // Deterministic, non-cryptographic - just enough to make the seeded audit
+  // trail a real chain rather than four unrelated rows. P-03 supplies the
+  // real construction.
+  const seedHash = (s: string) => {
+    let h = 0
+    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
+    return `seed${(h >>> 0).toString(16).padStart(8, '0')}`
+  }
+
+  // Partners, then their payouts (FK order matters).
+  const partners = [
+    { id: 'ptr-1', userId: uid, name: 'Halden Reeve', company: 'Reeve Private Advisory', type: 'referral', status: 'active', email: 'reeve@example.com', commissionPct: 12.5, totalReferred: 4, totalPaidOut: 18000 },
+    { id: 'ptr-2', userId: uid, name: 'Okonkwo Family Office Network', company: 'OFON', type: 'channel', status: 'active', email: 'intro@example.com', commissionPct: 8, totalReferred: 2, totalPaidOut: 6000 },
+    { id: 'ptr-3', userId: uid, name: 'Brightwater Legal', company: 'Brightwater LLP', type: 'delivery', status: 'paused', email: 'ops@example.com', commissionPct: 0, totalReferred: 0, totalPaidOut: 0 },
+  ]
+  for (const p of partners) {
+    await prisma.partner.upsert({ where: { id: p.id }, update: {}, create: p })
+  }
+
+  const payouts = [
+    { id: 'pay-1', userId: uid, partnerId: 'ptr-1', amountCents: 900000, status: 'paid', paidAt: days(-21) },
+    { id: 'pay-2', userId: uid, partnerId: 'ptr-1', amountCents: 900000, status: 'pending' },
+    { id: 'pay-3', userId: uid, partnerId: 'ptr-2', amountCents: 600000, status: 'paid', paidAt: days(-45) },
+  ]
+  for (const p of payouts) {
+    await prisma.payout.upsert({ where: { id: p.id }, update: {}, create: p })
+  }
+  console.log(`  ✓ Partners: ${partners.length}, payouts: ${payouts.length}`)
+
+  // Subscriptions, then invoices against them.
+  const subscriptions = [
+    { id: 'sub-1', userId: uid, clientId: 'cl-sarah', plan: 'Private Ops Office', status: 'active', amountCents: 2200000, interval: 'month', currentPeriodEnd: days(18) },
+    { id: 'sub-2', userId: uid, clientId: 'cl-harrington', plan: 'Family Cyber Command', status: 'active', amountCents: 1800000, interval: 'month', currentPeriodEnd: days(4) },
+    { id: 'sub-3', userId: uid, clientId: 'cl-wellington', plan: 'Ecosystem Orchestrator', status: 'past_due', amountCents: 3500000, interval: 'month', currentPeriodEnd: days(-3) },
+  ]
+  for (const s of subscriptions) {
+    await prisma.subscription.upsert({ where: { id: s.id }, update: {}, create: s })
+  }
+
+  const invoices = [
+    { id: 'inv-1', userId: uid, clientId: 'cl-sarah', subscriptionId: 'sub-1', number: 'CF-1041', status: 'paid', amountCents: 2200000, issuedAt: days(-30), paidAt: days(-28) },
+    { id: 'inv-2', userId: uid, clientId: 'cl-sarah', subscriptionId: 'sub-1', number: 'CF-1052', status: 'open', amountCents: 2200000, issuedAt: days(-2), dueAt: days(12) },
+    { id: 'inv-3', userId: uid, clientId: 'cl-harrington', subscriptionId: 'sub-2', number: 'CF-1049', status: 'paid', amountCents: 1800000, issuedAt: days(-26), paidAt: days(-25) },
+    { id: 'inv-4', userId: uid, clientId: 'cl-wellington', subscriptionId: 'sub-3', number: 'CF-1050', status: 'past_due', amountCents: 3500000, issuedAt: days(-33), dueAt: days(-3) },
+  ]
+  for (const i of invoices) {
+    await prisma.invoice.upsert({ where: { id: i.id }, update: {}, create: i })
+  }
+  console.log(`  ✓ Subscriptions: ${subscriptions.length}, invoices: ${invoices.length}`)
+
+  // Automation rules and their run history.
+  const rules = [
+    { id: 'rule-1', userId: uid, name: 'Wealth event -> open a risk review', description: 'Any liquidity event above $5M opens a review, so nothing is missed during the buying window.', triggerType: 'wealth_event_detected', triggerConfig: { minImpactUsd: 5000000 }, actionType: 'open_risk_review', actionConfig: { priority: 'high' }, enabled: true, runCount: 6, lastRunAt: days(-2) },
+    { id: 'rule-2', userId: uid, name: 'Health below 70 -> alert the owner', triggerType: 'client_health_below', triggerConfig: { threshold: 70 }, actionType: 'send_alert', actionConfig: { channel: 'email' }, enabled: true, runCount: 3, lastRunAt: days(-9) },
+    { id: 'rule-3', userId: uid, name: 'SLA breach -> escalate', triggerType: 'kpi_below_sla', triggerConfig: { graceHours: 24 }, actionType: 'trigger_escalation', actionConfig: {}, enabled: false, runCount: 0 },
+  ]
+  for (const r of rules) {
+    await prisma.automationRule.upsert({ where: { id: r.id }, update: {}, create: r })
+  }
+
+  const runs = [
+    { id: 'run-1', ruleId: 'rule-1', userId: uid, status: 'success', message: 'Opened risk review for the Chen liquidity event', durationMs: 412 },
+    { id: 'run-2', ruleId: 'rule-1', userId: uid, status: 'success', message: 'Opened risk review for the Wellington exit', durationMs: 388 },
+    { id: 'run-3', ruleId: 'rule-2', userId: uid, status: 'failed', message: 'Email provider not configured', durationMs: 95 },
+  ]
+  for (const r of runs) {
+    await prisma.automationRunLog.upsert({ where: { id: r.id }, update: {}, create: r })
+  }
+  console.log(`  ✓ Automation rules: ${rules.length}, runs: ${runs.length}`)
+
+  // AI feedback, so the Eval Lab has something to correlate.
+  const feedback = [
+    { id: 'fb-1', userId: uid, agentName: 'offer_ai', outputId: 'of-1', promptVersion: 'v3', rating: 'up' },
+    { id: 'fb-2', userId: uid, agentName: 'problem_ai', promptVersion: 'v2', rating: 'down', comment: 'Evidence chain was thin - two of the four sources were the same report.' },
+    { id: 'fb-3', userId: uid, agentName: 'copy_ai', promptVersion: 'v5', rating: 'up' },
+  ]
+  for (const f of feedback) {
+    await prisma.aIFeedback.upsert({ where: { id: f.id }, update: {}, create: f })
+  }
+
+  // Export jobs in each state the Export Suite renders.
+  const exportJobs = [
+    { id: 'exp-1', userId: uid, type: 'client_report', entityIds: ['cl-sarah'], format: 'pdf', status: 'complete', s3Key: 'exports/cl-sarah-2026-08.pdf', completedAt: days(-6) },
+    { id: 'exp-2', userId: uid, type: 'offer_pack', entityIds: ['of-1', 'of-2'], format: 'pdf', status: 'queued' },
+    { id: 'exp-3', userId: uid, type: 'audit_trail', entityIds: [], format: 'csv', status: 'failed', errorMessage: 'S3 credentials not configured' },
+  ]
+  for (const e of exportJobs) {
+    await prisma.exportJob.upsert({ where: { id: e.id }, update: {}, create: e })
+  }
+  console.log(`  ✓ AI feedback: ${feedback.length}, export jobs: ${exportJobs.length}`)
+
+  // Operator audit trail (D5a). Chained: each entry carries the previous
+  // entry's hash, so the seeded trail is verifiable rather than four
+  // unrelated rows.
+  const auditSeed = [
+    { id: 'aud-1', action: 'client.create', resourceType: 'Client', resourceId: 'cl-sarah' },
+    { id: 'aud-2', action: 'offer.create', resourceType: 'Offer', resourceId: 'of-1' },
+    { id: 'aud-3', action: 'offer.activate', resourceType: 'Offer', resourceId: 'of-1' },
+    { id: 'aud-4', action: 'export.generate', resourceType: 'ExportJob', resourceId: 'exp-1' },
+  ]
+  let prevHash: string | null = null
+  for (const a of auditSeed) {
+    const entryHash = seedHash(`${prevHash ?? ''}|${uid}|${a.action}|${a.resourceType}|${a.resourceId}`)
+    await prisma.auditLog.upsert({
+      where: { id: a.id },
+      update: {},
+      create: { ...a, userId: uid, details: {}, prevHash, entryHash },
+    })
+    prevHash = entryHash
+  }
+  console.log(`  ✓ Operator audit trail: ${auditSeed.length} chained entries`)
+
+  // Portal access and a short thread, for P-30.
+  await prisma.portalAccess.upsert({
+    where: { id: 'ptl-1' },
+    update: {},
+    create: {
+      id: 'ptl-1',
+      userId: uid,
+      clientId: 'cl-sarah',
+      // Hashed, never the raw token - a leaked row must not grant access.
+      tokenHash: seedHash('demo-portal-token-cl-sarah'),
+      expiresAt: days(14),
+    },
+  })
+  const portalMessages = [
+    { id: 'msg-1', accessId: 'ptl-1', clientId: 'cl-sarah', senderType: 'operator', body: 'Your Q3 deliverables are in the portal - the cyber assessment is the one to read first.' },
+    { id: 'msg-2', accessId: 'ptl-1', clientId: 'cl-sarah', senderType: 'client', body: 'Received, thank you. Can we walk through the household staffing section on Thursday?' },
+  ]
+  for (const m of portalMessages) {
+    await prisma.portalMessage.upsert({ where: { id: m.id }, update: {}, create: m })
+  }
+  console.log(`  ✓ Portal access: 1, messages: ${portalMessages.length}`)
+
+  console.log('\n✅ Seed complete — 3 clients, 8 problems, 5 offers, 6 deliverables, 8 tasks, 3 events, 2 risk items, 12 notifications, 10 playbooks, 3 partners, 3 subscriptions, 4 invoices, 3 rules, 3 export jobs, 4 audit entries, 1 portal')
 }
 
 main()

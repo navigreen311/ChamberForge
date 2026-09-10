@@ -27,7 +27,8 @@ database query.
 
 | # | Package | PR | Merge SHA | Suite | Reverts | When |
 |---|---------|----|-----------|-------|---------|------|
-| 1 | P-00 Coordinator | [#19](https://github.com/navigreen311/ChamberForge/pull/19) | _pending merge_ | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 1 | P-00 Coordinator | [#19](https://github.com/navigreen311/ChamberForge/pull/19) | `593333a` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 2 | P-01 Schema Reconciliation | _in flight_ | — | see PR | 0 | 2026-09-10 |
 
 ---
 
@@ -60,7 +61,7 @@ which truncated `AWS_S3_BUCKET` at the digit. The file was always correct.
 
 ---
 
-## The 190 pre-existing test failures, assigned
+## The 186 pre-existing test failures, assigned
 
 Measured on **CI against PostgreSQL 16**, which is the arbiter. A local
 SQLite run shows only ~136 - it misses 55 auth-flow, isolation and
@@ -110,7 +111,6 @@ table.
 | `tests/security/test_sensitive_data.py` | 5 | **P-03** | audit/PII disclosure surface |
 | `tests/test_ai_runtime.py` | 5 | **P-04** | owns services/backbone/ai_runtime.py |
 | `tests/unit/test_auth.py` | 5 | **P-11** | same |
-| `tests/test_migrations.py` | 4 | **P-01** | the four missing tables are exactly this |
 | `tests/test_upload_e2e.py` | 4 | **P-17** | same router |
 | `tests/security/test_xss.py` | 3 | **P-13** | TestXSSProblemEndpoints hits the problems router |
 | `tests/test_template_versioning.py` | 3 | **P-17** | owns api/v1/polish.py |

@@ -1,113 +1,99 @@
-# P-00 — Escalations
+# P-01 — Escalations
 
 Filed per the per-package protocol: a package that needs a file outside its
-allowed list records what it needed and why rather than editing silently.
-
-P-00's exit criteria are `ruff` 0, `tsc` 0 and a passing `next build`. Those
-are repository-wide by nature, so a handful of fixes landed in files the
-coordination plan assigns to other packages. All are import-only or
-type-shape changes with no behaviour impact, and none touch a file another
-package holds *exclusively* for the whole window.
+allowed list, or that changes its own scope, records what and why rather than
+doing it silently.
 
 ---
 
-## 1. Two `F821` forward references — files owned by P-30 and P-14
+## 1. P-01 did NOT delete the ten legacy SQLAlchemy models
 
-| File | Owner in the plan | What P-00 did |
+**This is a deliberate scope reduction from P-01's card**, which said
+"RETIRE the 11 overlapping SQLAlchemy models". Full reasoning is in
+`docs/data-architecture.md`; the short version:
+
+Measured on this branch, **25 files import a Prisma-owned model** — 13
+routers, 12 services, plus `core/dependencies.py`. Deleting the models here
+would break, in one commit:
+
+- `core/dependencies.py` and `api/v1/auth.py`, which **P-11** is already
+  rewriting for the identity repoint (T-063),
+- 13 routers spread across **P-13 through P-18**,
+- 12 services across P-04, P-09 and others.
+
+P-01's card explicitly forbids touching any router or service. A 25-file
+change across eight packages' territory is precisely the cross-package edit
+this plan exists to prevent.
+
+**What P-01 did instead:** `scripts/check_domain_ownership.py` records the
+current importers and **fails when the set grows**. New code cannot join the
+list; existing dependants migrate inside the packages that already own those
+files, each deleting its own lines. Verified that the guard catches a
+simulated new import and exits 1.
+
+**Action for the coordinator:** the per-package migration table is in
+`docs/data-architecture.md`. **P-26 must assert
+`scripts/domain_ownership_baseline.txt` is empty** — that is when D4 becomes
+true rather than intended. This should be added to P-26's card.
+
+---
+
+## 2. Two files outside the card, both required by the acceptance criteria
+
+| File | Owner in the plan | Why P-01 had to touch it |
 |---|---|---|
-| `backend/app/api/v1/portal.py:68` | **P-30** | added a `TYPE_CHECKING` import for `ClientPortalAccess` |
-| `backend/app/services/backbone/playbook_engine.py:201` | **P-14** | added a `TYPE_CHECKING` import for `Offer` |
+| `backend/alembic/env.py` | P-01 (migrations) — in scope, noted for visibility | `DATABASE_URL` always beat an explicitly-configured URL, so `tests/test_migrations.py` had its `tmp_path` database silently ignored and ran against whatever the environment held. That is why **all five** of its tests failed. Precedence is now `config.attributes` → `DATABASE_URL` → `alembic.ini`. |
+| `backend/tests/test_migrations.py` | P-01 — its 4 failures are assigned here | Uses `cfg.attributes` to select its database, and its `EXPECTED_TABLES` now includes the eight tables revisions 003 and 004 add. **5/5 pass.** |
 
-**Why it could not wait.** `ruff check .` exiting 0 is P-00's gate, and
-these two were the only remaining errors after the autofix pass. Leaving
-them would mean no agent could use a clean ruff run as a signal, which is
-the whole point of landing P-00 first.
-
-**Action for the coordinator:** P-14 and P-30's cards each say "fixes the
-F821 forward ref". **Strike that line from both** — it is done, and an
-agent that goes looking for it will find nothing and may invent work.
+Also reverted: `ruff --fix` on `scripts/` had incidentally reordered imports
+in `seed.py` and `seed_playbooks.py`. CI does not lint `scripts/`, so those
+changes were unnecessary and are backed out.
 
 ---
 
-## 2. Type-shape fixes in components owned by BFF packages
+## 3. Prisma cannot `migrate deploy` onto an Alembic-managed database
 
-| File | Owner in the plan | What P-00 did |
-|---|---|---|
-| `src/app/components/shared/JargonTooltip.tsx` | P-20 (callers) | declared **and honoured** the `bare` prop two callers already passed |
-| `src/app/components/dashboard/CommandAICard.tsx` | P-19 | `open=` → `isOpen=`, matching `EvidenceDrawerProps` |
-| `src/app/components/discover/ProblemOfferDrawer.tsx` | P-21 | made the extended presentation block optional |
-| `src/app/sandbox/page.tsx` | P-23 | widened `useState` from the inferred literal to `string` |
-| `src/app/automation/page.tsx` | P-23 | renamed `useTemplate` → `applyTemplate` (a click handler, not a Hook) |
-| `src/app/offers/page.tsx`, `playbooks/page.tsx`, `components/playbooks/ActivatePlaybookModal.tsx` | P-21 / P-22 | escaped five JSX entities |
+`prisma migrate deploy` refuses a non-empty schema (`P3005`), and Alembic
+runs first. The supported pattern for a shared database is to apply the SQL
+directly and then record it:
 
-**Why it could not wait.** `next build` runs typecheck and lint, and fails
-on any of these. Without them the frontend does not build, so no frontend
-package can validate its own work.
+```bash
+psql "$DATABASE_URL" -f prisma/migrations/20260910000000_p01_baseline/migration.sql
+npx prisma migrate resolve --applied 20260910000000_p01_baseline
+```
 
-**None of these change rendered output** except `JargonTooltip`, where
-`bare` now actually suppresses the dotted underline instead of being
-silently ignored — the behaviour the callers already assumed.
+Documented in `docs/data-architecture.md`. **Any package or deploy script
+that provisions a database must follow that order** — running
+`prisma migrate deploy` first will fail, and running it after Alembic without
+`resolve` leaves Prisma believing the migration is pending.
 
 ---
 
-## 3. `frontend/src/app/layout.tsx` — claimed by P-11 and P-25
+## 4. Money units differ between the old and new models — deliberate
 
-`ModeProvider` was defined but mounted nowhere, so every page calling
-`useMode()` threw and the build died prerendering `/settings/mode`. Fixing
-it required the root layout.
+Existing models store whole dollars (`monthlyRetainer: 22000`). The billing
+models P-01 added store **cents** (`amountCents`), because Stripe does, and
+converting once at the boundary is safer than converting on every read.
 
-Rather than leave `layout.tsx` contended, P-00 **froze it** and created
-`src/app/components/providers/AppProviders.tsx` as a client-side seam.
-
-**Action for the coordinator — this changes two cards:**
-
-- **P-11** must nest `SessionProvider` inside `AppProviders`, **not** open
-  `layout.tsx`. Its card currently says "mount SessionProvider in
-  `app/layout.tsx`".
-- **P-25** likewise for the top-level error boundary.
-
-`layout.tsx` is now on the P-00-frozen list in `PARALLEL_BUILD.md`.
+**Action for P-29:** do not "fix" this to match the older convention. The
+seed sets both correctly.
 
 ---
 
-## 4. `tests/test_env_validator.py` — P-00's own regression
+## 5. Not done, deliberately
 
-Not a scope exception; recorded so the count is auditable. Making
-`validate_environment()` fail closed broke three of its own tests: the
-mocked settings carry no `APP_ENV`, and a `MagicMock`'s `.lower()` is not a
-string, so the new guard fired inside every one. Fixed here — 6/6 pass.
-
-**139 observed failures − 3 mine = 136 pre-existing**, which is the number
-triaged in `PARALLEL_BUILD.md`.
-
----
-
-## 5. Prisma pinned to `6.12.0`, not `^6` — needs a decision at P-27
-
-`6.19.x` pulls a vulnerable `@prisma/config → deepmerge-ts` chain
-(stack exhaustion), and `npm audit` names `6.12.0` as the fix. 6.12's config
-API also requires `earlyAccess: true` in `prisma.config.ts`, which signals
-an unstable surface.
-
-**Action for P-27:** revisit the pin. If a later 6.x drops the vulnerable
-chain, move to it and remove `earlyAccess`. Do not bump it blind — the
-config file will break.
-
----
-
-## 6. Not fixed, deliberately — 5 npm vulnerabilities
-
-`npm audit` went 13 → 5. The remaining five (1 critical in `next`, plus
-`postcss`, `glob`, `eslint-config-next`) all require **Next 14 → 16**, which
-is **P-27's** scope. Smuggling a framework major into P-00 would put every
-downstream package on an untested baseline.
+**The FastAPI export worker's write-back to `ExportJob` is not implemented.**
+P-01 created the model, annotated the field, and documented the contract.
+The worker itself is **P-08**'s (`jobs/tasks/` is its exclusive directory).
+P-08's card should note that this is the one sanctioned cross-stack write.
 
 ---
 
 ## Open question for Ivan — not blocking
 
-`/api/v1/health/dependencies` and `/api/v1/metrics/detailed` are
-**deliberately not** on the auth-coverage allowlist. Both disclose
-infrastructure state, so they are counted as open routes and a router
-package will have to gate them. If either is scraped by an unauthenticated
-collector, say so and they move to the allowlist with a reason recorded.
+The Prisma baseline migration was generated with `migrate diff --from-empty`,
+so it creates all 25 tables. On a database that already has Prisma tables
+from an earlier `db push`, it must be `resolve --applied` rather than run.
+**If any environment already has Prisma tables, say so** — that environment
+needs baselining rather than migrating, and getting it the wrong way round
+would attempt to recreate live tables.

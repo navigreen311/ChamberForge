@@ -42,6 +42,16 @@ EXPECTED_TABLES = {
     "client_portal_access",
     "drip_statuses",
     "retention_policies",
+    # 003_p01_schema_reconciliation - the four whose tables were never created
+    "mfa_configs",
+    "wealth_events",
+    "community_insights",
+    "white_label_configs",
+    # 004_p01_support_tables - filled in by P-02, P-04 and P-09
+    "workspace_budgets",
+    "sandbox_environments",
+    "ontology_extensions",
+    "scoring_results",
 }
 
 # Alembic also creates this tracking table.
@@ -52,8 +62,12 @@ def _make_alembic_config(db_url: str) -> Config:
     """Build an Alembic Config pointing at our migrations with the given DB URL."""
     backend_dir = os.path.join(os.path.dirname(__file__), os.pardir)
     cfg = Config(os.path.join(backend_dir, "alembic.ini"))
-    cfg.set_main_option("sqlalchemy.url", db_url)
     cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    # P-01: attributes beat DATABASE_URL in alembic/env.py. set_main_option
+    # alone is not enough - the environment used to win, so these tests ran
+    # against whatever DATABASE_URL was set to instead of the tmp_path file.
+    cfg.attributes["sqlalchemy.url"] = db_url
+    cfg.set_main_option("sqlalchemy.url", db_url)
     return cfg
 
 
