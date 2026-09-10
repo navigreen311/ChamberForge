@@ -52,6 +52,22 @@ PRISMA_OWNED = [
 IMPORT_RE = re.compile(r"from app\.models\.[\w.]+ import ([^\n]+)")
 
 
+# The one file whose job is to span both stacks.
+#
+# P-11's identity resolver reads the Prisma-owned "User" with raw SQL and
+# falls back to the legacy `users` table when the Prisma migration has not
+# been applied to that database (Alembic runs first, Prisma second - see
+# docs/data-architecture.md). That fallback is the sanctioned bridge, the
+# same way ExportJob is the one sanctioned cross-stack write.
+#
+# Exempted here rather than added to the baseline, so the baseline keeps its
+# property of only ever shrinking. Adding a file to this set is a design
+# decision and needs a reason beside it.
+BRIDGE_FILES = {
+    "backend/app/core/identity.py",
+}
+
+
 def current_dependants() -> "dict[str, set[str]]":
     found: dict[str, set[str]] = {}
     for path in glob.glob(os.path.join(BACKEND, "app", "**", "*.py"), recursive=True):
@@ -59,6 +75,8 @@ def current_dependants() -> "dict[str, set[str]]":
         # models/__init__.py re-exports everything by design; it is the
         # registry, not a dependant.
         if rel.endswith("app/models/__init__.py"):
+            continue
+        if rel in BRIDGE_FILES:
             continue
         with open(path, encoding="utf-8") as fh:
             src = fh.read()

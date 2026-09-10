@@ -16,8 +16,10 @@ import { requireSession, requireRole } from '@/lib/require-session'
 jest.mock('@/lib/auth', () => ({ authOptions: {} }))
 jest.mock('next-auth/next', () => ({ getServerSession: jest.fn() }))
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { getServerSession } = require('next-auth/next')
+import { getServerSession as realGetServerSession } from 'next-auth/next'
+
+// jest.mock is hoisted above the imports, so this is the mock.
+const getServerSession = realGetServerSession as unknown as jest.Mock
 
 describe('requireSession', () => {
   beforeEach(() => jest.resetAllMocks())
