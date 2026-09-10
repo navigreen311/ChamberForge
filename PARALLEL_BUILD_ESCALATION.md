@@ -742,3 +742,149 @@ shared-window behaviour is gated rather than merely verified once by hand.
 - 127 failures, unchanged from the P-09 baseline
 - **1441 passing** · **15 tests added** · `ruff` 0 · frontend untouched
 - Scope: exactly the card's two files
+
+---
+
+# P-08 — Background Jobs
+
+Tasks T-030, T-049 (event jobs). Merge order 11 of 30.
+
+## 1. The platform reported automation it did not perform
+
+The five scheduled tasks were not silently doing nothing. Each returned a
+**success-shaped dictionary**:
+
+```python
+{"workspace_id": ws, "brief_generated": True, "dashboard_refreshed": True}
+{"index_name": idx, "doc_id": did, "status": "indexed"}
+{"workspace_id": ws, "recipients": 0, "status": "sent"}
+{"workspace_id": ws, "period": p, "total_revenue": 0, "status": "generated"}
+```
+
+`daily_brief` fired at 06:00 every morning and reported a generated brief and
+a refreshed dashboard, having done neither. `weekly_digest` reported a digest
+successfully sent to nobody. `generate_revenue_report` returned
+`total_revenue: 0` marked `"generated"` — on a platform serving wealth
+advisors, the most directly actionable false number in the job layer.
+
+## 2. Two bugs the stubs were hiding
+
+**`args: ("all",)`.** Four Beat entries passed the string `"all"` to tasks
+whose first parameter is `workspace_id`, so every scheduled run asked for the
+workspace *literally named* `"all"`. While the bodies were `pass` this made
+no difference — and that is the trap. **Implementing the tasks without
+noticing would have produced jobs that ran correctly, reported honestly, and
+still did nothing**, because they would have swept a workspace that does not
+exist. Beat now calls sweep tasks that enumerate workspaces themselves.
+
+**`retention_tasks` was never registered.** This is the serious one, and it
+predates this package.
+
+`app/jobs/tasks/__init__.py` is what causes Celery to register a task, and
+`retention_tasks` was **not in it** — while `retention_cleanup` sat in the
+Beat schedule. So the weekly retention sweep, the deletion-adjacent job that
+enforces retention policy and honours legal holds, and **the one job in this
+package that was already fully implemented**, was scheduled against a task no
+worker had registered. Beat would dispatch it, the worker would log an
+unregistered-task error, and the sweep would never run.
+
+Nothing else would surface. A compliance job that silently never fires looks
+exactly like one with nothing to do.
+
+`drip_tasks` was missing too, though nothing schedules it today. Both are now
+imported, and `TestTaskRegistry` asserts that every task named in
+`BEAT_SCHEDULE` is registered after importing the package.
+
+## 3. What is implemented, and what D4 blocks
+
+The card's rule — *"if a job needs to write Client or Offer, STOP and
+escalate"* — turned out to govern most of this package.
+
+**Implemented, writing FastAPI-owned tables only:**
+
+| Task | Work it now does |
+|---|---|
+| `evidence_tasks.refresh_recency_scores` | Applies temporal decay to `evidence`, calling `ResearchAI.compute_recency_decay` rather than reimplementing it |
+| `evidence_tasks.flag_stale_sources` | Flags evidence past the threshold, **idempotently** — it runs nightly |
+| `evidence_tasks.ingest_evidence` | Moved from `ai_tasks`; extracts claims and writes `evidence`. Writes **nothing** when the AI degrades |
+| `notification_tasks.send_email_notification` | Real send via `EmailService`, logged to `email_logs` including failures |
+| `notification_tasks.send_weekly_digest` | Counts real evidence activity and emails it |
+| `report_tasks.generate_quarterly_scorecard` | Built from `ai_usage_logs`, `scoring_results` and `evidence` |
+| `search_tasks.*` | Real Elasticsearch calls, reporting what was **accepted** rather than what was sent |
+
+**Blocked under D4** — each returns a typed blocked result naming the table:
+
+`run_problem_discovery` (`Problem`), `run_offer_generation` (`Offer`),
+`run_command_ai_synthesis` (`Notification`), `dispatch_notification`
+(`Notification`), `generate_revenue_report` (`Invoice`).
+
+A worker writing the retired SQLAlchemy duplicates would succeed silently and
+produce rows nothing reads — worse than not running, because it is invisible
+rather than absent. **Blocked tasks do not compute either**: running
+discovery and discarding the result would spend real AI budget nightly to
+produce nothing. A test asserts no AI call is made.
+
+`daily_brief` is **off the Beat schedule**, with the entry left commented so
+the gap is visible rather than forgotten.
+
+## 4. Judgment calls
+
+**Blocked is a third outcome, not a zero.** A blocked result carries no
+success counters — `result["records_updated"]` raises rather than returning a
+`0` that reads as "nothing needed doing", which is exactly what a `pass` body
+returned.
+
+**The digest states its own scope.** It covers evidence activity only;
+client, offer and deliverable activity is Prisma-owned. The email says so,
+because a digest silently omitting half the platform reads as a quiet week.
+
+**The scorecard lists what it excludes** rather than reporting zero for it.
+
+**`full_reindex` does not drop the index first.** A drop-then-rebuild leaves
+search empty for the length of the rebuild, and indefinitely if the rebuild
+fails. Re-indexing in place is idempotent because the document id is the row
+id.
+
+**Retention and backup were not touched.** Both were already real; retention
+already enumerates its own workspaces and already honours legal holds. The
+only change is that it is now registered, so it can actually run.
+
+## 5. Files created beyond the card
+
+The card lists nine new modules. Four of them — `daily_brief.py`,
+`notification_dispatcher.py`, `tasks/brief_tasks.py`, `tasks/billing_tasks.py`
+— would be **scaffolding for work D4 blocks**, which is the exact defect this
+run exists to remove. They are not created.
+
+Created instead: `_result.py` (the done/blocked/failed vocabulary),
+`fanout.py` and `tasks/sweep_tasks.py` (the `("all",)` fix).
+
+## 6. A systemic defect for P-01
+
+**21 model files** declare `id = Column(String(36), default=uuid.uuid4)` —
+the callable, not `str(uuid.uuid4())`. SQLite rejects a UUID object bound to
+a string column outright.
+
+P-03 hit it on `audit_logs`, P-04 fixed it on `ai_usage_logs`, and this
+package works around it by passing an explicit id when writing `evidence`.
+That is three packages patching one defect at three call sites. **It belongs
+to P-01 to fix once across `app/models/`.**
+
+## 7. Nineteen tests asserted the stubs
+
+`test_run_command_ai_synthesis` asserted `brief_generated is True` and
+`dashboard_refreshed is True`. `test_dispatch_notification_creates_record`
+asserted every field it had just passed in — satisfied by any function that
+returns its own arguments. `test_celery_tasks.py` called itself
+"comprehensive" and consisted entirely of shape assertions that a `pass` body
+satisfies.
+
+Rewritten. Execution coverage moved to `test_jobs.py`, where a database
+fixture lets each test assert a changed row, a called service, or an explicit
+blocked result.
+
+## 8. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- 127 failures, unchanged from the P-10 baseline
+- **1465 passing** · **29 tests added** · `ruff` 0 · frontend untouched
