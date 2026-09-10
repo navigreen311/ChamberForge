@@ -21,7 +21,52 @@ env:
   FRONTEND_TASK_DEF: chamberforge-frontend-prod
 
 jobs:
+  # T-024. Production previously deployed on any v* tag with no test gate at
+  # all - build-and-push was the only dependency in the file. A tag now has
+  # to pass the same checks a pull request does before an image is built.
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Backend deps
+        run: cd backend && pip install -r requirements.txt ruff
+      - name: Backend lint
+        run: cd backend && ruff check .
+      - name: Backend tests
+        run: cd backend && python -m pytest tests/ -q --tb=short
+      - name: Model/migration drift
+        run: python scripts/check_migration_drift.py
+      - name: Frontend deps
+        run: cd frontend && npm ci
+      - name: Frontend typecheck and build
+        run: cd frontend && npx prisma generate && npm run typecheck && npm run build
+
   build-and-push:
+    needs: verify
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.tag.outputs.IMAGE_TAG }}
