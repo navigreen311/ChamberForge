@@ -68,6 +68,18 @@ class RateLimitError(AppException):
         )
 
 
+class BudgetError(AppException):
+    """The workspace is at its AI spend ceiling.
+
+    402 rather than 403: the caller is permitted to do this, and will be
+    again next period. A 403 would tell an operator they lack permission,
+    which would send them looking in the wrong place entirely.
+    """
+
+    def __init__(self, message: str, details: dict | None = None):
+        super().__init__(402, "BUDGET_EXCEEDED", message, details)
+
+
 class ConflictError(AppException):
     def __init__(self, message: str, resource: str | None = None):
         super().__init__(409, "CONFLICT", message, {"resource": resource})

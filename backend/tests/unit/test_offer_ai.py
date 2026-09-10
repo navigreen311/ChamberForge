@@ -1,83 +1,117 @@
-"""Tests for OfferAI service."""
+"""Tests for OfferAI - a generated offer, or a marked absence of one.
+
+Rewritten by P-04. The old `TestOfferAINoKey` asserted
+`result == SAMPLE_OFFER`: a complete premium offer, with a value stack, a
+guarantee framework and a recommended price band of $15,000-$30,000 a month,
+returned for any problem whenever no API key was configured.
+
+`test_refine_offer_returns_modified` was the same idea in miniature - it
+asserted that "Refined" appeared in the description, which the code achieved
+by appending the word. The offer was not refined. The test passed.
+"""
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services.agents.offer_ai import SAMPLE_OFFER, SAMPLE_VALUE_STACK, OfferAI
+from app.services.agents.base_agent import is_degraded
+from app.services.agents.offer_ai import OfferAI
 
 
-class TestOfferAINoKey:
-    """Test OfferAI when no API key is configured (sample fallback)."""
+@pytest.fixture(autouse=True)
+def _no_api_key(monkeypatch):
+    monkeypatch.setattr("app.services.agents.base_agent.settings.ANTHROPIC_API_KEY", "")
 
+
+def _client(payload):
+    """An async provider client returning *payload* as JSON."""
+    message = MagicMock()
+    message.content = [MagicMock(text=json.dumps(payload))]
+    message.usage = MagicMock(input_tokens=10, output_tokens=5)
+    client = AsyncMock()
+    client.messages.create = AsyncMock(return_value=message)
+    return client
+
+
+class TestOfferAIUnconfigured:
     @pytest.fixture
     def ai(self):
-        with patch("app.services.agents.offer_ai.settings") as mock_settings:
-            mock_settings.ANTHROPIC_API_KEY = ""
-            mock_settings.AI_MODEL = "claude-sonnet-4-6"
-            return OfferAI()
+        return OfferAI()
 
     @pytest.mark.asyncio
-    async def test_generate_offer_returns_sample(self, ai):
+    async def test_no_offer_is_invented(self, ai):
         result = await ai.generate_offer({"description": "test problem"})
-        assert result == SAMPLE_OFFER
-        assert "name" in result
-        assert "description" in result
-        assert "value_stack" in result
-        assert isinstance(result["value_stack"], list)
-        assert len(result["value_stack"]) > 0
-        for layer in result["value_stack"]:
-            assert "name" in layer
-            assert "description" in layer
-            assert "delivery_method" in layer
-            assert "estimated_hours" in layer
-        assert "delivery_model" in result
-        assert "guarantee_framework" in result
-        assert "recommended_pricing" in result
+
+        assert is_degraded(result)
+        assert result["degraded_reason"] == "no_api_key"
 
     @pytest.mark.asyncio
-    async def test_refine_offer_returns_modified(self, ai):
-        offer_data = {"name": "Test", "description": "Original"}
-        result = await ai.refine_offer(offer_data, "Make it better")
-        assert "Refined" in result["description"]
+    async def test_no_price_band_is_invented(self, ai):
+        """SAMPLE_OFFER recommended $15,000-$30,000 a month for anything."""
+        result = await ai.generate_offer({"description": "test problem"})
+
+        assert "recommended_pricing" not in result
+        assert "value_stack" not in result
 
     @pytest.mark.asyncio
-    async def test_generate_value_stack_returns_sample(self, ai):
+    async def test_refine_reports_that_it_did_not_refine(self, ai):
+        """It used to append " [Refined]" and return the offer unchanged."""
+        result = await ai.refine_offer({"name": "Test", "description": "Original"}, "better")
+
+        assert is_degraded(result)
+        assert "Refined" not in json.dumps(result)
+
+    @pytest.mark.asyncio
+    async def test_value_stack_is_empty_not_sampled(self, ai):
         result = await ai.generate_value_stack("coordination", "retainer")
-        assert result == SAMPLE_VALUE_STACK
-        assert len(result) >= 4
+        assert result == []
 
 
-class TestOfferAIWithKey:
-    """Test OfferAI when API key is configured (mock Anthropic)."""
-
-    @pytest.fixture
-    def ai(self):
-        with patch("app.services.agents.offer_ai.settings") as mock_settings:
-            mock_settings.ANTHROPIC_API_KEY = "test-key"
-            mock_settings.AI_MODEL = "claude-sonnet-4-6"
-            with patch("app.services.agents.offer_ai.anthropic") as mock_anthropic:
-                mock_client = MagicMock()
-                mock_anthropic.Anthropic.return_value = mock_client
-                ai = OfferAI()
-                ai._mock_client = mock_client
-                yield ai
-
+class TestOfferAIConfigured:
     @pytest.mark.asyncio
-    async def test_generate_offer_calls_api(self, ai):
-        response_json = json.dumps({
+    async def test_generate_offer_returns_the_model_answer(self):
+        payload = {
             "name": "AI Offer",
             "description": "AI generated",
-            "value_stack": [{"name": "L1", "description": "d", "delivery_method": "retainer", "estimated_hours": 10}],
+            "value_stack": [
+                {
+                    "name": "L1",
+                    "description": "d",
+                    "delivery_method": "retainer",
+                    "estimated_hours": 10,
+                }
+            ],
             "delivery_model": "retainer",
             "guarantee_framework": {"type": "performance", "terms": "SLA", "conditions": []},
-            "recommended_pricing": {"monthly_min": 10000, "monthly_max": 20000, "setup_fee": 3000, "model": "retainer"},
-        })
-        mock_msg = MagicMock()
-        mock_msg.content = [MagicMock(text=response_json)]
-        ai._mock_client.messages.create.return_value = mock_msg
+            "recommended_pricing": {
+                "monthly_min": 10000,
+                "monthly_max": 20000,
+                "setup_fee": 3000,
+                "model": "retainer",
+            },
+        }
+        ai = OfferAI()
+        ai.client = _client(payload)
 
         result = await ai.generate_offer({"description": "test"})
+
         assert result["name"] == "AI Offer"
         assert len(result["value_stack"]) == 1
-        ai._mock_client.messages.create.assert_called_once()
+        ai.client.messages.create.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_value_stack_returns_the_model_array(self):
+        layers = [
+            {
+                "name": "Layer",
+                "description": "d",
+                "delivery_method": "retainer",
+                "estimated_hours": 4,
+            }
+        ]
+        ai = OfferAI()
+        ai.client = _client(layers)
+
+        result = await ai.generate_value_stack("privacy", "retainer")
+
+        assert result == layers

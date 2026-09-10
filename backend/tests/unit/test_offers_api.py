@@ -78,8 +78,12 @@ class TestOffersAIEndpoints:
         )
         assert res.status_code == 200
         data = res.json()
-        assert "name" in data
-        assert "value_stack" in data
+        # P-04: no API key means no offer. This asserted "name" and
+        # "value_stack" were present, which held only because OfferAI
+        # returned SAMPLE_OFFER - a full offer with a price band - for any
+        # problem it was given.
+        assert data["degraded"] is True
+        assert data["degraded_reason"] == "no_api_key"
 
     def test_generate_offer_missing_problem(self, authed_client):
         res = authed_client.post("/api/v1/offers/generate", json={})

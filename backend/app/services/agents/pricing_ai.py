@@ -5,11 +5,16 @@ import json
 import logging
 from typing import Any
 
-import anthropic
-
 from app.core.config import settings
+from app.services.agents.base_agent import as_dict, call_claude
 
 logger = logging.getLogger(__name__)
+
+_SYSTEM = (
+    "You are PricingAI for ChamberForge. Recommend pricing for premium "
+    "services sold to advisors of high- and ultra-high-net-worth families. "
+    "Respond ONLY with the JSON requested, no commentary, no code fence."
+)
 
 # Hardcoded market benchmarks derived from the premium-service blueprint
 MARKET_BENCHMARKS: dict[str, list[dict[str, Any]]] = {
@@ -45,39 +50,24 @@ MARKET_BENCHMARKS: dict[str, list[dict[str, Any]]] = {
     ],
 }
 
-SAMPLE_PRICING: dict[str, Any] = {
-    "recommended_monthly": 20000.0,
-    "setup_fee": 5000.0,
-    "pricing_model": "retainer",
-    "anchors": [
-        {"reference": "Big-4 advisory retainer", "price": 35000, "context": "Monthly advisory fee"},
-        {"reference": "Boutique family-office service", "price": 25000, "context": "Comparable scope"},
-    ],
-    "packaging_options": [
-        {"tier": "Essential", "price": 15000, "included_services": ["Core coordination", "Monthly reporting"]},
-        {"tier": "Premium", "price": 25000, "included_services": ["Core coordination", "24/7 desk", "Quarterly strategy"]},
-        {"tier": "Elite", "price": 40000, "included_services": ["Full suite", "Dedicated team", "On-site presence"]},
-    ],
-}
-
-
 class PricingAI:
     """AI agent for pricing intelligence and margin simulation."""
+
+    #: Injection point for tests; the governed call path builds the real one.
+    client = None
 
     def __init__(self) -> None:
         self.api_key = settings.ANTHROPIC_API_KEY
         self.model = settings.AI_MODEL
-        if self.api_key:
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-        else:
-            self.client = None
+
 
     async def generate_pricing(self, offer_data: dict) -> dict:
-        """Generate pricing recommendation for an offer."""
-        if not self.client:
-            logger.warning("No Anthropic API key — returning sample pricing.")
-            return SAMPLE_PRICING
+        """Generate a pricing recommendation for an offer.
 
+        With no API key this returned SAMPLE_PRICING - a full Essential /
+        Premium / Elite ladder at $15k, $25k and $40k a month. Those numbers
+        had nothing to do with the offer they were returned for.
+        """
         prompt = (
             "Analyze this premium service offer and recommend pricing.\n\n"
             f"Offer: {json.dumps(offer_data, indent=2)}\n\n"
@@ -92,18 +82,10 @@ class PricingAI:
             "}"
         )
 
-        message = self.client.messages.create(
-            model=self.model,
-            max_tokens=1536,
-            messages=[{"role": "user", "content": prompt}],
+        response = await call_claude(
+            "pricing_ai", _SYSTEM, prompt, client=self.client, max_tokens=1536
         )
-        text = message.content[0].text.strip()
-        if text.startswith("```"):
-            lines = text.split("\n")[1:]
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            text = "\n".join(lines)
-        return json.loads(text)
+        return as_dict("pricing_ai", response)
 
     def simulate_margins(
         self,

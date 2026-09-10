@@ -216,3 +216,154 @@ were doing, invisibly.
 belongs to NextAuth, but the endpoint creates a workspace *and* a user, so
 moving it means ruling on which stack owns sign-up. **Needs a decision before
 P-19–P-23.**
+
+---
+
+# P-04 — AI Call-Path Governance
+
+Tasks T-018, T-031, T-034. Merge order 6 of 30.
+
+## 1. The card's premise was wrong about the code, and it changed the package
+
+The card scopes this as edits to `base_agent.py` plus "10 agents — structured
+output schema each". But **only one of the ten agents subclasses
+`BaseAgent`.** `CommandAI` does; the other nine are standalone classes that
+each construct their own Anthropic client, each with their own fallback and
+their own JSON parsing.
+
+Fixing `base_agent.py` alone would therefore have governed **one agent in
+ten**, and the acceptance criterion — *"every agent invocation writes a usage
+row"* — would have been unreachable while appearing to be met.
+
+So `call_claude()` is a **module-level function**, not a method, and all ten
+agents call it. Three of them expose synchronous methods, so there is a
+`call_claude_sync()` sharing one `_precheck` / `_finish` pair: two
+transports, one budget policy. Two copies of that policy is exactly how a
+sync agent ends up silently unmetered.
+
+## 2. Nothing was metered, and nothing was ever refused
+
+No agent called `AIRuntime.track_usage`. Its only callers were REST endpoints
+where a **client self-reported its own usage**. A real agent invocation cost
+money and left no record.
+
+`AIRuntime.check_budget(db, workspace_id, monthly_budget)` took the ceiling
+**as an argument from the caller** — the same class of hole P-02 closed for
+`workspace_id`. Whoever asked "am I over budget" also supplied the limit. It
+then returned a dict with `over_budget` in it and refused nothing.
+
+`budget_guard.py` inverts all three: the ceiling is persisted per workspace,
+the meter moves only on the server-side path, and passing it **raises**.
+
+The call path needs a workspace to meter against, and agent methods do not
+take one. Rather than add a parameter to every method — which would have
+meant editing routers owned by six other packages — it reads the
+`OperatorScope` contextvar **P-02 already built**. No router changed.
+
+## 3. Failure was disguised as success — the finding that matters
+
+This is worse than the audit recorded. With no API key:
+
+| Agent | What it returned |
+|---|---|
+| `ProofAI.generate_roi_framework` | monetary values, `total_estimated_roi`, `roi_multiple`, `payback_period_months` |
+| `ValidatorAI.validate_problem` | `is_real: True`, `is_ethical: True`, *"No ethical concerns identified"* |
+| `ResearchAI.ingest_source` | *"compliance costs increased 23% year-over-year"*, confidence 0.85, credited to the caller's source |
+| `PricingAI.generate_pricing` | a $15k / $25k / $40k tier ladder |
+| `OfferAI.generate_offer` | a full offer at $15,000–$30,000 a month |
+| `CommandAI.get_next_best_action` | *"Potential $450K in pipeline recovery"*, confidence 0.85 |
+| `FulfillmentAI.generate_sop_bundle` | a staffing plan with roles and weekly hours |
+| `ProblemAI.score_problem` | urgency 7, WTP confidence 0.75 |
+
+All constant. None derived from the input. **None marked.** A caller could
+not distinguish any of it from analysis, and neither could the UI.
+
+For a platform whose users advise HNW and UHNW families, this is not a
+degraded mode — it does not look like an outage, it looks like advice.
+
+Every one is now a typed degraded result: `degraded: True`, a machine-
+readable reason, and `data: None`. List-returning methods return `[]` and
+record the reason on the agent, because a list cannot carry the envelope
+without lying about its type — that is a real, acknowledged loss of
+expressiveness, and it is still strictly better than inventing rows.
+`ValidatorAI.score_wtp_confidence` returns `-1.0`, deliberately outside its
+documented 0.0–1.0 range so it cannot be plotted or averaged as a reading.
+
+**The fabrication was also reachable with a working API key.** Nine of ten
+agents did not strip markdown code fences, so a correct fenced answer parsed
+as a failure and fell through to the sample data. Fence handling is now in
+the shared parser.
+
+## 4. Fourteen tests asserted the defect
+
+They did not merely tolerate it — they pinned it:
+
+- `test_returns_required_fields_without_api` — docstring: *"With no API key
+  the agent falls back to sample data containing all required fields."*
+- `test_mock_scores_are_positive` — asserted all four validation dimensions
+  came back `True`.
+- `test_generate_offer_returns_sample` — `assert result == SAMPLE_OFFER`.
+- `test_ingest_source_no_api_key` — asserted three invented claims.
+- `test_roi_multiple_is_positive` — asserted an ROI multiple above zero from
+  an agent that had analysed nothing.
+- `test_refine_offer_returns_modified` — asserted `"Refined" in description`,
+  which the code achieved by appending the word.
+
+Any correct fix would have failed all of them. They are rewritten to assert
+the inverse, in the same files.
+
+## 5. Three files outside the card's list — declared, not buried
+
+- **`core/dependencies.py`** — `require_budget()`'s body. Sanctioned: P-00's
+  own comment in that function reads *"Pass-through until P-04 lands the
+  budget guard. P-04 fills in the body."* The frozen signature did not move,
+  so routes annotated during the run began enforcing on merge with no router
+  touched.
+- **`core/exceptions.py`** — added `BudgetError` (**402**, not 403). Purely
+  additive. 403 would tell an operator they lack permission and send them
+  looking in entirely the wrong place; they are permitted, and will be again
+  next period.
+- **`app/models/ai_usage.py`** — one line. `AIUsageLog.id` defaulted to the
+  `uuid.uuid4` **callable**, putting a UUID object into a `String(36)`
+  column. SQLite rejects it outright. Three writers create these rows, so
+  the fix belongs on the default rather than at one call site.
+
+`ai_cost_tracker.py` and `ai_eval_lab.py` are on the card's modify list and
+are **unchanged**. The cost tracker's `calculate_cost` is correct and is now
+the guard's pricing source; the eval lab is prompt versioning and has no
+bearing on T-018, T-031 or T-034. Editing them to match the card would have
+been churn.
+
+## 6. Two judgment calls worth review
+
+**An unreadable meter refuses.** If the budget check itself fails — database
+unreachable, table missing — the call is refused with reason
+`budget_unavailable`. The alternative is spending real money with no ceiling
+and no record for as long as the fault lasts, which is a cost control that
+switches itself off exactly when nobody is watching. It costs availability on
+a platform where a database outage has already taken every other route with
+it. `test_an_unreadable_meter_refuses_rather_than_spending` pins it.
+
+**`copy_ai` and `relationship_ai` keep their templates.** Both compose
+fallback text from the caller's *own* offer fields rather than inventing
+facts, so their templates survive — they are now routed through the governed
+path so they are metered and budgeted. The exception is two hand-written
+lists in `relationship_ai` that included claims like *"achieve 3-5x ROI
+within 12 months"* in an outreach script an advisor could send. Those are
+fabricated factual claims, and they are gone.
+
+## 7. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **127 failures against the 132 P-03 left** — five previously-failing tests now pass
+- **57 tests added**; `ruff` 0
+- Frontend untouched — this package is backend-only
+
+## 8. Still open
+
+`POST /api/v1/runtime/track` still lets a client write usage rows. It cannot
+move the meter (`test_the_usage_log_cannot_move_the_meter` pins that), but it
+can pollute the dashboard. The endpoint lives in `primitives.py`, which is
+**P-02's file and on P-04's must-not-touch list**, so it is flagged rather
+than removed. It should be deleted outright — the server is what calls the
+provider; nothing legitimate self-reports.

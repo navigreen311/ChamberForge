@@ -89,5 +89,13 @@ class TestDeprecatedEndpoint:
         async def greet():
             return "hello"
 
-        result = asyncio.get_event_loop().run_until_complete(greet())
+        # Own the loop rather than borrowing whatever a previous test left
+        # installed. `get_event_loop()` outside a coroutine has been
+        # deprecated since 3.10 and raises once no loop is set - so this
+        # passed only by accident of ordering.
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(greet())
+        finally:
+            loop.close()
         assert result == "hello"

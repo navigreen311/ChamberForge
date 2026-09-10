@@ -1,36 +1,63 @@
-"""Unit tests for ProblemAI service."""
+"""Unit tests for ProblemAI - discovered problems, or none.
+
+Rewritten by P-04. `test_discover_problems_fallback_without_api_key` asserted
+that an unconfigured agent returned exactly three problems, each with a
+title. They came from SAMPLE_PROBLEMS: a fixed list, returned regardless of
+which sources the caller passed in, presented as discovered from them.
+
+`test_classify_lifecycle_returns_string` and `test_score_problem_*` had the
+same shape - a constant answered for every input.
+"""
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-# ---------------------------------------------------------------------------
-# We patch settings BEFORE importing ProblemAI so the module-level
-# settings.ANTHROPIC_API_KEY is controlled by us.
-# ---------------------------------------------------------------------------
+from app.services.agents.base_agent import is_degraded
+from app.services.agents.problem_ai import ProblemAI
 
-class _FakeSettings:
-    ANTHROPIC_API_KEY = "test-key"
-    AI_MODEL = "claude-sonnet-4-6"
+PROBLEM = {"title": "Test", "description": "Desc"}
+
+
+def _client(text):
+    """ProblemAI is synchronous, so a plain mock is the right transport."""
+    message = MagicMock()
+    message.content = [MagicMock(text=text)]
+    message.usage = MagicMock(input_tokens=10, output_tokens=5)
+    client = MagicMock()
+    client.messages.create.return_value = message
+    return client
 
 
 @pytest.fixture()
-def ai_agent():
-    """Return a ProblemAI instance with a mocked Anthropic client."""
-    with patch("app.services.agents.problem_ai.settings", _FakeSettings()):
-        from app.services.agents.problem_ai import ProblemAI
-        agent = ProblemAI()
-        agent.client = MagicMock()
-        return agent
+def unconfigured(monkeypatch):
+    monkeypatch.setattr("app.services.agents.base_agent.settings.ANTHROPIC_API_KEY", "")
+    return ProblemAI()
 
 
-# ---------------------------------------------------------------------------
-# discover_problems
-# ---------------------------------------------------------------------------
+@pytest.fixture()
+def ai_agent(db_session, monkeypatch):
+    """A configured agent whose meter is reachable.
+
+    `discover_problems` takes an explicit workspace_id, so the budget check
+    runs - and P-04 makes an unreadable meter a refusal, not a free pass.
+    The session has to be the test one or every call here degrades.
+    """
+    monkeypatch.setattr(
+        "app.services.agents.base_agent.SessionLocal", lambda: db_session
+    )
+    agent = ProblemAI()
+    agent.client = _client("[]")
+    return agent
+
+
+# -- discover_problems ------------------------------------------------------
+
+
 def test_discover_problems_returns_valid_structure(ai_agent):
-    sample_response = json.dumps([
+    discovered = [
         {
             "title": "Test Problem",
             "description": "A test problem description",
@@ -42,60 +69,51 @@ def test_discover_problems_returns_valid_structure(ai_agent):
             "trigger_event": "liquidity_event",
             "wtp_profile": "premium",
         }
-    ])
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text=sample_response)]
-    ai_agent.client.messages.create.return_value = mock_message
+    ]
+    ai_agent.client = _client(json.dumps(discovered))
 
     results = ai_agent.discover_problems(
-        sources=["wealth management trends 2026"],
-        workspace_id="ws-1",
+        sources=["wealth management trends 2026"], workspace_id="ws-1"
     )
 
-    assert isinstance(results, list)
-    assert len(results) == 1
-    p = results[0]
-    assert "title" in p
-    assert "urgency_score" in p
-    assert "wealth_tier" in p
-    assert "pain_category" in p
-    assert "lifecycle_stage" in p
+    assert results == discovered
 
 
-def test_discover_problems_fallback_without_api_key():
-    """When API key is empty, sample problems are returned."""
-    with patch("app.services.agents.problem_ai.settings", MagicMock(ANTHROPIC_API_KEY="", AI_MODEL="claude-sonnet-4-6")):
-        from app.services.agents.problem_ai import ProblemAI
-        agent = ProblemAI()
-        results = agent.discover_problems(["src"], "ws-1")
-        assert isinstance(results, list)
-        assert len(results) == 3
-        assert all("title" in p for p in results)
+def test_discover_problems_finds_nothing_without_a_key(unconfigured):
+    """It used to return three invented problems attributed to the sources."""
+    results = unconfigured.discover_problems(["src"], "ws-1")
+    assert results == []
 
 
-# ---------------------------------------------------------------------------
-# score_problem
-# ---------------------------------------------------------------------------
+# -- score_problem ----------------------------------------------------------
+
+
 def test_score_problem_returns_expected_fields(ai_agent):
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text='{"urgency_score": 9, "wtp_confidence": 0.85}')]
-    ai_agent.client.messages.create.return_value = mock_message
+    ai_agent.client = _client('{"urgency_score": 9, "wtp_confidence": 0.85}')
 
-    result = ai_agent.score_problem({"title": "Test", "description": "Desc"})
+    result = ai_agent.score_problem(PROBLEM)
 
-    assert "urgency_score" in result
-    assert "wtp_confidence" in result
-    assert isinstance(result["urgency_score"], int)
-    assert isinstance(result["wtp_confidence"], float)
+    assert result["urgency_score"] == 9
+    assert result["wtp_confidence"] == 0.85
 
 
-# ---------------------------------------------------------------------------
-# classify_lifecycle
-# ---------------------------------------------------------------------------
+def test_score_problem_invents_no_score(unconfigured):
+    """A fixed urgency of 7 and a WTP confidence of 0.75, for anything."""
+    result = unconfigured.score_problem(PROBLEM)
+
+    assert is_degraded(result)
+    assert "urgency_score" not in result
+
+
+# -- classify_lifecycle -----------------------------------------------------
+
+
 def test_classify_lifecycle_returns_string(ai_agent):
-    mock_message = MagicMock()
-    mock_message.content = [MagicMock(text="Emerging")]
-    ai_agent.client.messages.create.return_value = mock_message
+    ai_agent.client = _client("Emerging")
 
-    result = ai_agent.classify_lifecycle({"title": "Test"})
-    assert result == "Emerging"
+    assert ai_agent.classify_lifecycle({"title": "Test"}) == "Emerging"
+
+
+def test_classify_lifecycle_returns_nothing_without_a_key(unconfigured):
+    """It answered "emerging" - a real stage - for every problem."""
+    assert unconfigured.classify_lifecycle({"title": "Test"}) == ""

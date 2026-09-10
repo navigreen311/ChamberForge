@@ -12,9 +12,12 @@ class TestValidation:
         data = resp.json()
         assert data["problem_id"] == problem_id
         assert "validation" in data
-        # Mock validator returns a structured scorecard
+        # P-04: with no API key the validator abstains rather than
+        # returning a scorecard it did not compute. The endpoint surfaces
+        # that marked result, which is the contract the UI renders.
         validation = data["validation"]
-        assert "is_real" in validation or "overall_score" in validation
+        assert validation["degraded"] is True
+        assert "is_real" not in validation
 
     def test_validate_with_invalid_uuid(self, client):
         resp = client.post("/api/v1/qualify/validate/not-a-uuid")

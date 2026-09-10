@@ -3,7 +3,7 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import AuthenticationError, AuthorizationError
+from app.core.exceptions import AuthenticationError, AuthorizationError, BudgetError
 from app.core.identity import ResolvedIdentity, resolve_identity
 from app.core.security import decode_access_token
 from app.db.session import get_db
@@ -89,14 +89,35 @@ def require_feature(feature: str):
 def require_budget(operation: str = "ai"):
     """Refuse a route once its workspace is over its AI spend ceiling.
 
-    Pass-through until P-04 lands the budget guard. P-04 fills in the body;
-    the signature does not move, so routes annotated now start enforcing
-    the moment that package merges.
+    P-04 filled this in. The signature is exactly the one P-00 froze, so
+    routes annotated during the run began enforcing the moment this
+    merged, with no router touched.
+
+    This is the route-level half of the ceiling. The call-path half is in
+    `base_agent.call_claude`, which refuses individual invocations. Both
+    exist because they catch different things: this one stops a request
+    that has not started, cheaply and before any work; the call-path one
+    catches spend from jobs and agents that never came through a route.
+
+    A workspace with no resolvable id is **not** refused here. That is not
+    a budget question, and answering it here would turn a missing
+    identity into a payment error; `get_workspace_id` is the gate for it.
     """
 
-    def dependency(current_user: ResolvedIdentity = Depends(get_current_user)) -> ResolvedIdentity:
-        # Deliberate no-op. When P-04 lands this becomes:
-        #   BudgetGuard.assert_within_ceiling(current_user, operation)
+    def dependency(
+        current_user: ResolvedIdentity = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> ResolvedIdentity:
+        from app.services.backbone.budget_guard import BudgetExceeded, BudgetGuard
+
+        if not current_user.workspace_id:
+            return current_user
+        try:
+            BudgetGuard.assert_within_ceiling(
+                db, current_user.workspace_id, operation=operation
+            )
+        except BudgetExceeded as exc:
+            raise BudgetError(str(exc), exc.status.as_dict()) from exc
         return current_user
 
     return dependency

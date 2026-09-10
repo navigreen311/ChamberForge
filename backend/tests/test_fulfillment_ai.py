@@ -1,8 +1,20 @@
-"""Tests for FulfillmentAI service."""
-from unittest.mock import AsyncMock, MagicMock, patch
+"""Tests for FulfillmentAI - an operational plan is produced or it is not.
+
+Rewritten by P-04. The four failing tests here asserted that an agent with
+`_client = None` still returned a staffing plan with roles and weekly hours,
+a service calendar, delivery risks with probabilities, and SOPs with steps
+and owners.
+
+All of it came from `_mock_sop_bundle`. A firm could have staffed an
+engagement from a plan nothing had analysed, and neither the caller nor the
+test suite could tell.
+"""
+import json
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.services.agents.base_agent import is_degraded
 from app.services.agents.fulfillment_ai import FulfillmentAI
 
 SAMPLE_OFFER = {
@@ -17,74 +29,100 @@ SAMPLE_OFFER = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _no_api_key(monkeypatch):
+    monkeypatch.setattr("app.services.agents.base_agent.settings.ANTHROPIC_API_KEY", "")
+
+
 @pytest.fixture
 def ai():
-    with patch.object(FulfillmentAI, "__init__", lambda self: setattr(self, "_client", None)):
-        return FulfillmentAI()
+    return FulfillmentAI()
+
+
+# -- Unconfigured -----------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_generate_sop_bundle_returns_required_keys(ai):
+async def test_sop_bundle_is_marked_not_fabricated(ai):
     result = await ai.generate_sop_bundle(SAMPLE_OFFER)
-    assert "staffing_plan" in result
-    assert "tooling_stack" in result
-    assert "service_calendar" in result
-    assert "delivery_risks" in result
-    assert "sops" in result
+
+    assert is_degraded(result)
+    assert result["degraded_reason"] == "no_api_key"
 
 
 @pytest.mark.asyncio
-async def test_sop_bundle_staffing_plan_structure(ai):
+async def test_no_staffing_plan_is_invented(ai):
+    """A plan with named roles and hours is something a firm would act on."""
     result = await ai.generate_sop_bundle(SAMPLE_OFFER)
-    for staff in result["staffing_plan"]:
-        assert "role" in staff
-        assert "responsibilities" in staff
-        assert "hours_per_week" in staff
+
+    assert "staffing_plan" not in result
+    assert "sops" not in result
 
 
 @pytest.mark.asyncio
-async def test_sop_bundle_sops_have_steps(ai):
-    result = await ai.generate_sop_bundle(SAMPLE_OFFER)
-    assert len(result["sops"]) > 0
-    for sop in result["sops"]:
-        assert "title" in sop
-        assert "steps" in sop
-        assert isinstance(sop["steps"], list)
-        assert len(sop["steps"]) > 0
-        assert "owner" in sop
-        assert "frequency" in sop
-
-
-@pytest.mark.asyncio
-async def test_generate_execution_blueprint_structure(ai):
+async def test_no_timeline_is_invented(ai):
     result = await ai.generate_execution_blueprint(SAMPLE_OFFER)
-    assert "role_map" in result
-    assert "qa_checklist" in result
-    assert isinstance(result["qa_checklist"], list)
-    assert "timeline_weeks" in result
-    assert isinstance(result["timeline_weeks"], int)
-    assert "milestones" in result
-    for ms in result["milestones"]:
-        assert "week" in ms
-        assert "milestone" in ms
+
+    assert is_degraded(result)
+    assert "timeline_weeks" not in result
+    assert "milestones" not in result
+
+
+# -- Configured -------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_sop_bundle_with_claude_mock(ai):
-    """Test that Claude path works when client is available."""
-    import json
-    mock_response = MagicMock()
-    mock_response.content = [MagicMock(text=json.dumps({
-        "staffing_plan": [{"role": "Lead", "responsibilities": "Everything", "hours_per_week": 40}],
+async def test_sop_bundle_returns_the_model_answer(ai):
+    bundle = {
+        "staffing_plan": [
+            {"role": "Lead", "responsibilities": "Everything", "hours_per_week": 40}
+        ],
         "tooling_stack": ["Tool1"],
         "service_calendar": [{"week": 1, "deliverables": "Kickoff"}],
-        "delivery_risks": [{"risk": "Delay", "probability": "low", "impact": "medium", "mitigation": "Plan ahead"}],
-        "sops": [{"title": "Onboarding", "steps": ["Step 1"], "owner": "Lead", "frequency": "once"}],
-    }))]
+        "delivery_risks": [
+            {
+                "risk": "Delay",
+                "probability": "low",
+                "impact": "medium",
+                "mitigation": "Plan ahead",
+            }
+        ],
+        "sops": [
+            {
+                "title": "Onboarding",
+                "steps": ["Step 1"],
+                "owner": "Lead",
+                "frequency": "once",
+            }
+        ],
+    }
+    mock_response = MagicMock()
+    mock_response.content = [MagicMock(text=json.dumps(bundle))]
+    mock_response.usage = MagicMock(input_tokens=10, output_tokens=5)
 
     ai._client = AsyncMock()
     ai._client.messages.create = AsyncMock(return_value=mock_response)
 
     result = await ai.generate_sop_bundle(SAMPLE_OFFER)
+
     assert result["staffing_plan"][0]["role"] == "Lead"
+    assert not is_degraded(result)
     assert ai._client.messages.create.called
+
+
+@pytest.mark.asyncio
+async def test_a_provider_failure_degrades_rather_than_substituting(ai):
+    """This is the path that used to reach the mock with a key configured.
+
+    `generate_sop_bundle` caught the exception, logged "returning mock", and
+    handed back the constant plan - so a provider outage produced an
+    operational plan indistinguishable from a real one.
+    """
+    ai._client = AsyncMock()
+    ai._client.messages.create = AsyncMock(side_effect=RuntimeError("provider down"))
+
+    result = await ai.generate_sop_bundle(SAMPLE_OFFER)
+
+    assert is_degraded(result)
+    assert result["degraded_reason"] == "provider_error"
+    assert "provider down" in result["degraded_detail"]

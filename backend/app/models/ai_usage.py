@@ -13,7 +13,11 @@ class AIUsageLog(Base):
 
     __tablename__ = "ai_usage_logs"
 
-    id = Column(sa.String(36), primary_key=True, default=uuid.uuid4)
+    # str(), not the uuid4 callable itself: the column is String(36), and a
+    # UUID object bound to it is rejected outright by SQLite and coerced only
+    # by luck elsewhere. Three writers create these rows - the agent call
+    # path, AIRuntime and AICostTracker - so the fix belongs on the default.
+    id = Column(sa.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     workspace_id = Column(sa.String(36), nullable=False, index=True)
     agent_name = Column(String(255), nullable=False, index=True)
     tokens_in = Column(Integer, nullable=False, default=0)

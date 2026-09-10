@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from app.core.config import settings
+from app.services.agents.base_agent import call_claude
 
 
 class CopyAI:
@@ -15,20 +16,22 @@ class CopyAI:
         self.model = model or settings.AI_MODEL
 
     async def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
-        """Call Claude API and return text response. Falls back to structured defaults."""
-        try:
-            import anthropic
+        """Call the model through the governed path; "" when it could not run.
 
-            client = anthropic.AsyncAnthropic(api_key=self.api_key)
-            message = await client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}],
-            )
-            return message.content[0].text
-        except Exception:
-            return ""
+        This used to build its own client and swallow every exception,
+        so the call was unmetered, unbudgeted, and silent on failure.
+        Callers still get "" and fall back to their templates - which,
+        in this agent, are composed from the caller's own offer fields
+        rather than invented, so they stay.
+        """
+        response = await call_claude(
+            "copy_ai",
+            system_prompt,
+            user_prompt,
+            client=getattr(self, "client", None),
+            max_tokens=4096,
+        )
+        return response.text or ""
 
     async def generate_positioning(self, offer_data: dict) -> dict:
         """Generate brand positioning assets from offer data.

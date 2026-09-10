@@ -9,7 +9,14 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from app.services.agents.base_agent import BaseAgent
+from app.services.agents.base_agent import (
+    AgentResponse,
+    BaseAgent,
+    as_dict,
+    as_list,
+    degraded_payload,
+    is_degraded,
+)
 
 
 class CommandAI(BaseAgent):
@@ -55,13 +62,11 @@ class CommandAI(BaseAgent):
                 'priority ("critical"|"high"|"medium"|"low"), estimated_impact (str).'
             )
             user = f"Workspace context:\n{json.dumps(workspace_context, default=str)}"
-            raw = await self._call_claude(system, user)
-            result = self._safe_parse(raw, self._sample_next_action())
-            self._mark_complete(result)
-            return result
+            response = await self._call_claude(system, user)
+            return self._as_dict(response)
         except Exception as exc:
             self._mark_error(str(exc))
-            return self._sample_next_action()
+            return degraded_payload(self.agent_name, "agent_error", str(exc))
 
     # ------------------------------------------------------------------
     # 2. Dashboard Synthesis
@@ -81,13 +86,11 @@ class CommandAI(BaseAgent):
                 "pending_risks (list), urgent_actions (list)."
             )
             user = f"Workspace data:\n{json.dumps(workspace_data, default=str)}"
-            raw = await self._call_claude(system, user)
-            result = self._safe_parse(raw, self._sample_dashboard())
-            self._mark_complete(result)
-            return result
+            response = await self._call_claude(system, user)
+            return self._as_dict(response)
         except Exception as exc:
             self._mark_error(str(exc))
-            return self._sample_dashboard()
+            return degraded_payload(self.agent_name, "agent_error", str(exc))
 
     # ------------------------------------------------------------------
     # 3. Opportunity Prioritisation
@@ -116,15 +119,19 @@ class CommandAI(BaseAgent):
                 f"Problems:\n{json.dumps(problems, default=str)}\n\n"
                 f"Offers:\n{json.dumps(offers, default=str)}"
             )
-            raw = await self._call_claude(system, user)
-            parsed = self._safe_parse_list(raw, self._sample_opportunities())
+            response = await self._call_claude(system, user)
+            parsed = self._as_list(response)
             # Guarantee sort order
             parsed.sort(key=lambda x: x.get("weighted_score", 0), reverse=True)
-            self._mark_complete({"opportunities": parsed})
+            # Only a real ranking is "complete". Marking a degraded call
+            # complete here would erase the one signal an operator has that
+            # the AI never ran - the empty list looks like "no opportunities".
+            if self._status != "degraded":
+                self._mark_complete({"opportunities": parsed})
             return parsed
         except Exception as exc:
             self._mark_error(str(exc))
-            return self._sample_opportunities()
+            return []
 
     # ------------------------------------------------------------------
     # 4. Daily Brief
@@ -149,13 +156,11 @@ class CommandAI(BaseAgent):
                 f"Date: {today}\n"
                 f"Workspace data:\n{json.dumps(workspace_data, default=str)}"
             )
-            raw = await self._call_claude(system, user)
-            result = self._safe_parse(raw, self._sample_daily_brief(today))
-            self._mark_complete(result)
-            return result
+            response = await self._call_claude(system, user)
+            return self._as_dict(response)
         except Exception as exc:
             self._mark_error(str(exc))
-            return self._sample_daily_brief(date.today().isoformat())
+            return degraded_payload(self.agent_name, "agent_error", str(exc))
 
     # ------------------------------------------------------------------
     # 5. Agent Status Summary
@@ -181,107 +186,30 @@ class CommandAI(BaseAgent):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    @staticmethod
-    def _safe_parse(raw: str, fallback: dict) -> dict:
-        """Attempt JSON parse; return fallback when the response is unusable."""
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, dict) and "fallback" not in parsed and "error" not in parsed:
-                return parsed
-        except (json.JSONDecodeError, TypeError):
-            pass
-        return fallback
+    def _as_dict(self, response: AgentResponse) -> dict:
+        """The model's JSON object, or a degraded result saying why not.
 
-    @staticmethod
-    def _safe_parse_list(raw: str, fallback: list) -> list:
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, list):
-                return parsed
-            # If Claude returned a dict with fallback/error, use fallback list
-        except (json.JSONDecodeError, TypeError):
-            pass
-        return fallback
+        What this replaces: `_safe_parse(raw, self._sample_next_action())`,
+        which substituted invented figures - "$450K in pipeline recovery", a
+        revenue snapshot, named client ids - whenever the call failed or no
+        key was configured, in the same shape as a real answer.
+        """
+        result = as_dict(self.agent_name, response)
+        if is_degraded(result):
+            self._status = "degraded"
+            self._last_output = result
+        else:
+            self._mark_complete(result)
+        return result
 
-    # ------------------------------------------------------------------
-    # Sample / fallback data
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _sample_next_action() -> dict:
-        return {
-            "action_title": "Follow up with top 3 prospects",
-            "action_description": (
-                "Three high-value prospects have gone 7+ days without contact. "
-                "Send personalised check-ins referencing their last interaction."
-            ),
-            "why": "Prospect engagement drops sharply after 7 days of silence.",
-            "evidence_links": ["/clients/c-101", "/clients/c-204", "/clients/c-319"],
-            "confidence": 0.85,
-            "priority": "high",
-            "estimated_impact": "Potential $450K in pipeline recovery",
-        }
+    def _as_list(self, response: AgentResponse) -> list:
+        """The model's JSON array, or an empty list.
 
-    @staticmethod
-    def _sample_dashboard() -> dict:
-        return {
-            "top_problems": ["3 stale prospects", "Renewal due in 5 days"],
-            "active_offers": ["Premium Advisory Package", "Estate Planning Bundle"],
-            "client_health_summary": {"healthy": 42, "at_risk": 5, "churned": 1},
-            "revenue_snapshot": {
-                "mtd": 125000,
-                "projected": 310000,
-                "yoy_change": 0.12,
-            },
-            "pending_risks": ["Client #204 unresponsive", "Compliance review overdue"],
-            "urgent_actions": ["Call Client #101", "Submit Q2 report"],
-        }
-
-    @staticmethod
-    def _sample_opportunities() -> list[dict]:
-        return [
-            {
-                "problem_name": "Estate planning gap",
-                "offer_name": "Estate Planning Bundle",
-                "probability": 0.8,
-                "impact_score": 9.0,
-                "weighted_score": 7.2,
-                "recommended_action": "Schedule estate review meeting",
-            },
-            {
-                "problem_name": "Tax optimisation needed",
-                "offer_name": "Tax Strategy Session",
-                "probability": 0.6,
-                "impact_score": 7.5,
-                "weighted_score": 4.5,
-                "recommended_action": "Prepare tax analysis report",
-            },
-        ]
-
-    @staticmethod
-    def _sample_daily_brief(today: str | None = None) -> dict:
-        return {
-            "date": today or date.today().isoformat(),
-            "changes_since_yesterday": [
-                "2 new leads added",
-                "Client #101 moved to active",
-                "Revenue target 40% achieved",
-            ],
-            "alerts": ["Compliance deadline in 3 days", "Renewal for Client #204 due"],
-            "recommended_actions": [
-                {
-                    "action": "Review compliance checklist",
-                    "priority": "critical",
-                    "reason": "Deadline approaching",
-                },
-                {
-                    "action": "Prepare renewal proposal for #204",
-                    "priority": "high",
-                    "reason": "At-risk client",
-                },
-            ],
-            "metrics_snapshot": {
-                "active_clients": 47,
-                "pipeline_value": 1250000,
-                "tasks_completed_today": 0,
-            },
-        }
+        Empty is less expressive than the degraded envelope, but it is
+        honest: no opportunities were computed, and none are invented. The
+        reason is recorded on the agent - `get_status()` reads "degraded".
+        """
+        result = as_list(self.agent_name, response)
+        if not result and (response.degraded or not response.ok):
+            self._mark_degraded(response)
+        return result

@@ -1,8 +1,10 @@
 """Tests for PricingAI service."""
-from unittest.mock import patch
+import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.services.agents.base_agent import is_degraded
 from app.services.agents.pricing_ai import PricingAI
 
 
@@ -84,21 +86,52 @@ class TestMarketBenchmarks:
         assert result == []
 
 
-class TestGeneratePricingNoKey:
-    """Test pricing generation fallback when no API key."""
+class TestGeneratePricingUnconfigured:
+    """P-04: no API key means no price, not a plausible one.
+
+    This asserted that an unconfigured agent still returned a
+    recommended monthly fee, a setup fee, anchors and a packaging
+    ladder. They came from SAMPLE_PRICING - $15k / $25k / $40k tiers,
+    the same for every offer, and nothing marked them as invented.
+    """
 
     @pytest.fixture
-    def ai(self):
-        with patch("app.services.agents.pricing_ai.settings") as mock_settings:
-            mock_settings.ANTHROPIC_API_KEY = ""
-            mock_settings.AI_MODEL = "claude-sonnet-4-6"
-            return PricingAI()
+    def ai(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.agents.base_agent.settings.ANTHROPIC_API_KEY", ""
+        )
+        return PricingAI()
 
     @pytest.mark.asyncio
-    async def test_returns_sample_pricing(self, ai):
+    async def test_no_price_is_invented(self, ai):
         result = await ai.generate_pricing({"name": "Test Offer"})
-        assert "recommended_monthly" in result
-        assert "setup_fee" in result
-        assert "pricing_model" in result
-        assert "anchors" in result
-        assert "packaging_options" in result
+
+        assert is_degraded(result)
+        assert result["degraded_reason"] == "no_api_key"
+
+    @pytest.mark.asyncio
+    async def test_no_packaging_ladder_is_invented(self, ai):
+        result = await ai.generate_pricing({"name": "Test Offer"})
+
+        for field in ("recommended_monthly", "setup_fee", "anchors", "packaging_options"):
+            assert field not in result
+
+    @pytest.mark.asyncio
+    async def test_configured_returns_the_model_answer(self, ai):
+        payload = {
+            "recommended_monthly": 18000,
+            "setup_fee": 4000,
+            "pricing_model": "retainer",
+            "anchors": [],
+            "packaging_options": [],
+        }
+        message = MagicMock()
+        message.content = [MagicMock(text=json.dumps(payload))]
+        message.usage = MagicMock(input_tokens=10, output_tokens=5)
+        ai.client = AsyncMock()
+        ai.client.messages.create = AsyncMock(return_value=message)
+
+        result = await ai.generate_pricing({"name": "Test Offer"})
+
+        assert result["recommended_monthly"] == 18000
+        assert not is_degraded(result)
