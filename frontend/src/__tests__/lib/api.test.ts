@@ -1,4 +1,20 @@
-// Test the axios API client interceptors
+/**
+ * The axios client's interceptors.
+ *
+ * P-11 rewrote the auth assertions. They previously checked that the client
+ * read an access token out of `localStorage` and set an `Authorization`
+ * header from it, and that a 401 cleared three localStorage keys - i.e. they
+ * asserted the vulnerability.
+ *
+ * The session is now an httpOnly cookie the server owns. The client sends it
+ * via `withCredentials` and never sees it, so what these tests protect is the
+ * absence: no token is read, none is attached, and a 401 has nothing to
+ * clear.
+ *
+ * The request-id and error-envelope behaviour is unchanged and still covered.
+ */
+
+type MockConfig = Record<string, unknown> & { headers: Record<string, unknown> }
 
 describe('API client', () => {
   beforeEach(() => {
@@ -6,47 +22,87 @@ describe('API client', () => {
     jest.resetModules()
   })
 
-  it('adds Authorization header when token exists', async () => {
-    localStorage.setItem('access_token', 'my-token-123')
+  it('sends credentials so the httpOnly session cookie travels', async () => {
+    const { default: api } = await import('@/lib/api')
+    expect(api.defaults.withCredentials).toBe(true)
+  })
+
+  it('does NOT read a token from localStorage', async () => {
+    // Even if something else left one there, the client must ignore it -
+    // reading it back would recreate the exposure this change removed.
+    localStorage.setItem('access_token', 'stale-token-from-an-old-session')
 
     const { default: api } = await import('@/lib/api')
 
-    // Use a mock adapter to capture the final request config
-    let capturedConfig: any
-    api.defaults.adapter = async (config: any) => {
-      capturedConfig = config
-      return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+    let captured: MockConfig | undefined
+    api.defaults.adapter = async (config: unknown) => {
+      captured = config as MockConfig
+      return {
+        data: {},
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: config as never,
+      }
     }
 
     await api.get('/test')
-
-    expect(capturedConfig.headers.Authorization).toBe('Bearer my-token-123')
+    expect(captured?.headers.Authorization).toBeUndefined()
   })
 
-  it('does not add Authorization header when no token', async () => {
+  it('attaches a request id to every request', async () => {
     const { default: api } = await import('@/lib/api')
 
-    let capturedConfig: any
-    api.defaults.adapter = async (config: any) => {
-      capturedConfig = config
-      return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+    let captured: MockConfig | undefined
+    api.defaults.adapter = async (config: unknown) => {
+      captured = config as MockConfig
+      return {
+        data: {},
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: config as never,
+      }
     }
 
     await api.get('/test')
-
-    expect(capturedConfig.headers.Authorization).toBeUndefined()
+    expect(captured?.headers['X-Request-ID']).toEqual(expect.any(String))
   })
 
-  it('clears token on 401 response', async () => {
-    localStorage.setItem('access_token', 'tok')
-    localStorage.setItem('refresh_token', 'ref')
-    localStorage.setItem('user', '{}')
+  it('parses the standardized error envelope', async () => {
+    const { default: api } = await import('@/lib/api')
+
+    api.defaults.adapter = async (config: unknown) => {
+      const error = new Error('Request failed') as Error & Record<string, unknown>
+      error.response = {
+        status: 422,
+        data: {
+          error_code: 'validation_failed',
+          message: 'Name is required.',
+          details: { field_errors: { name: 'required' } },
+        },
+        headers: {},
+        config,
+      }
+      error.config = config
+      error.isAxiosError = true
+      throw error
+    }
+
+    await expect(api.get('/test')).rejects.toMatchObject({
+      errorCode: 'validation_failed',
+      userMessage: 'Name is required.',
+      fieldErrors: { name: 'required' },
+    })
+  })
+
+  it('leaves storage alone on a 401 - there is nothing client-side to clear', async () => {
+    localStorage.setItem('unrelated', 'keep-me')
 
     const { default: api } = await import('@/lib/api')
 
-    // Mock adapter to simulate 401
-    api.defaults.adapter = async (config: any) => {
-      const error = new Error('Request failed') as any
+    api.defaults.adapter = async (config: unknown) => {
+      const error = new Error('Unauthorized') as Error & Record<string, unknown>
       error.response = { status: 401, data: {}, headers: {}, config }
       error.config = config
       error.isAxiosError = true
@@ -56,40 +112,10 @@ describe('API client', () => {
     try {
       await api.get('/protected')
     } catch {
-      // Expected 401
+      // expected
     }
 
-    expect(localStorage.getItem('access_token')).toBeNull()
-    expect(localStorage.getItem('refresh_token')).toBeNull()
-    expect(localStorage.getItem('user')).toBeNull()
-  })
-
-  it('does not clear token on non-401 errors', async () => {
-    localStorage.setItem('access_token', 'tok')
-
-    const { default: api } = await import('@/lib/api')
-
-    api.defaults.adapter = async (config: any) => {
-      const error = new Error('Server error') as any
-      error.response = { status: 500, data: {}, headers: {}, config }
-      error.config = config
-      error.isAxiosError = true
-      throw error
-    }
-
-    try {
-      await api.get('/test')
-    } catch {
-      // Expected
-    }
-
-    expect(localStorage.getItem('access_token')).toBe('tok')
-  })
-
-  it('sets correct base URL and timeout', async () => {
-    const { default: api } = await import('@/lib/api')
-    expect(api.defaults.baseURL).toBe('http://localhost:8000')
-    expect(api.defaults.timeout).toBe(0)
+    expect(localStorage.getItem('unrelated')).toBe('keep-me')
   })
 
   it('sets Content-Type to application/json', async () => {

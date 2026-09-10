@@ -1,8 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { signIn, signOut, useSession } from 'next-auth/react';
+import { useCallback } from 'react';
+
 import api from '@/lib/api';
-import type { User, AuthTokens, LoginRequest, RegisterRequest } from '@/types';
+import type { RegisterRequest, User } from '@/types';
+
+/**
+ * The operator's session.
+ *
+ * P-11 moved this onto NextAuth. It previously kept the access token, the
+ * refresh token and the whole user object in `localStorage`, and mirrored
+ * the token into a non-httpOnly `auth_token` cookie - which meant any XSS
+ * anywhere on the origin was a full session compromise, on a platform
+ * holding HNW client data.
+ *
+ * NextAuth's JWT strategy keeps the session in an httpOnly cookie that
+ * script cannot read. The token is never handed to the client, so there is
+ * nothing on this side to steal.
+ *
+ * The returned shape is unchanged, because ~20 components destructure it.
+ */
 
 interface AuthState {
   user: User | null;
@@ -12,91 +30,57 @@ interface AuthState {
 }
 
 export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isAdmin: false,
-    isLoading: true,
-  });
+  const { data: session, status } = useSession();
 
-  // Hydrate from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    const token = localStorage.getItem('access_token');
-    if (stored && token) {
-      try {
-        const user: User = JSON.parse(stored);
-        setState({
-          user,
-          isAuthenticated: true,
-          isAdmin: user.role === 'admin',
-          isLoading: false,
-        });
-      } catch {
-        setState((s) => ({ ...s, isLoading: false }));
-      }
-    } else {
-      setState((s) => ({ ...s, isLoading: false }));
-    }
-  }, []);
+  const sessionUser = session?.user as Record<string, unknown> | undefined;
+
+  const state: AuthState = {
+    user: sessionUser
+      ? ({
+          id: sessionUser.id as string,
+          email: sessionUser.email as string,
+          name: sessionUser.name as string,
+          role: (sessionUser.role as string) ?? 'operator',
+        } as User)
+      : null,
+    isAuthenticated: status === 'authenticated',
+    isAdmin: (sessionUser?.role as string) === 'admin',
+    isLoading: status === 'loading',
+  };
 
   const login = useCallback(async (email: string, password: string) => {
-    const payload: LoginRequest = { email, password };
-    const { data } = await api.post<AuthTokens & { user: User }>(
-      '/api/v1/auth/login',
-      payload,
-    );
-
-    localStorage.setItem('access_token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    document.cookie = `auth_token=${data.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-
-    setState({
-      user: data.user,
-      isAuthenticated: true,
-      isAdmin: data.user.role === 'admin',
-      isLoading: false,
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
     });
-
-    return data.user;
+    if (!result || result.error) {
+      throw new Error('Invalid email or password');
+    }
+    return result;
   }, []);
 
-  const register = useCallback(async (payload: RegisterRequest) => {
-    const { data } = await api.post<AuthTokens & { user: User }>(
-      '/api/v1/auth/register',
-      payload,
-    );
+  /**
+   * Registration still goes through the FastAPI endpoint, which creates the
+   * workspace alongside the user. Which stack should own sign-up is an open
+   * question recorded in PARALLEL_BUILD_ESCALATION.md - guessing would put
+   * new operators in a table the console cannot see. Signing in afterwards
+   * goes through NextAuth, so the session is a real one either way.
+   */
+  const register = useCallback(
+    async (payload: RegisterRequest) => {
+      await api.post('/api/v1/auth/register', payload);
+      await signIn('credentials', {
+        email: payload.email,
+        password: payload.password,
+        redirect: false,
+      });
+    },
+    []
+  );
 
-    localStorage.setItem('access_token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    document.cookie = `auth_token=${data.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-
-    setState({
-      user: data.user,
-      isAuthenticated: true,
-      isAdmin: data.user.role === 'admin',
-      isLoading: false,
-    });
-
-    return data.user;
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user');
-    document.cookie = 'auth_token=; path=/; max-age=0';
-
-    setState({
-      user: null,
-      isAuthenticated: false,
-      isAdmin: false,
-      isLoading: false,
-    });
-
-    window.location.href = '/login';
+  const logout = useCallback(async () => {
+    await signOut({ callbackUrl: '/login' });
   }, []);
 
   return {

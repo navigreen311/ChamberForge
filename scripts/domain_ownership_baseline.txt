@@ -20,7 +20,6 @@ backend/app/api/v1/storage.py Document
 backend/app/api/v1/users.py User
 backend/app/api/v1/workspace_settings.py Offer,Problem,User
 backend/app/api/v1/workspaces.py User
-backend/app/core/dependencies.py User
 backend/app/services/backbone/mfa_service.py User
 backend/app/services/backbone/notifications.py Notification
 backend/app/services/backbone/ontology_engine.py Problem

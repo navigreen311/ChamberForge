@@ -4,9 +4,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AuthenticationError, AuthorizationError
+from app.core.identity import ResolvedIdentity, resolve_identity
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models.user import User
 
 security_scheme = HTTPBearer()
 
@@ -14,7 +14,7 @@ security_scheme = HTTPBearer()
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
     db: Session = Depends(get_db),
-) -> User:
+) -> ResolvedIdentity:
     """Extract and validate JWT from the Authorization header, return the User."""
     payload = decode_access_token(credentials.credentials)
     if payload is None:
@@ -24,14 +24,24 @@ async def get_current_user(
     if user_id is None:
         raise AuthenticationError("Token missing subject claim")
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
+    # P-11 (T-063): identity comes from the Prisma-owned "User" table.
+    #
+    # This read `db.query(User)` - the FastAPI `users` table - which D4 made
+    # non-authoritative. An operator created through the console exists in
+    # Prisma and not in `users`, so every FastAPI-authenticated request was
+    # resolving against a table nobody writes to. See app/core/identity.py
+    # for how the workspace is resolved, since Prisma's User has no
+    # workspace column.
+    identity = resolve_identity(db, user_id)
+    if identity is None or not identity.is_active:
         raise AuthenticationError("User not found or inactive")
-    return user
+    return identity
 
 
-async def get_workspace_id(current_user: User = Depends(get_current_user)) -> str:
-    """Extract workspace_id from the authenticated user, enforcing tenant context."""
+async def get_workspace_id(
+    current_user: ResolvedIdentity = Depends(get_current_user),
+) -> str:
+    """The workspace every scoped query in this request filters on."""
     if not current_user.workspace_id:
         raise AuthorizationError("No workspace assigned")
     return str(current_user.workspace_id)
@@ -40,7 +50,7 @@ async def get_workspace_id(current_user: User = Depends(get_current_user)) -> st
 def require_role(*allowed_roles: str):
     """Return a dependency that enforces the user holds one of *allowed_roles*."""
 
-    def dependency(current_user: User = Depends(get_current_user)):
+    def dependency(current_user: ResolvedIdentity = Depends(get_current_user)):
         if current_user.role not in allowed_roles:
             raise AuthorizationError("Insufficient permissions")
         return current_user
@@ -67,7 +77,7 @@ def require_feature(feature: str):
     rather than a sweep across 45 routers.
     """
 
-    def dependency(current_user: User = Depends(get_current_user)) -> User:
+    def dependency(current_user: ResolvedIdentity = Depends(get_current_user)) -> ResolvedIdentity:
         # Deliberate no-op. When entitlements are enabled this becomes:
         #   if not EntitlementEngine.check_feature(current_user, feature):
         #       raise AuthorizationError(f"Plan does not include {feature}")
@@ -84,7 +94,7 @@ def require_budget(operation: str = "ai"):
     the moment that package merges.
     """
 
-    def dependency(current_user: User = Depends(get_current_user)) -> User:
+    def dependency(current_user: ResolvedIdentity = Depends(get_current_user)) -> ResolvedIdentity:
         # Deliberate no-op. When P-04 lands this becomes:
         #   BudgetGuard.assert_within_ceiling(current_user, operation)
         return current_user
