@@ -1,7 +1,6 @@
 """Video trainer — training video production and certification tracking."""
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from app.services.integrations.visionaudio_client import VisionAudioForgeClient
@@ -38,21 +37,26 @@ class VideoTrainer:
     ) -> dict[str, Any]:
         """Retrieve certification progress for a trainee.
 
-        Note: In production this would query a database. The mock returns
-        sample progress data for development.
+        No progress source is connected. This returned a fixed record for
+        every trainee - 3 of 8 modules, 37.5% complete, currently studying
+        "Advanced Client Engagement", finishing 2026-05-15 - which is a
+        training compliance record, and it was the same one for everybody.
+
+        Reporting an unknown rather than a plausible number is the whole
+        point: a firm checking whether an adviser completed mandatory
+        training must not be told 37.5% by a constant.
         """
-        # In a real implementation this queries the VisionAudioForge LMS API.
-        # For now, return structured mock data.
         return {
             "trainee_id": trainee_id,
-            "modules_completed": 3,
-            "modules_total": 8,
-            "completion_percentage": 37.5,
-            "current_module": {
-                "id": str(uuid.uuid4()),
-                "title": "Advanced Client Engagement",
-                "progress_percent": 60,
-            },
+            "degraded": True,
+            "degraded_reason": "no_progress_source",
+            "degraded_detail": (
+                "No VisionAudioForge LMS progress source is connected, so no "
+                "certification progress is available for this trainee."
+            ),
+            "modules_completed": None,
+            "modules_total": None,
+            "completion_percentage": None,
+            "current_module": None,
             "certifications": [],
-            "estimated_completion_date": "2026-05-15",
         }
