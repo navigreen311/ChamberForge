@@ -2,6 +2,7 @@
 
 import React from 'react';
 
+import SessionProvider from '@/app/components/providers/SessionProvider'
 import { ModeProvider } from '@/lib/context/ModeContext';
 
 /**
@@ -20,5 +21,12 @@ import { ModeProvider } from '@/lib/context/ModeContext';
  * Add providers outermost-first.
  */
 export default function AppProviders({ children }: { children: React.ReactNode }) {
-  return <ModeProvider>{children}</ModeProvider>;
+  // P-11 nests SessionProvider here rather than in app/layout.tsx, which
+  // P-00 froze. Session is outermost: ModeProvider reads the operator's saved
+  // mode, so it needs the session already resolved above it.
+  return (
+    <SessionProvider>
+      <ModeProvider>{children}</ModeProvider>
+    </SessionProvider>
+  );
 }

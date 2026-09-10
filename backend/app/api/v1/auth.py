@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
 from app.core.exceptions import AuthenticationError, ConflictError
+from app.core.identity import resolve_identity, resolve_identity_by_email
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -49,6 +50,14 @@ def _build_token_payload(user: User) -> dict:
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)):
     """Create a new workspace and its owner (admin) user."""
+    # P-11 NOTE - deliberately still the legacy `users` table.
+    #
+    # Under D1 registration belongs to NextAuth, which writes the Prisma
+    # "User". This endpoint creates a workspace AND a user, and moving it
+    # would mean deciding which stack owns sign-up - a question the plan has
+    # not answered. It is recorded in PARALLEL_BUILD_ESCALATION.md rather
+    # than resolved here, because guessing would put new operators in a
+    # table the console cannot see.
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
         raise ConflictError("Email already registered", resource="User")
@@ -101,8 +110,14 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(body: LoginRequest, db: Session = Depends(get_db)):
     """Authenticate via email + password and return tokens (or MFA challenge)."""
-    user = db.query(User).filter(User.email == body.email).first()
-    if not user or not verify_password(body.password, user.hashed_password):
+    # P-11 (T-063): resolve against the Prisma-owned "User" table. Prisma
+    # stores the hash in `password`, the legacy table in `hashed_password`;
+    # both are bcrypt, so one verifier covers either.
+    resolved = resolve_identity_by_email(db, body.email)
+    if resolved is None:
+        raise AuthenticationError("Invalid email or password")
+    user, password_hash = resolved
+    if not password_hash or not verify_password(body.password, password_hash):
         raise AuthenticationError("Invalid email or password")
     if not user.is_active:
         raise AuthenticationError("Account deactivated")
@@ -134,7 +149,7 @@ def mfa_verify(body: MFAVerifyRequest, db: Session = Depends(get_db)):
         )
 
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
+    user = resolve_identity(db, user_id)
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -164,7 +179,7 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
         raise AuthenticationError("Invalid refresh token")
 
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == user_id).first()
+    user = resolve_identity(db, user_id)
     if not user or not user.is_active:
         raise AuthenticationError("User not found or inactive")
 
