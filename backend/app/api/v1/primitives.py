@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.ai_eval_lab import AIEvalLab
 from app.services.backbone.ai_runtime import AIRuntime
@@ -12,7 +13,16 @@ from app.services.backbone.rules_engine import RulesEngine
 from app.services.backbone.sandbox import SandboxService
 from app.services.backbone.trust_center import TrustCenter
 
-router = APIRouter(prefix="/api/v1/primitives", tags=["Platform Primitives"])
+# P-02: every route here requires an authenticated operator. These endpoints
+# read and mutate platform state - feature flags, prompt rollback history,
+# legal holds, retention, sandboxes, AI spend - and all 19 accepted anonymous
+# requests. The router-level dependency means a route added later is gated by
+# default rather than by remembering.
+router = APIRouter(
+    prefix="/api/v1/primitives",
+    tags=["Platform Primitives"],
+    dependencies=[Depends(get_workspace_id)],
+)
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -25,17 +35,18 @@ class CheckFeatureRequest(BaseModel):
 
 class CheckFlagRequest(BaseModel):
     flag_name: str
-    workspace_id: str | None = None
+    # P-02: workspace_id removed - it is resolved from the token. A caller
+    # supplying it could read another operator's flags by typing an id.
 
 
 class ProcessEventRequest(BaseModel):
-    workspace_id: str
+    # P-02: workspace_id removed, resolved from the token.
     event_type: str
     event_data: dict
 
 
 class TrackUsageRequest(BaseModel):
-    workspace_id: str
+    # P-02: workspace_id removed, resolved from the token.
     agent_name: str
     tokens_in: int
     tokens_out: int
@@ -44,7 +55,10 @@ class TrackUsageRequest(BaseModel):
 
 
 class BudgetCheckRequest(BaseModel):
-    workspace_id: str
+    # P-02: workspace_id removed, resolved from the token.
+    # NOTE for P-04: monthly_budget is still supplied by the caller, which is
+    # why this endpoint reports rather than enforces. P-04 persists the
+    # ceiling on workspace_budgets and makes the refusal real.
     monthly_budget: float
 
 
@@ -54,7 +68,7 @@ class RegressionRequest(BaseModel):
 
 
 class CreateSandboxRequest(BaseModel):
-    workspace_id: str
+    # P-02: workspace_id removed, resolved from the token.
     name: str = "Demo Sandbox"
 
 
@@ -76,12 +90,12 @@ def get_plan_features(plan: str):
 
 
 @router.post("/entitlements/check-flag")
-def check_flag(req: CheckFlagRequest, db: Session = Depends(get_db)):
-    return {
-        "enabled": EntitlementEngine.check_flag(
-            db, req.flag_name, req.workspace_id
-        )
-    }
+def check_flag(
+    req: CheckFlagRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
+    return {"enabled": EntitlementEngine.check_flag(db, req.flag_name, workspace_id)}
 
 
 # ── AI Eval Lab ──────────────────────────────────────────────────────────────
@@ -129,15 +143,21 @@ def run_regression(
 
 
 @router.post("/rules/process-event")
-def process_event(req: ProcessEventRequest, db: Session = Depends(get_db)):
+def process_event(
+    req: ProcessEventRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     results = RulesEngine.process_event(
-        db, req.workspace_id, req.event_type, req.event_data
+        db, workspace_id, req.event_type, req.event_data
     )
     return {"event_type": req.event_type, "rules_executed": len(results), "results": results}
 
 
-@router.get("/rules/{workspace_id}")
-def get_rules(workspace_id: str, db: Session = Depends(get_db)):
+# P-02: the workspace no longer comes from the path. It was spoofable -
+# any id in the URL was served.
+@router.get("/rules")
+def get_rules(db: Session = Depends(get_db), workspace_id: str = Depends(get_workspace_id)):
     rules = RulesEngine.get_rules(db, workspace_id)
     return [
         {
@@ -155,13 +175,13 @@ def get_rules(workspace_id: str, db: Session = Depends(get_db)):
 # ── Records Governance ───────────────────────────────────────────────────────
 
 
-@router.get("/records/{workspace_id}/holds")
-def get_legal_holds(workspace_id: str, db: Session = Depends(get_db)):
+@router.get("/records/holds")
+def get_legal_holds(db: Session = Depends(get_db), workspace_id: str = Depends(get_workspace_id)):
     return RecordsGovernance.get_legal_holds(db, workspace_id)
 
 
-@router.get("/records/{workspace_id}/retention")
-def check_retention(workspace_id: str, db: Session = Depends(get_db)):
+@router.get("/records/retention")
+def check_retention(db: Session = Depends(get_db), workspace_id: str = Depends(get_workspace_id)):
     return RecordsGovernance.check_retention(db, workspace_id)
 
 
@@ -182,8 +202,12 @@ def trust_center_uptime(months: int = 12):
 
 
 @router.post("/sandbox")
-def create_sandbox(req: CreateSandboxRequest, db: Session = Depends(get_db)):
-    sandbox = SandboxService.create_sandbox(db, req.workspace_id, req.name)
+def create_sandbox(
+    req: CreateSandboxRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
+    sandbox = SandboxService.create_sandbox(db, workspace_id, req.name)
     return sandbox
 
 
@@ -195,8 +219,8 @@ def reset_sandbox(sandbox_id: str, db: Session = Depends(get_db)):
         raise HTTPException(404, str(e))
 
 
-@router.get("/sandbox/{workspace_id}")
-def list_sandboxes(workspace_id: str, db: Session = Depends(get_db)):
+@router.get("/sandbox")
+def list_sandboxes(db: Session = Depends(get_db), workspace_id: str = Depends(get_workspace_id)):
     return SandboxService.list_sandboxes(db, workspace_id)
 
 
@@ -204,10 +228,14 @@ def list_sandboxes(workspace_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/runtime/track")
-def track_usage(req: TrackUsageRequest, db: Session = Depends(get_db)):
+def track_usage(
+    req: TrackUsageRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     log = AIRuntime.track_usage(
         db,
-        req.workspace_id,
+        workspace_id,
         req.agent_name,
         req.tokens_in,
         req.tokens_out,
@@ -217,18 +245,24 @@ def track_usage(req: TrackUsageRequest, db: Session = Depends(get_db)):
     return {"id": str(log.id), "tracked": True}
 
 
-@router.get("/runtime/{workspace_id}/dashboard")
-def usage_dashboard(workspace_id: str, db: Session = Depends(get_db)):
+@router.get("/runtime/dashboard")
+def usage_dashboard(db: Session = Depends(get_db), workspace_id: str = Depends(get_workspace_id)):
     return AIRuntime.get_usage_dashboard(db, workspace_id)
 
 
 @router.post("/runtime/budget-check")
-def budget_check(req: BudgetCheckRequest, db: Session = Depends(get_db)):
-    return AIRuntime.check_budget(db, req.workspace_id, req.monthly_budget)
+def budget_check(
+    req: BudgetCheckRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
+    return AIRuntime.check_budget(db, workspace_id, req.monthly_budget)
 
 
-@router.get("/runtime/{workspace_id}/agent/{agent_name}")
+@router.get("/runtime/agent/{agent_name}")
 def agent_performance(
-    workspace_id: str, agent_name: str, db: Session = Depends(get_db)
+    agent_name: str,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     return AIRuntime.get_agent_performance(db, workspace_id, agent_name)
