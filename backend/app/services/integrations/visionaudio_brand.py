@@ -24,7 +24,12 @@ class BrandStudio:
         """
         assets_result = await self.client.generate_brand_assets(brand_config)
 
-        # Enrich the raw asset response with structured identity fields
+        # No assets came back. Everything below then derives from the
+        # caller's own brand_config, which is legitimate - it echoes what
+        # they supplied - but the caller must be able to tell that apart from
+        # a generated identity, so say so rather than let the fallback pass
+        # as output.
+        assets_generated = not assets_result.get("degraded", False)
         assets = assets_result.get("assets", [])
         logo_concepts = [a for a in assets if a.get("type") == "logo"]
         palette = next(
@@ -60,14 +65,17 @@ class BrandStudio:
         )
 
         return {
+            "assets_generated": assets_generated,
             "logo_concepts": logo_concepts,
             "color_palette": palette,
             "typography": typography,
             "style_guide_notes": style_guide.get("notes", []) if style_guide else [],
-            "presentation_template_url": template_result.get(
-                "output_url",
-                f"https://mock.visionaudioforge.io/templates/{template_result.get('render_id', 'default')}.pptx",
-            ),
+            # None when nothing was rendered. This used to default to a
+            # mock.visionaudioforge.io URL - a link the UI would happily
+            # present as a downloadable template, pointing at a host that
+            # resolves nowhere.
+            "presentation_template_url": template_result.get("output_url"),
+            "template_rendered": not template_result.get("degraded", False),
         }
 
     async def generate_templates(

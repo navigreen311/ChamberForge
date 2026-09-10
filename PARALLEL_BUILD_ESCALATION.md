@@ -367,3 +367,141 @@ can pollute the dashboard. The endpoint lives in `primitives.py`, which is
 **P-02's file and on P-04's must-not-touch list**, so it is flagged rather
 than removed. It should be deleted outright — the server is what calls the
 provider; nothing legitimate self-reports.
+
+---
+
+# P-07 — Partner Integration Resilience
+
+Tasks T-032, T-033, T-049 (modules only). Merge order 8 of 30.
+
+## 1. The mock layers were not placeholders
+
+The card describes "a silent mock fallback". What both partner clients
+actually returned when unconfigured was **client deliverables**, in the
+partner's own response shape, with nothing marking them as invented.
+
+| Where | What an unconfigured deployment returned |
+|---|---|
+| `visionaudio_client` quarterly report | `total_aum: "$847.3M"`, `net_return_qtd: "+4.2%"`, `alpha_generated_bps: 85`, `sharpe_ratio: 1.42`, `revenue_qtd: "$1.53M"`, *"Tax-loss harvesting captured $127K"*, and four dated investment recommendations — with an `output_url` to a `.pptx` |
+| `visionaudio_client` proof video | `before_after_metrics`: *"$284K saved"*, *"92% reduction in compliance exposure events"*, NPS 62 → 81 |
+| `voiceforge_client` identity | `{"verified": True, "confidence": 0.95}` |
+| `voiceforge_health` | Verbatim client quotes — *"really pleased with the performance"*, *"let's increase the allocation"* — plus sentiment scores and risk indicators |
+| `voiceforge_crisis` | Which emergency contacts had **acknowledged** a crisis brief |
+| `visionaudio_trainer` | 3 of 8 modules, 37.5% complete — the same record for every trainee |
+
+These are investment performance figures, identity verifications, client
+quotes and emergency acknowledgements. An advisor generating a quarterly
+report against an unconfigured deployment received a complete and entirely
+invented performance report for a client.
+
+## 2. Two of them were fabricated even with a real API key
+
+This is the part the card did not anticipate, and it changes the severity.
+
+**`voiceforge_crisis.get_escalation_status`** reported acknowledgement from
+`_RESPONSE_PATTERNS[i % 6]` — a static table of hand-written outcomes
+assigned by the contact's position in the list. It **never asked the
+partner**: `initiate_call`'s result was used for its `call_id` and nothing
+else. So with a fully configured deployment placing real calls, an operations
+console during a live incident would still have shown *"Acknowledged: 3 of 4,
+average response 5.2s"* with quoted confirmations, from a lookup table.
+
+**A firm could have stood down believing a principal had been reached.**
+
+It now reports placement — which is genuinely known — and states that
+outcomes are not. `acknowledged`, `pending`, `failed` and
+`avg_response_time_seconds` are **absent** rather than zeroed, because a zero
+would read as "nobody acknowledged" rather than "we do not know".
+Under-reporting during a crisis sends someone to check; over-reporting sends
+them home.
+
+**`voiceforge_health`** selected a call profile by `md5(call_id)`, so the
+same invented quotes came back on every visit to a client's record — and the
+profile's risk indicators drove `recommended_action` up to
+`immediate_outreach` at `critical` urgency. A firm could have called a client
+about a churn risk that existed only in a hash.
+
+## 3. Resilience — one decision worth reviewing
+
+`_resilience.py` adds retry with exponential backoff and full jitter, plus a
+per-partner circuit breaker.
+
+**Retries are restricted to idempotent methods.** `POST /calls/initiate`
+places a telephone call. A read timeout there usually means the request
+arrived and only the response was lost — so a naive retry rings a family
+office twice. A POST is retried only when its caller declares repeating it
+safe. `verify_identity` is also left non-idempotent deliberately:
+resubmitting a passphrase after a timeout has the shape of a credential
+replay.
+
+Jitter comes from `secrets`, not `random`, and not for cryptographic reasons.
+P-06 makes "no module under `app/services` imports `random`" a test-enforced
+invariant. Retry jitter is a legitimate exception and could have been
+allowlisted — but an invariant with one exception is one people start arguing
+with, and this costs nothing.
+
+## 4. Boundary validation
+
+`_schemas.py` validates each response against the fields the caller actually
+reads. A renamed field now fails at the boundary naming the partner, the
+endpoint and the field, instead of surfacing as `KeyError: 'call_id'` three
+layers into a service — or as a `.get()` returning `None` that flowed onward
+and put a null transcript on a client's record with nothing raised.
+
+Schemas list **only** consumed fields. A partner adding, reordering or
+dropping anything else does not break us; a schema that fails on additions is
+one people bypass.
+
+## 5. Eighteen tests asserted the defects
+
+`test_verify_identity_mock` asserted `result["verified"] is True` for a client
+with no API key — a test that guaranteed an identity-verification bypass.
+
+`test_get_escalation_status` asserted that acknowledged + pending + failed
+summed to the contact count: that **every emergency contact had a definite
+outcome**, satisfied by a system that had placed no calls and asked no one.
+`test_initiate_status_values` asserted `status == "ringing"` for calls never
+dialled. `test_mock_render_status` asserted a render came back **complete**
+with a download link for a document that was never produced.
+
+All rewritten to assert the inverse, in the same files.
+
+## 6. New modules (T-049)
+
+`voiceforge_secure_comms.py` enforces **verify, then speak** — the ordering
+is the control, since placing the call first would already have spoken the
+message to whoever answered. It distinguishes *refused* from *could not
+check*, because "the client failed verification" and "we did not verify" call
+for different actions. It also tests `verified is True` rather than
+truthiness: `{"verified": "false"}` is a truthy string.
+
+`visionaudio_brief.py` queues and polls client brief renders, and passes the
+caller's sections through untouched — an empty section stays empty rather
+than acquiring a plausible summary on the way past.
+
+## 7. Scope
+
+Exactly the card's list. `voiceforge_intel_brief.py` is **untouched** —
+carved out to P-06. No router, job or frontend file was opened.
+
+**`PARALLEL_BUILD.md` was deliberately not edited.** P-06 is open at the same
+time and already modifies the same merge-log row; two open PRs editing one
+line is a guaranteed conflict. The coordinator updates the log at merge time.
+Merges remain strictly sequential — only the PRs overlap.
+
+## 8. One cross-package coupling, handled
+
+`voiceforge_intel_brief.py` branches on `result.get("mock")`, and P-07
+replaces that key with the platform's `degraded` vocabulary. Dropping `mock`
+would have silently broken the carved-out file — it would have fallen through
+to returning an empty `audio_url`.
+
+The degraded envelope therefore still carries `mock: True`, marked deprecated
+in the source. **It should be removed once P-06 has merged**, at which point
+both sides speak `degraded`.
+
+## 9. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- 127 failures, unchanged from the P-04 baseline
+- **1400 passing**, up from 1380 · **33 tests added** · `ruff` 0 · frontend untouched

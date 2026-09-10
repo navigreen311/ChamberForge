@@ -23,13 +23,18 @@ async def test_generate_identity_returns_required_fields(studio: BrandStudio) ->
             "secondary_font": "Lora",
         },
     )
-    assert "logo_concepts" in result
-    assert "color_palette" in result
-    assert "typography" in result
-    assert "presentation_template_url" in result
-    # The mock VisionAudioForge client returns its own typography recommendations
-    assert result["typography"]["primary_font"] == "Playfair Display"
-    assert result["typography"]["secondary_font"] == "Inter"
+    # P-07: with no API key nothing is generated, and the result says so.
+    # This used to assert primary_font == "Playfair Display" - a font the
+    # mock client invented, asserted as though the partner had chosen it.
+    assert result["assets_generated"] is False
+    assert result["logo_concepts"] == []
+    assert result["presentation_template_url"] is None
+
+    # Typography falls back to the caller's own brand_config, which is an
+    # echo rather than a recommendation - and legitimate for exactly that
+    # reason.
+    assert result["typography"]["primary_font"] == "Montserrat"
+    assert result["typography"]["secondary_font"] == "Lora"
 
 
 @pytest.mark.asyncio
@@ -41,5 +46,7 @@ async def test_generate_templates_returns_list(studio: BrandStudio) -> None:
     assert len(templates) >= 1
     for t in templates:
         assert "template_type" in t
+        # render_id is None when nothing was queued: the template type is
+        # the caller's own request echoed back, the render is the partner's
+        # and did not happen.
         assert "render_id" in t
-        assert "status" in t
