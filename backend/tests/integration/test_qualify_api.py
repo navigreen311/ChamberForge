@@ -1,13 +1,22 @@
-"""Integration tests for the Qualify API — validation, guardrails, risk queue."""
+"""Integration tests for the Qualify API - validation, guardrails, risk queue.
+
+P-13 gated all twelve qualify routes, so these use `authed_client`. They
+previously ran anonymously and passed, which is what the auth-coverage guard
+was counting.
+
+`TestAnonymousAccess` at the bottom is the half that was missing: asserting
+that an unauthenticated caller is refused. Without it, this file would pass
+just as happily if the dependency were removed again.
+"""
 import uuid
 
 WORKSPACE_ID = str(uuid.uuid4())
 
 
 class TestValidation:
-    def test_validate_problem(self, client):
+    def test_validate_problem(self, authed_client):
         problem_id = str(uuid.uuid4())
-        resp = client.post(f"/api/v1/qualify/validate/{problem_id}")
+        resp = authed_client.post(f"/api/v1/qualify/validate/{problem_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["problem_id"] == problem_id
@@ -19,14 +28,14 @@ class TestValidation:
         assert validation["degraded"] is True
         assert "is_real" not in validation
 
-    def test_validate_with_invalid_uuid(self, client):
-        resp = client.post("/api/v1/qualify/validate/not-a-uuid")
+    def test_validate_with_invalid_uuid(self, authed_client):
+        resp = authed_client.post("/api/v1/qualify/validate/not-a-uuid")
         assert resp.status_code == 422
 
 
 class TestBuyerProfile:
-    def test_generate_buyer_profile(self, client):
-        resp = client.post(
+    def test_generate_buyer_profile(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/buyer-profile",
             json={
                 "wealth_tier": "UHNWI",
@@ -37,8 +46,8 @@ class TestBuyerProfile:
         assert resp.status_code == 200
         assert "profile" in resp.json()
 
-    def test_buyer_profile_missing_fields(self, client):
-        resp = client.post(
+    def test_buyer_profile_missing_fields(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/buyer-profile",
             json={"wealth_tier": "UHNWI"},
         )
@@ -46,8 +55,8 @@ class TestBuyerProfile:
 
 
 class TestGuardrails:
-    def test_guardrails_check(self, client):
-        resp = client.post(
+    def test_guardrails_check(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/guardrails-check",
             json={
                 "offer_data": {
@@ -62,8 +71,8 @@ class TestGuardrails:
         # GuardrailsEngine returns a result dict
         assert isinstance(data, dict)
 
-    def test_guardrails_check_empty_offer(self, client):
-        resp = client.post(
+    def test_guardrails_check_empty_offer(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/guardrails-check",
             json={"offer_data": {}},
         )
@@ -71,8 +80,8 @@ class TestGuardrails:
 
 
 class TestFeasibility:
-    def test_assess_feasibility(self, client):
-        resp = client.post(
+    def test_assess_feasibility(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/feasibility",
             json={
                 "monthly_price": 15000.0,
@@ -92,12 +101,12 @@ class TestFeasibility:
 
 
 class TestGeoIntelligence:
-    def test_get_geo_rules(self, client):
-        resp = client.get("/api/v1/qualify/geo-rules/US")
+    def test_get_geo_rules(self, authed_client):
+        resp = authed_client.get("/api/v1/qualify/geo-rules/US")
         assert resp.status_code == 200
 
-    def test_geo_compliance_check(self, client):
-        resp = client.post(
+    def test_geo_compliance_check(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/geo-compliance",
             json={"jurisdictions": ["US", "UK", "CH"]},
         )
@@ -106,30 +115,31 @@ class TestGeoIntelligence:
 
 
 class TestRiskQueue:
-    def test_get_empty_risk_queue(self, client):
-        resp = client.get(
-            f"/api/v1/qualify/risk-queue?workspace_id={WORKSPACE_ID}"
-        )
+    def test_get_empty_risk_queue(self, authed_client):
+        # P-13: workspace_id was a query parameter, so any caller could
+        # list another firm's pending risk reviews by naming it. It now
+        # comes from the session.
+        resp = authed_client.get("/api/v1/qualify/risk-queue")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
         assert isinstance(data["items"], list)
 
-    def test_approve_nonexistent_risk_item(self, client):
+    def test_approve_nonexistent_risk_item(self, authed_client):
         fake_id = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             f"/api/v1/qualify/risk-queue/{fake_id}/approve",
-            json={
-                "reviewer_id": str(uuid.uuid4()),
-                "notes": "Approved after review",
-            },
+            # P-13: reviewer_id was caller-supplied and written straight
+            # onto the review record, so an approval could be attributed to
+            # anyone. It now comes from the session.
+            json={"notes": "Approved after review"},
         )
         assert resp.status_code == 404
 
 
 class TestFounderReadiness:
-    def test_assess_founder_readiness(self, client):
-        resp = client.post(
+    def test_assess_founder_readiness(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/qualify/founder-readiness",
             json={
                 "skills": {"operations": 8, "sales": 6, "tech": 7},
@@ -140,3 +150,35 @@ class TestFounderReadiness:
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, dict)
+
+
+class TestAnonymousAccess:
+    """No qualify route may be reached without a session.
+
+    The risk-queue routes matter most: they read and write compliance
+    decisions, and approve/reject write a reviewer's name onto a permanent
+    record.
+    """
+
+    def test_validation_rejects_anonymous(self, client):
+        resp = client.post(f"/api/v1/qualify/validate/{uuid.uuid4()}")
+        assert resp.status_code in (401, 403)
+
+    def test_risk_queue_rejects_anonymous(self, client):
+        resp = client.get("/api/v1/qualify/risk-queue")
+        assert resp.status_code in (401, 403)
+
+    def test_risk_approval_rejects_anonymous(self, client):
+        resp = client.post(
+            f"/api/v1/qualify/risk-queue/{uuid.uuid4()}/approve",
+            json={"notes": "Approved"},
+        )
+        assert resp.status_code in (401, 403), (
+            "an anonymous caller could approve a compliance item"
+        )
+
+    def test_guardrails_rejects_anonymous(self, client):
+        resp = client.post(
+            "/api/v1/qualify/guardrails-check", json={"offer_data": {}}
+        )
+        assert resp.status_code in (401, 403)

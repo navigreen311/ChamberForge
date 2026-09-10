@@ -1,4 +1,11 @@
-from fastapi import APIRouter
+"""Problem detail - narrative and offer-preview endpoints.
+
+P-13 (T-008). Both routes were anonymous. They return client-facing
+narrative content, so they are gated like the rest of the slice.
+"""
+from fastapi import APIRouter, Depends
+
+from app.core.dependencies import get_workspace_id
 
 router = APIRouter(prefix="/api/v1/problem-detail", tags=["problem-detail"])
 
@@ -83,13 +90,19 @@ OFFER_PREVIEWS = {
 }
 
 @router.get("/narrative/{problem_id}")
-async def get_narrative(problem_id: str):
+async def get_narrative(
+    problem_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     if problem_id in NARRATIVES:
         return NARRATIVES[problem_id]
     return {"error": "Problem not found"}, 404
 
 @router.get("/offer-preview/{problem_id}")
-async def get_offer_preview(problem_id: str):
+async def get_offer_preview(
+    problem_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     if problem_id in OFFER_PREVIEWS:
         return OFFER_PREVIEWS[problem_id]
     return {"error": "No matching offer"}, 404

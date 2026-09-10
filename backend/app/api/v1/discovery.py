@@ -1,4 +1,14 @@
-"""REST endpoints for AI-powered Problem Discovery & Trend Radar."""
+"""REST endpoints for AI-powered Problem Discovery & Trend Radar.
+
+P-13 (T-008). All six routes were anonymous, and every one of them took
+the workspace from the caller - four as a query parameter defaulting to
+`"default"`, two as a field on the request body.
+
+Those are one hole, not two. `Depends(get_workspace_id)` closes both: it
+requires a session and derives the workspace from it, so a caller can no
+longer read or write another firm's discovery data by naming it. P-02
+removed the same pattern from `primitives.py`.
+"""
 from __future__ import annotations
 
 from typing import Optional
@@ -7,6 +17,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.schemas.problem import ProblemRead
 from app.services.agents.problem_ai import ProblemAI
@@ -23,23 +34,28 @@ wealth_monitor = WealthEventMonitor()
 
 class ScanRequest(BaseModel):
     sources: list[str]
-    workspace_id: str = "default"
+    # workspace_id removed: it came from the caller and was spoofable.
+    # The workspace is now derived from the session.
 
 
 @router.post("/scan", response_model=list[ProblemRead])
-def scan_sources(payload: ScanRequest, db: Session = Depends(get_db)):
+def scan_sources(
+    payload: ScanRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Run AI discovery over provided sources and persist results."""
-    raw_problems = ai.discover_problems(payload.sources, payload.workspace_id)
+    raw_problems = ai.discover_problems(payload.sources, workspace_id)
     saved: list = []
     for p in raw_problems:
-        problem = library.create_problem(db, payload.workspace_id, p)
+        problem = library.create_problem(db, workspace_id, p)
         saved.append(problem)
     return saved
 
 
 @router.get("/lifecycle-distribution")
 def lifecycle_distribution(
-    workspace_id: str = "default",
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     return radar.get_lifecycle_distribution(db, workspace_id)
@@ -47,9 +63,9 @@ def lifecycle_distribution(
 
 @router.get("/opportunities", response_model=list[ProblemRead])
 def opportunities(
-    workspace_id: str = "default",
     geo: Optional[str] = None,
     tier: Optional[str] = None,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     return radar.get_opportunities(db, workspace_id, geo=geo, tier=tier)
@@ -60,11 +76,13 @@ def opportunities(
 
 class EventScanRequest(BaseModel):
     sources: list[str] = ["news", "filings", "social"]
-    workspace_id: str = "default"
 
 
 @router.get("/events")
-def list_events(workspace_id: str = "default", db: Session = Depends(get_db)):
+def list_events(
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """List all wealth events for a workspace."""
     from app.models.wealth_event import WealthEvent
     events = db.query(WealthEvent).filter(
@@ -87,12 +105,16 @@ def list_events(workspace_id: str = "default", db: Session = Depends(get_db)):
 
 
 @router.post("/events/scan")
-def scan_events(payload: EventScanRequest, db: Session = Depends(get_db)):
+def scan_events(
+    payload: EventScanRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Scan for wealth events and persist them."""
     raw_events = wealth_monitor.scan_events(payload.sources)
     saved = []
     for ev_data in raw_events:
-        ev = wealth_monitor.create_event(db, payload.workspace_id, ev_data)
+        ev = wealth_monitor.create_event(db, workspace_id, ev_data)
         saved.append({
             "id": ev.id,
             "event_type": ev.event_type,
@@ -103,6 +125,9 @@ def scan_events(payload: EventScanRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/events/windows")
-def active_windows(workspace_id: str = "default", db: Session = Depends(get_db)):
+def active_windows(
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
     """Get active buying windows sorted by urgency."""
     return wealth_monitor.get_active_windows(db, workspace_id)
