@@ -1,7 +1,9 @@
 """Tests for AIRuntime — usage tracking and budget management."""
 import uuid
 
+from app.models.workspace_budget import WorkspaceBudget
 from app.services.backbone.ai_runtime import AIRuntime
+from app.services.backbone.budget_guard import BudgetGuard
 
 
 class TestUsageTracking:
@@ -40,27 +42,63 @@ class TestUsageTracking:
 
 
 class TestBudgetCheck:
-    def test_under_budget(self, db):
-        ws = str(uuid.uuid4())
-        AIRuntime.track_usage(db, ws, "agent_a", 1000, 500, 800, 5.0)
+    """P-04 moved the ceiling out of the request and into the database.
 
-        result = AIRuntime.check_budget(db, ws, monthly_budget=100.0)
-        assert result["current_spend"] == pytest.approx(5.0, abs=1e-6)
+    These tests used to pass `monthly_budget=100.0` and assert the report
+    came back measured against 100 - which was the defect, not the
+    contract: the caller supplied the limit it was judged by.
+    """
+
+    def test_the_persisted_ceiling_governs_not_the_argument(self, db):
+        ws = str(uuid.uuid4())
+        BudgetGuard.get_or_create(db, ws)
+        db.query(WorkspaceBudget).filter(
+            WorkspaceBudget.workspace_id == ws
+        ).update({"monthly_budget_usd": 100.0})
+        db.commit()
+
+        result = AIRuntime.check_budget(db, ws, monthly_budget=999_999.0)
+
         assert result["budget"] == 100.0
         assert result["over_budget"] is False
-        assert result["pct_used"] == pytest.approx(5.0, abs=0.1)
+
+    def test_spend_recorded_through_the_call_path_is_reported(self, db):
+        ws = str(uuid.uuid4())
+        BudgetGuard.get_or_create(db, ws)
+        db.query(WorkspaceBudget).filter(
+            WorkspaceBudget.workspace_id == ws
+        ).update({"monthly_budget_usd": 100.0})
+        db.commit()
+        # 1M input tokens at $3/1M.
+        BudgetGuard.record(db, ws, "agent_a", 1_000_000, 0, 800, "m")
+        db.expire_all()
+
+        result = AIRuntime.check_budget(db, ws)
+
+        assert result["current_spend"] == pytest.approx(3.0, abs=1e-6)
+        assert result["pct_used"] == pytest.approx(3.0, abs=0.1)
+        assert result["over_budget"] is False
 
     def test_over_budget(self, db):
         ws = str(uuid.uuid4())
-        AIRuntime.track_usage(db, ws, "agent_a", 1000, 500, 800, 150.0)
+        BudgetGuard.get_or_create(db, ws)
+        db.query(WorkspaceBudget).filter(
+            WorkspaceBudget.workspace_id == ws
+        ).update({"monthly_budget_usd": 1.0})
+        db.commit()
+        BudgetGuard.record(db, ws, "agent_a", 1_000_000, 0, 800, "m")
+        db.expire_all()
 
-        result = AIRuntime.check_budget(db, ws, monthly_budget=100.0)
+        result = AIRuntime.check_budget(db, ws)
+
         assert result["over_budget"] is True
         assert result["pct_used"] > 100.0
 
-    def test_zero_budget(self, db):
+    def test_an_unconfigured_workspace_still_has_a_ceiling(self, db):
+        """"Unconfigured" must not silently mean "unlimited"."""
         ws = str(uuid.uuid4())
-        result = AIRuntime.check_budget(db, ws, monthly_budget=0.0)
+        result = AIRuntime.check_budget(db, ws)
+        assert result["budget"] > 0
         assert result["pct_used"] == 0.0
 
 

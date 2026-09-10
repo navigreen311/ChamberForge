@@ -4,6 +4,13 @@ from datetime import date, datetime
 from typing import Optional
 
 from app.core.config import settings
+from app.services.agents.base_agent import as_dict, as_list, call_claude_sync
+
+_SYSTEM = (
+    "You are ResearchAI for ChamberForge. Extract only claims that are "
+    "actually present in the source you are given; never supply a claim "
+    "from general knowledge. Respond ONLY with the JSON asked for."
+)
 
 
 class ResearchAI:
@@ -23,11 +30,12 @@ class ResearchAI:
     async def ingest_source(self, text: str, source_type: str) -> dict:
         """Extract factual claims from source text using Claude.
 
-        Returns dict with claims, estimated_credibility, and key_findings.
-        Falls back to sample data if no API key is configured.
+        Returns claims, estimated_credibility and key_findings - or a
+        degraded result. It used to return `_sample_ingest_data`, which
+        invented claims and a credibility score and attributed them to
+        the source the caller supplied. For a research agent whose entire
+        job is provenance, that is the worst possible failure mode.
         """
-        if not self._client:
-            return self._sample_ingest_data(source_type)
 
         prompt = (
             "Extract factual claims from this source. Return ONLY valid JSON with no "
@@ -37,22 +45,10 @@ class ResearchAI:
             f"Source type: {source_type}\n\nSource text:\n{text}"
         )
 
-        try:
-            message = self._client.messages.create(
-                model=self.model,
-                max_tokens=2048,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = message.content[0].text.strip()
-            # Strip markdown code fences if present
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-                if raw.endswith("```"):
-                    raw = raw[:-3]
-                raw = raw.strip()
-            return json.loads(raw)
-        except Exception:
-            return self._sample_ingest_data(source_type)
+        response = call_claude_sync(
+            "research_ai", _SYSTEM, prompt, client=self._client, max_tokens=2048
+        )
+        return as_dict("research_ai", response)
 
     def detect_contradictions(
         self, claims_a: list[dict], claims_b: list[dict]
@@ -74,21 +70,10 @@ class ResearchAI:
             f"Claims Set B:\n{json.dumps(claims_b, indent=2)}"
         )
 
-        try:
-            message = self._client.messages.create(
-                model=self.model,
-                max_tokens=2048,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw = message.content[0].text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-                if raw.endswith("```"):
-                    raw = raw[:-3]
-                raw = raw.strip()
-            return json.loads(raw)
-        except Exception:
-            return []
+        response = call_claude_sync(
+            "research_ai", _SYSTEM, prompt, client=self._client, max_tokens=2048
+        )
+        return as_list("research_ai", response)
 
     def compute_recency_decay(
         self,
@@ -134,32 +119,3 @@ class ResearchAI:
             if months > threshold_months:
                 stale_ids.append(str(ev.id))
         return stale_ids
-
-    @staticmethod
-    def _sample_ingest_data(source_type: str) -> dict:
-        """Return sample data when no API key is available."""
-        return {
-            "claims": [
-                {
-                    "claim_text": "Regulatory compliance costs increased 23% year-over-year",
-                    "confidence": 0.85,
-                    "category": "financial",
-                },
-                {
-                    "claim_text": "New enforcement framework requires quarterly reporting",
-                    "confidence": 0.92,
-                    "category": "regulatory",
-                },
-                {
-                    "claim_text": "Industry adoption rate reached 67% among tier-1 firms",
-                    "confidence": 0.78,
-                    "category": "statistical",
-                },
-            ],
-            "estimated_credibility": 7,
-            "key_findings": [
-                "Rising compliance costs across the sector",
-                "Shift toward more frequent reporting requirements",
-                "Strong industry adoption signals market maturity",
-            ],
-        }

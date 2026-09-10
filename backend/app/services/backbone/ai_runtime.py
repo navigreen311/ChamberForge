@@ -1,10 +1,19 @@
-"""AI Runtime — Usage tracking, budget management, and agent performance."""
-from datetime import datetime, timezone
+"""AI Runtime - usage reporting over the metered call path.
+
+P-04 moved enforcement out of here and into `budget_guard`. What remains
+is reporting: dashboards and per-agent performance. The distinction is
+the point of the package - this module answers questions, and something
+else refuses calls.
+"""
+import logging
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.ai_usage import AIUsageLog
+from app.services.backbone.budget_guard import BudgetGuard
+
+logger = logging.getLogger("chamberforge.ai_runtime")
 
 
 class AIRuntime:
@@ -75,29 +84,25 @@ class AIRuntime:
 
     @staticmethod
     def check_budget(
-        db: Session, workspace_id: str, monthly_budget: float
+        db: Session, workspace_id: str, monthly_budget: float | None = None
     ) -> dict:
-        """Check current spend against a monthly budget."""
-        now = datetime.now(timezone.utc)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        """Report this workspace spend against its **persisted** ceiling.
 
-        current_spend = (
-            db.query(func.sum(AIUsageLog.cost_usd))
-            .filter(
-                AIUsageLog.workspace_id == workspace_id,
-                AIUsageLog.created_at >= month_start,
+        `monthly_budget` is ignored and kept only so the existing route
+        signature on `primitives.py` still binds - that file belongs to
+        P-02 and cannot be edited here. It was the whole defect: the
+        caller supplied the limit it was measured against, so any client
+        could pass a large number and read back `over_budget: False`.
+
+        This reports. `BudgetGuard.assert_within_ceiling` enforces.
+        """
+        if monthly_budget is not None:
+            logger.info(
+                "ignoring caller-supplied budget %.2f for workspace %s; the persisted ceiling governs",
+                monthly_budget,
+                workspace_id,
             )
-            .scalar()
-        ) or 0.0
-
-        pct_used = (current_spend / monthly_budget * 100) if monthly_budget > 0 else 0.0
-
-        return {
-            "current_spend": round(current_spend, 6),
-            "budget": monthly_budget,
-            "pct_used": round(pct_used, 2),
-            "over_budget": current_spend > monthly_budget,
-        }
+        return BudgetGuard.status(db, workspace_id).as_dict()
 
     @staticmethod
     def get_agent_performance(

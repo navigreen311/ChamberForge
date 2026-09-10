@@ -1,6 +1,7 @@
 """Tests for AgentOrchestrator — run_agent, get_all_statuses, parallel execution."""
 import pytest
 
+from app.services.agents.base_agent import is_degraded
 from app.services.backbone.agent_orchestrator import AgentOrchestrator
 
 
@@ -12,12 +13,20 @@ def orchestrator():
 class TestRunAgent:
     @pytest.mark.asyncio
     async def test_run_command_ai_returns_result(self, orchestrator):
+        """The orchestrator returns whatever the agent produced.
+
+        With no API key configured - which is how the suite runs - that
+        is a marked degraded result. This used to assert `action_title`
+        was present, which was only ever true because the agent invented
+        one.
+        """
         result = await orchestrator.run_agent(
             "command_ai",
             {"action": "next_best_action", "payload": {}},
         )
         assert isinstance(result, dict)
-        assert "action_title" in result
+        assert is_degraded(result)
+        assert result["agent"] == "command_ai"
 
     @pytest.mark.asyncio
     async def test_run_stub_agent(self, orchestrator):
@@ -44,7 +53,9 @@ class TestGetAllStatuses:
             "command_ai", {"action": "next_best_action", "payload": {}}
         )
         statuses = orchestrator.get_all_statuses()
-        assert statuses["command_ai"] == "complete"
+        # Not 'complete': the agent ran but produced no analysis, and
+        # that distinction is the whole point of the status field.
+        assert statuses["command_ai"] == "degraded"
 
 
 class TestRunParallel:
@@ -56,6 +67,7 @@ class TestRunParallel:
         ]
         results = await orchestrator.run_parallel(tasks)
         assert len(results) == 2
-        # First should be next-action shape, second dashboard shape
-        assert "action_title" in results[0]
-        assert "top_problems" in results[1]
+        # Both degrade with no key, and each says which agent it came
+        # from - enough to keep results matched to their tasks.
+        assert all(is_degraded(r) for r in results)
+        assert all(r["agent"] == "command_ai" for r in results)
