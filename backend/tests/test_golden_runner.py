@@ -3,7 +3,6 @@ import pytest
 
 from app.services.backbone.golden_test_runner import evaluate_output, load_test_cases
 
-
 # ---------------------------------------------------------------------------
 # evaluate_output — required_fields
 # ---------------------------------------------------------------------------

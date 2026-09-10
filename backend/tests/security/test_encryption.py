@@ -1,6 +1,5 @@
 """Tests for field-level encryption."""
 import os
-import pytest
 
 # Ensure a deterministic key for tests
 os.environ.setdefault("JWT_SECRET", "test-secret-key-for-ci")

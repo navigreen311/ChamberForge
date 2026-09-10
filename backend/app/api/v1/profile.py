@@ -1,6 +1,5 @@
 """User profile endpoints — view, update, change password, delete account."""
 import re
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status

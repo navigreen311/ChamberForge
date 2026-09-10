@@ -4,10 +4,9 @@ from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base
-from app.models.notification import Notification
 from app.services.backbone.notifications import NotificationService
 
 

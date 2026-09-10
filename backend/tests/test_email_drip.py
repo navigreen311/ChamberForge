@@ -1,7 +1,6 @@
 """Tests for email drip sequence engine and Celery tasks."""
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 
 import pytest
 
@@ -13,7 +12,6 @@ from app.services.backbone.email_drip import (
     get_user_drip_status,
     stop_drip,
 )
-
 
 # ---------------------------------------------------------------------------
 # Sequence definition tests

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
 
 from app.db.session import Base
 from app.models._types import PortableUUID

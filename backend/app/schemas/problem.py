@@ -7,17 +7,17 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.models.enums import (
-    WealthTier,
     BuyerType,
-    LifeStage,
-    TriggerEvent,
-    PainCategory,
-    WTPProfile,
-    TrustChannel,
     ComplianceRisk,
     DeliveryModel,
-    ProofMetric,
     LifecycleStage,
+    LifeStage,
+    PainCategory,
+    ProofMetric,
+    TriggerEvent,
+    TrustChannel,
+    WealthTier,
+    WTPProfile,
 )
 
 

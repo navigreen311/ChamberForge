@@ -1,8 +1,6 @@
 """Integration tests for the Qualify API — validation, guardrails, risk queue."""
 import uuid
 
-import pytest
-
 WORKSPACE_ID = str(uuid.uuid4())
 
 

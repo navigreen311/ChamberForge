@@ -4,13 +4,16 @@ from __future__ import annotations
 import copy
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
 
 from app.models.playbook import Playbook
 from app.models.playbook_activation import PlaybookActivation
 from app.services.backbone.playbook_data import PLAYBOOK_TEMPLATES
+
+if TYPE_CHECKING:
+    from app.models.offer import Offer
 
 # Section names that define the standard playbook workflow
 DEFAULT_SECTIONS = [

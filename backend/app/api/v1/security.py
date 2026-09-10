@@ -9,7 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.services.backbone import deletion_service, legal_hold as legal_hold_svc
+from app.services.backbone import deletion_service
+from app.services.backbone import legal_hold as legal_hold_svc
 from app.services.backbone.guardrails_enforcement import check_output, sanitize_output
 
 router = APIRouter(prefix="/api/v1/security", tags=["security"])

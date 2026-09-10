@@ -1,5 +1,6 @@
 """Tests for ClientHealth service."""
 import pytest
+
 from app.services.backbone.client_health import ClientHealth
 
 

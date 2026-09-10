@@ -1,11 +1,11 @@
 """Tests for HouseholdGraphService — uses in-memory SQLite."""
 import uuid
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base
-from app.models.household_graph import HouseholdGraph
 from app.models.client import Client
 from app.services.backbone.household_graph import HouseholdGraphService
 

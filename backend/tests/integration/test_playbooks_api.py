@@ -1,8 +1,6 @@
 """Integration tests for the Playbooks API — list, activate, customize, progress."""
 import uuid
 
-import pytest
-
 WORKSPACE_ID = str(uuid.uuid4())
 
 

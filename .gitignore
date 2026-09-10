@@ -45,3 +45,7 @@ logs/
 
 # Worktrees (don't track parallel worktree dirs)
 /worktrees/
+
+# Build artifacts that must never be tracked
+frontend/tsconfig.tsbuildinfo
+backend/test.db

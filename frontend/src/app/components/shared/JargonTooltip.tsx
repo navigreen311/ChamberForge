@@ -6,9 +6,11 @@ import { JARGON } from '@/lib/jargon';
 interface JargonTooltipProps {
   term: string;
   children: React.ReactNode;
+  /** Render the trigger without the dotted-underline affordance. */
+  bare?: boolean;
 }
 
-export default function JargonTooltip({ term, children }: JargonTooltipProps) {
+export default function JargonTooltip({ term, children, bare = false }: JargonTooltipProps) {
   const [visible, setVisible] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -31,7 +33,13 @@ export default function JargonTooltip({ term, children }: JargonTooltipProps) {
       onFocus={show}
       onBlur={hide}
     >
-      <span className="cursor-help border-b border-dotted border-[#C9A84C]">
+      <span
+        className={
+          bare
+            ? "cursor-help"
+            : "cursor-help border-b border-dotted border-[#C9A84C]"
+        }
+      >
         {children}
       </span>
 

@@ -6,9 +6,8 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
-from app.models.user import User
 from app.schemas.evidence import (
     EvidenceCreate,
     EvidenceRead,
@@ -18,7 +17,7 @@ from app.schemas.evidence import (
 from app.services.agents.research_ai import ResearchAI
 from app.services.backbone.evidence_ops import EvidenceOps
 from app.services.backbone.search_indices import EVIDENCE_INDEX
-from app.services.backbone.search_sync import remove_from_index, sync_evidence
+from app.services.backbone.search_sync import remove_from_index
 
 router = APIRouter(prefix="/api/v1/evidence", tags=["evidence"])
 

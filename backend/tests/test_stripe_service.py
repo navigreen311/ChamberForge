@@ -1,7 +1,7 @@
 """Tests for StripeService — mock mode (no API key required)."""
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -126,7 +126,7 @@ def test_revenue_dashboard_math(svc):
         q = MagicMock()
 
         # Determine what model is being queried
-        model = models[0] if models else None
+        models[0] if models else None
 
         def mock_filter(*args):
             fq = MagicMock()

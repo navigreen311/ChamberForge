@@ -2,7 +2,6 @@
 
 Verify that the CORS middleware rejects cross-origin state-changing requests.
 """
-import pytest
 from fastapi.testclient import TestClient
 
 

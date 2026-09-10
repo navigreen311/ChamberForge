@@ -1,8 +1,6 @@
 """Tests for startup environment variable validation."""
 from unittest.mock import patch
 
-import pytest
-
 from app.core.env_validator import validate_environment
 
 
@@ -12,6 +10,9 @@ class TestValidateEnvironment:
     def test_jwt_default_detected(self):
         """JWT_SECRET='changeme' should produce an error."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = "changeme"
             mock_settings.DATABASE_URL = "postgresql://localhost/db"
             # Optional vars all set
@@ -29,6 +30,9 @@ class TestValidateEnvironment:
     def test_jwt_empty_detected(self):
         """JWT_SECRET='' should produce an error."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = ""
             mock_settings.DATABASE_URL = "postgresql://localhost/db"
             mock_settings.ANTHROPIC_API_KEY = "sk-ant-xxx"
@@ -45,6 +49,9 @@ class TestValidateEnvironment:
     def test_sqlite_warning(self):
         """SQLite DATABASE_URL should produce a warning."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = "a-real-secret-key-here"
             mock_settings.DATABASE_URL = "sqlite:///./test.db"
             mock_settings.ANTHROPIC_API_KEY = "sk-ant-xxx"
@@ -61,6 +68,9 @@ class TestValidateEnvironment:
     def test_missing_optional_vars_warn(self):
         """Missing optional vars should produce warnings, not errors."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = "a-real-secret-key-here"
             mock_settings.DATABASE_URL = "postgresql://localhost/db"
             mock_settings.ANTHROPIC_API_KEY = ""
@@ -83,6 +93,9 @@ class TestValidateEnvironment:
     def test_all_vars_set_no_issues(self):
         """When all vars are properly configured, no errors or warnings."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = "a-real-secret-key-here"
             mock_settings.DATABASE_URL = "postgresql://localhost/db"
             mock_settings.ANTHROPIC_API_KEY = "sk-ant-xxx"
@@ -99,6 +112,9 @@ class TestValidateEnvironment:
     def test_returns_dict_with_expected_keys(self):
         """Return value always has 'errors' and 'warnings' keys."""
         with patch("app.core.env_validator.settings") as mock_settings:
+            # P-00: validate_environment() now raises outside development, so the
+            # mocked settings must carry an APP_ENV.
+            mock_settings.APP_ENV = "development"
             mock_settings.JWT_SECRET = "changeme"
             mock_settings.DATABASE_URL = "sqlite:///test.db"
             mock_settings.ANTHROPIC_API_KEY = ""

@@ -19,7 +19,6 @@ from app.data.demo_scenarios import (
 )
 from app.services.backbone.sandbox import SandboxService
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

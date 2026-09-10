@@ -3,9 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from app.models.deletion_request import DeletionRequest
 from app.services.backbone.deletion_service import (
@@ -53,7 +51,7 @@ def test_request_deletion_creates_pending_record():
     db.add.side_effect = capture_add
     db.refresh = lambda obj: None
 
-    result = request_deletion(db, ws, cid, by)
+    request_deletion(db, ws, cid, by)
     assert db.add.called
     assert db.commit.called
 
@@ -69,7 +67,7 @@ def test_execute_deletion_cascade():
     mock_result.rowcount = 2
     db.execute.return_value = mock_result
 
-    result = execute_deletion(db, req.id)
+    execute_deletion(db, req.id)
     # Should have called DELETE for every client table
     assert db.execute.call_count == 8  # 8 tables in _CLIENT_TABLES
     assert req.status == "completed"

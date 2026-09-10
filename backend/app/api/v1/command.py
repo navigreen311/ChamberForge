@@ -1,5 +1,5 @@
 """Command AI API endpoints — the brain's external interface."""
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from app.core.cache import cache
 from app.services.backbone.agent_orchestrator import AgentOrchestrator

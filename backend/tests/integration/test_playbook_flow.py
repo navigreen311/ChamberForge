@@ -5,8 +5,6 @@ Also tests: list activations, cross-playbook compose.
 """
 import uuid
 
-import pytest
-
 WORKSPACE_ID = str(uuid.uuid4())
 
 

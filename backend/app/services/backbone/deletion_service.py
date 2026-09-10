@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Dict
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

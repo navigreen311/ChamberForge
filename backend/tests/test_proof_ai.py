@@ -1,9 +1,9 @@
 """Tests for ProofAI service."""
-import pytest
 from unittest.mock import patch
 
-from app.services.agents.proof_ai import ProofAI
+import pytest
 
+from app.services.agents.proof_ai import ProofAI
 
 SAMPLE_OFFER = {
     "name": "Wealth Preservation Advisory",

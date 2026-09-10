@@ -1,5 +1,4 @@
 """Tests for recency decay computation — CRITICAL correctness tests."""
-import math
 from datetime import date
 from unittest.mock import patch
 

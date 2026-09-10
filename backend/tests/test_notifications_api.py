@@ -1,8 +1,6 @@
 """Tests for notification API endpoints."""
 import uuid
 
-import pytest
-
 from app.services.backbone.notifications import NotificationService
 
 svc = NotificationService()

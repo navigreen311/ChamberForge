@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from celery import Celery
+
     from app.jobs.schedules import BEAT_SCHEDULE
 
     celery_app = Celery(

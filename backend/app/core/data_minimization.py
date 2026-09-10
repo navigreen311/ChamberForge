@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Dict, List, Set
+from typing import Dict, Set
 
 # Fields each role must NOT see.  "admin" has no restrictions.
 ROLE_FIELD_RESTRICTIONS: Dict[str, Set[str]] = {

@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.models.consent import ConsentRecord
 
-
 VALID_CONSENT_TYPES = {"data_processing", "nda", "marketing", "third_party_sharing"}
 
 

@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.services.backbone.client_portal import ClientPortalService
+
+if TYPE_CHECKING:
+    from app.models.client_portal import ClientPortalAccess
 
 router = APIRouter(prefix="/api/v1/portal", tags=["portal"])
 

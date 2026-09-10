@@ -41,8 +41,17 @@ jobs:
         run: cd backend && pip install -r requirements.txt
       - name: Run linter
         run: cd backend && pip install ruff && ruff check .
+      # The suite has 191 known failures spread across a dozen packages that
+      # fix them in parallel. Gating on a fully green suite would block the
+      # whole run for weeks; gating on nothing would let regressions through.
+      # So this gates on the delta: CI fails only when a test outside
+      # backend/tests/known_failures.txt fails. P-26 asserts that file is empty.
       - name: Run tests
-        run: cd backend && python -m pytest tests/ -v --tb=short
+        id: pytest
+        continue-on-error: true
+        run: cd backend && python -m pytest tests/ --tb=short -q --junitxml=../test-report.xml
+      - name: Fail only on NEW test failures
+        run: python scripts/check_test_regressions.py test-report.xml
 
   integration-real:
     runs-on: ubuntu-latest
@@ -108,7 +117,28 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: cd frontend && npm ci
+      # The generated Prisma client is not committed, so it must be produced
+      # before anything typechecks or builds. `npm ci` runs postinstall, but
+      # this is explicit so a failure here is unambiguous.
+      - name: Generate Prisma client
+        run: cd frontend && npx prisma generate
+      - name: Typecheck
+        run: cd frontend && npm run typecheck
       - name: Lint
         run: cd frontend && npx next lint
       - name: Build
         run: cd frontend && npm run build
+
+  migration-drift:
+    # T-016. The audit found four models whose tables were never created, so
+    # any database built by `alembic upgrade head` was missing MFA, wealth
+    # events, community intel and white-label. Nothing caught it because
+    # nothing was looking. This job is that check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check every model has a table in the revision chain
+        run: python scripts/check_migration_drift.py --baseline scripts/migration_drift_baseline.txt

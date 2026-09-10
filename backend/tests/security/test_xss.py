@@ -2,9 +2,7 @@
 
 Verify that HTML/script input is not reflected back unescaped in responses.
 """
-import pytest
 from fastapi.testclient import TestClient
-
 
 XSS_PAYLOADS = [
     "<script>alert('xss')</script>",

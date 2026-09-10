@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, String, Text
 
 from app.db.session import Base
 from app.models._types import PortableUUID

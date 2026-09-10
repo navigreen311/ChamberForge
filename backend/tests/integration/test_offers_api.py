@@ -1,8 +1,6 @@
 """Integration tests for the Offers API — CRUD and status filtering."""
 import uuid
 
-import pytest
-
 
 def _make_offer(client, **overrides):
     """Helper to create an offer."""

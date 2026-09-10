@@ -1,6 +1,5 @@
 """Tests for VoiceForgeClient — mock mode and auth headers."""
 import pytest
-import httpx
 
 from app.services.integrations.voiceforge_client import VoiceForgeClient
 

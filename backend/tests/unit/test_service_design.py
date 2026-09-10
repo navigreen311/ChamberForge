@@ -1,5 +1,4 @@
 """Tests for ServiceDesignStudio."""
-import pytest
 
 from app.services.backbone.service_design import ServiceDesignStudio
 

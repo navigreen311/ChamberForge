@@ -1,8 +1,6 @@
 """Integration tests for the Lifecycle API — intel brief, health, scenario planner."""
 import uuid
 
-import pytest
-
 
 class TestIntelBrief:
     def test_generate_intel_brief(self, authed_client):

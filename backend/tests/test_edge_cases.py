@@ -1,10 +1,6 @@
 """Test edge cases — validation errors, empty states, and boundary conditions."""
 import uuid
 
-import pytest
-from fastapi.testclient import TestClient
-
-
 # ---------------------------------------------------------------------------
 # 1. Problems — empty list returns message
 # ---------------------------------------------------------------------------

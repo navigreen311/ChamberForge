@@ -591,7 +591,7 @@ export default function OffersPage() {
 
                   {/* What's included */}
                   <section>
-                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">What's included</div>
+                    <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2">What&rsquo;s included</div>
                     <div className="bg-[#111827] border border-[#1e2a3a] rounded-lg p-4 space-y-2">
                       {[
                         { name: 'Quarterly household security audit', desc: 'Physical + digital surface review' },

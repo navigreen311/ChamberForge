@@ -1,7 +1,6 @@
 """Structured JSON logging configuration for ChamberForge."""
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 
 

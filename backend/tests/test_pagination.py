@@ -1,7 +1,5 @@
 """Tests for pagination helpers."""
-import math
 
-import pytest
 
 from app.utils.pagination import PaginatedResponse, PaginationParams
 

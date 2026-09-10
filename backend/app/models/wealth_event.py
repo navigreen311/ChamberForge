@@ -2,7 +2,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, Float, DateTime, Boolean, Text
+from sqlalchemy import Column, DateTime, Float, String, Text
+
 from app.db.session import Base
 
 

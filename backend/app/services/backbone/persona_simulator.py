@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Any
 from uuid import uuid4
 
 from app.core.config import settings
@@ -118,9 +117,9 @@ class PersonaSimulator:
         if not persona_response:
             # Fallback response based on difficulty
             fallback_responses = {
-                "easy": f"That's interesting. Tell me more about how this would work for my team.",
-                "medium": f"I appreciate that, but I'm not convinced yet. What makes this different from what we already have?",
-                "hard": f"I've heard similar pitches before. Our current vendor does fine. Why should I risk switching?",
+                "easy": "That's interesting. Tell me more about how this would work for my team.",
+                "medium": "I appreciate that, but I'm not convinced yet. What makes this different from what we already have?",
+                "hard": "I've heard similar pitches before. Our current vendor does fine. Why should I risk switching?",
             }
             persona_response = fallback_responses.get(session["difficulty"], "Tell me more.")
 

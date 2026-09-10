@@ -1,5 +1,5 @@
 """Admin API — Management endpoints for platform primitives."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -8,12 +8,13 @@ from app.services.backbone.ai_eval_lab import AIEvalLab
 from app.services.backbone.entitlements import EntitlementEngine
 from app.services.backbone.golden_test_runner import (
     load_test_cases as _load_golden,
+)
+from app.services.backbone.golden_test_runner import (
     run_suite as _run_golden_suite,
 )
 from app.services.backbone.records_governance import RecordsGovernance
 from app.services.backbone.rules_engine import RulesEngine
 from app.services.backbone.sandbox import SandboxService
-from app.services.backbone.white_label import WhiteLabelService
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 

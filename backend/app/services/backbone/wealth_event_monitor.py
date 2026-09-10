@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.models.wealth_event import WealthEvent
 
-
 # Canonical event types and their default urgency windows
 _EVENT_WINDOWS = {
     "exit": {"window_type": "post_liquidity", "default_days": 90, "base_urgency": 9},

@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from app.services.agents.base_agent import BaseAgent
 from app.services.agents.command_ai import CommandAI
-
 
 # Registry of known agent names → factory callables.
 # As new agents are built they get added here.

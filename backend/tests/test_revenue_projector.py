@@ -1,7 +1,5 @@
 """Tests for RevenueProjector — mathematical correctness verification."""
 
-import math
-import pytest
 
 from app.services.backbone.revenue_projector import RevenueProjector
 

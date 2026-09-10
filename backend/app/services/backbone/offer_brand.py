@@ -31,7 +31,9 @@ class OfferBrand:
         self, offer_data: dict[str, Any], api_key: str
     ) -> dict[str, Any]:
         try:
-            import json, anthropic
+            import json
+
+            import anthropic
 
             client = anthropic.AsyncAnthropic(api_key=api_key)
             msg = await client.messages.create(
@@ -60,7 +62,9 @@ class OfferBrand:
         self, name: str, offer_data: dict[str, Any], api_key: str
     ) -> dict[str, Any]:
         try:
-            import json, anthropic
+            import json
+
+            import anthropic
 
             client = anthropic.AsyncAnthropic(api_key=api_key)
             msg = await client.messages.create(

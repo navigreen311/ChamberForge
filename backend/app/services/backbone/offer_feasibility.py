@@ -4,7 +4,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-
 _DELIVERY_BASE_SCORES: dict[str, float] = {
     "Solo": 2.0,
     "Team": 4.0,

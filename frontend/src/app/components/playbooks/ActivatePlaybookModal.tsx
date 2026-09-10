@@ -220,7 +220,7 @@ export default function ActivatePlaybookModal({
 
                 <div className="mb-4">
                   <div className="text-[10px] text-[#4a5568] uppercase tracking-wider mb-2">
-                    What's included
+                    What&rsquo;s included
                   </div>
                   <ul className="space-y-1">
                     {playbook.deliverables.slice(0, 5).map((d, i) => (
@@ -330,7 +330,7 @@ export default function ActivatePlaybookModal({
                     <span className="text-[#1D9E75] text-[12px] mt-0.5">✓</span>
                     <div>
                       <div className="text-[12px] font-semibold text-[#e2e8f0]">
-                        New offer appears in Offers with status "Draft"
+                        New offer appears in Offers with status &ldquo;Draft&rdquo;
                       </div>
                       <div className="text-[10px] text-[#8892a4]">
                         {offerName} · ${priceMin.toLocaleString()}–${priceMax.toLocaleString()}/mo ·{' '}
@@ -356,7 +356,7 @@ export default function ActivatePlaybookModal({
                         First task created in Deliver
                       </div>
                       <div className="text-[10px] text-[#8892a4]">
-                        "Review and customize Deal Desk documents" — assigned to you.
+                        &ldquo;Review and customize Deal Desk documents&rdquo; — assigned to you.
                       </div>
                     </div>
                   </div>

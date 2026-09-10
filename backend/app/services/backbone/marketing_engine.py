@@ -44,7 +44,7 @@ class MarketingEngine:
                 "tier": tier,
                 "firmographic_filters": [
                     f"Industry: {industry}",
-                    f"Decision-maker title: C-suite, VP, Director",
+                    "Decision-maker title: C-suite, VP, Director",
                     f"Company size: appropriate for {tier} tier",
                     f"Budget authority: >${price if isinstance(price, (int, float)) else '10000'}/year",
                 ],

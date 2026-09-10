@@ -1,7 +1,7 @@
 """Secure Communications — encrypted messaging with full audit trail."""
 import base64
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import and_, or_

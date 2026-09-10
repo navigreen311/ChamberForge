@@ -115,7 +115,7 @@ const ACTIVE_PILOTS = [
 
 export default function SandboxPage() {
   const [activeScenario, setActiveScenario] = useState<(typeof SCENARIOS)[number] | null>(null);
-  const [selectedScenario, setSelectedScenario] = useState(SCENARIOS[0].id);
+  const [selectedScenario, setSelectedScenario] = useState<string>(SCENARIOS[0].id);
   const [selectedMember, setSelectedMember] = useState(TEAM_MEMBERS[0].id);
   const [trainingStarted, setTrainingStarted] = useState(false);
   const [pilotLink, setPilotLink] = useState<string | null>(null);

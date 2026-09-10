@@ -7,14 +7,13 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from app.services.backbone.search_service import SearchService
 from app.services.backbone.search_indices import (
-    PROBLEM_INDEX,
-    PROBLEM_MAPPING,
     CLIENT_INDEX,
     CLIENT_MAPPING,
+    PROBLEM_INDEX,
+    PROBLEM_MAPPING,
 )
-
+from app.services.backbone.search_service import SearchService
 
 pytestmark = pytest.mark.skipif(
     True,

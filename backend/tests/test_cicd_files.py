@@ -1,12 +1,10 @@
 """Validate CI/CD pipeline files are syntactically correct."""
 
-import os
 import platform
 import stat
 import subprocess
 from pathlib import Path
 
-import pytest
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

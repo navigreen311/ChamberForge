@@ -3,17 +3,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.services.integrations.visionaudio_authority import AuthorityContent
+from app.services.integrations.visionaudio_brand import BrandStudio
 from app.services.integrations.visionaudio_client import VisionAudioForgeClient
 from app.services.integrations.visionaudio_delivery import DeliveryPortal
-from app.services.integrations.visionaudio_proof import ProofVisuals
-from app.services.integrations.visionaudio_trust_pack import TrustPackVisuals
-from app.services.integrations.visionaudio_brand import BrandStudio
 from app.services.integrations.visionaudio_gtm import GTMAssets
-from app.services.integrations.visionaudio_authority import AuthorityContent
+from app.services.integrations.visionaudio_proof import ProofVisuals
 from app.services.integrations.visionaudio_trainer import VideoTrainer
+from app.services.integrations.visionaudio_trust_pack import TrustPackVisuals
 
 router = APIRouter(prefix="/api/v1/visionaudio", tags=["visionaudio"])
 

@@ -1,7 +1,8 @@
 """Tests for CopyAI agent — positioning output structure validation."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.services.agents.copy_ai import CopyAI
 

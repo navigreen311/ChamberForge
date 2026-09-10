@@ -1,8 +1,9 @@
 """Tests for RealtimeService with mocked Pusher client."""
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from app.services.backbone.realtime import RealtimeService, MockPusherClient
+import pytest
+
+from app.services.backbone.realtime import MockPusherClient, RealtimeService
 
 
 @pytest.fixture

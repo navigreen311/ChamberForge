@@ -1,12 +1,9 @@
 """Tests for query helper utilities."""
-from unittest.mock import MagicMock, patch
 
-import pytest
 import sqlalchemy as sa
 from sqlalchemy.orm import DeclarativeBase
 
 from app.utils.query_helpers import apply_filters, apply_sorting
-
 
 # ---------------------------------------------------------------------------
 # Helpers – lightweight stand-in for a SQLAlchemy model

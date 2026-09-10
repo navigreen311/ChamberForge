@@ -1,17 +1,23 @@
 """Problem Ontology Engine — canonical schema validation and AI classification."""
 from __future__ import annotations
 
-from typing import Optional
-
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.models.problem import Problem
 from app.models.enums import (
-    WealthTier, BuyerType, LifeStage, TriggerEvent, PainCategory,
-    WTPProfile, TrustChannel, ComplianceRisk, DeliveryModel,
-    ProofMetric, LifecycleStage,
+    BuyerType,
+    ComplianceRisk,
+    DeliveryModel,
+    LifecycleStage,
+    LifeStage,
+    PainCategory,
+    ProofMetric,
+    TriggerEvent,
+    TrustChannel,
+    WealthTier,
+    WTPProfile,
 )
+from app.models.problem import Problem
 
 # Canonical ontology definition — single source of truth
 _ONTOLOGY_FIELDS: dict[str, dict] = {

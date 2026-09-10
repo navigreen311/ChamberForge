@@ -7,7 +7,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-
 # --- Value & Pricing sub-models ---
 
 class ValueLayer(BaseModel):

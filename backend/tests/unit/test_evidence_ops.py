@@ -1,6 +1,6 @@
 """Tests for EvidenceOps backbone operations."""
 import uuid
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,7 +39,7 @@ def sample_evidence_create(sample_workspace_id):
 def test_create_evidence(mock_db, sample_workspace_id, sample_evidence_create):
     """Test creating an evidence record."""
     mock_db.refresh = MagicMock()
-    result = EvidenceOps.create(mock_db, sample_workspace_id, sample_evidence_create)
+    EvidenceOps.create(mock_db, sample_workspace_id, sample_evidence_create)
 
     mock_db.add.assert_called_once()
     mock_db.commit.assert_called_once()
@@ -90,7 +90,7 @@ def test_update_evidence(mock_db):
     mock_db.query.return_value.filter.return_value.first.return_value = fake_evidence
 
     update_data = EvidenceUpdate(credibility_score=9.0)
-    result = EvidenceOps.update(mock_db, eid, update_data)
+    EvidenceOps.update(mock_db, eid, update_data)
 
     assert fake_evidence.credibility_score == 9.0
     mock_db.commit.assert_called_once()
@@ -128,7 +128,7 @@ def test_link_to_problem(mock_db):
     fake_evidence = MagicMock(spec=Evidence)
     mock_db.query.return_value.filter.return_value.first.return_value = fake_evidence
 
-    result = EvidenceOps.link_to_problem(mock_db, eid, pid)
+    EvidenceOps.link_to_problem(mock_db, eid, pid)
     assert fake_evidence.problem_id == pid
     mock_db.commit.assert_called_once()
 

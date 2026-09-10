@@ -111,13 +111,15 @@ interface ProblemData {
   complianceRiskNote: string;
   currentSolutions: CurrentSolution[];
   /* LEFT — Extended */
-  trendData: number[];
-  trendGrowth: string;
-  weeklyHours: string;
-  startupCost: string;
-  timeToFirstClient: string;
-  pitchOpener: string;
-  quickFacts: { label: string; value: string }[];
+  /* Optional: the drawer renders without them, and not every problem
+     source populates the full extended block. */
+  trendData?: number[];
+  trendGrowth?: string;
+  weeklyHours?: string;
+  startupCost?: string;
+  timeToFirstClient?: string;
+  pitchOpener?: string;
+  quickFacts?: { label: string; value: string }[];
   /* RIGHT — The Offer */
   offerName: string;
   offerTagline: string;

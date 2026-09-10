@@ -1,9 +1,9 @@
 """Tests for the /api/v1/search endpoints."""
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 # Patch SearchService before importing the app so the router uses our mock.

@@ -1,5 +1,4 @@
 """Tests for Celery application configuration and beat schedule."""
-import pytest
 
 
 def test_celery_app_configured():

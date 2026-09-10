@@ -102,9 +102,9 @@ def get_operational_metrics(db: Session) -> dict:
 
     # Entity counts
     try:
-        from app.models.workspace import Workspace
-        from app.models.user import User
         from app.models.problem import Problem
+        from app.models.user import User
+        from app.models.workspace import Workspace
 
         metrics["workspace_count"] = db.query(func.count(Workspace.id)).scalar() or 0
         metrics["user_count"] = db.query(func.count(User.id)).scalar() or 0

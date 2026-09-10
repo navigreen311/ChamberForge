@@ -1,9 +1,9 @@
 """Tests for Community Intel Network service."""
 import uuid
+
 import pytest
 
 from app.services.backbone.community_intel import CommunityIntelNetwork, _anonymize_text
-from app.models.community_insight import CommunityInsight
 
 
 @pytest.fixture()

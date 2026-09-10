@@ -1,5 +1,6 @@
 """Tests for AlumniSystem service."""
 import pytest
+
 from app.services.backbone.alumni_system import AlumniSystem
 
 

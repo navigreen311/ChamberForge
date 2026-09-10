@@ -1,12 +1,11 @@
 """Tests for ReferralTracker — commission math and report aggregation."""
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from app.services.backbone.referral_tracker import ReferralTracker
-
 
 # -- Commission calculation --------------------------------------------------
 

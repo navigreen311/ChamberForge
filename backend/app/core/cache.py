@@ -1,6 +1,6 @@
 """Redis caching layer with graceful fallback when Redis is unavailable."""
-import json
 import hashlib
+import json
 import logging
 
 from app.core.config import settings
