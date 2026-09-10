@@ -4,7 +4,7 @@
 
 The world's first complete premium-service operating system for entrepreneurs and boutique firms serving HNW/UHNW individuals and families. ChamberForge combines 112 purpose-built modules, 10 AI agents, and 10 vertical playbooks into a single platform that takes a premium service firm from problem discovery through client delivery and retention. Three integrated platforms -- ChamberForge Core, VoiceForge, and VisionAudioForge -- provide full-stack coverage across text, voice, and visual channels.
 
-**112 Modules | 10 AI Agents | 10 Vertical Playbooks | 3 Integrated Platforms | 200+ API Endpoints**
+**112 Modules | 10 AI Agents | 10 Vertical Playbooks | 3 Integrated Platforms | 348 API Endpoints**
 
 ---
 
@@ -132,9 +132,9 @@ ChamberForge/
 │       └── types/               # TypeScript type definitions
 ├── backend/                     # FastAPI (Python)
 │   └── app/
-│       ├── api/v1/              # 34 REST routers (200+ endpoints)
+│       ├── api/v1/              # 45 REST routers (348 endpoints)
 │       ├── core/                # Config, security, encryption, dependencies
-│       ├── models/              # SQLAlchemy models (31 tables)
+│       ├── models/              # SQLAlchemy models (35 tables)
 │       ├── schemas/             # Pydantic request/response schemas
 │       ├── services/
 │       │   ├── agents/          # 10 AI agents (Claude-powered)
@@ -162,7 +162,7 @@ ChamberForge/
 |-----------|-----------|---------|
 | Frontend | Next.js 14 + TypeScript + Tailwind CSS | App Router SPA with SSR |
 | Backend | FastAPI (Python) | Async REST API |
-| Database | PostgreSQL 16 | Primary data store (31 tables) |
+| Database | PostgreSQL 16 | Primary data store. Prisma owns the domain models, SQLAlchemy the system tables - see `docs/data-architecture.md` |
 | Cache / Queue | Redis 7 | Caching, rate limiting, Celery broker |
 | Search | Elasticsearch 8.17 | Full-text search across entities |
 | AI Engine | Anthropic Claude API | 10 specialized AI agents |

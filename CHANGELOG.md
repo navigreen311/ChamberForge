@@ -2,6 +2,36 @@
 
 All notable changes to ChamberForge will be documented in this file.
 
+## [Unreleased] - P-00 Coordinator
+
+### Fixed
+- The repository builds and tests for the first time. `ruff` 409 errors to 0,
+  `tsc` 10 to 0, `next build` from failing to 148/148 pages generated.
+- `@prisma/client` and `prisma` were imported but never declared in
+  `package.json`. Adopted per D1 and pinned to 6.12.0.
+- `ModeProvider` was defined but mounted nowhere, so every page calling
+  `useMode()` threw at runtime.
+- `validate_environment()` now fails closed: production could previously boot
+  on the default `JWT_SECRET` of "changeme" with only a log line.
+- `deploy-prod.yml` now requires a `verify` job. A `v*` tag previously
+  deployed to production with no test gate of any kind.
+
+### Added
+- `scripts/check_migration_drift.py` — fails when a model has no table in the
+  Alembic chain. Currently reports the four known gaps.
+- `tests/security/test_auth_coverage.py` — measures routes with no auth
+  dependency. Reports 206.
+- `PARALLEL_BUILD.md` — the ledger for the 30-package parallel build.
+
+### Changed
+- **Version corrected to 1.0.0-rc.1.** The tree was tagged `1.0.0` and the
+  entry below claimed "87% SOC2 Type II readiness" and "1,200+ automated
+  tests" on a commit that had never built and whose CI had never passed in
+  291 runs. The tests were real; the readiness claim was not measured. Both
+  statements are withdrawn until the suite is green.
+
+---
+
 ## [1.0.0] - 2026-04-03 — Production Release
 
 ### Summary
@@ -14,8 +44,8 @@ Built across 5 rounds using 90+ parallel AI agents.
 - 10 vertical playbooks
 - 34 API routers with 200+ endpoints
 - 31 database tables
-- 1,200+ automated tests
-- 87% SOC2 Type II readiness
+- 1,452 automated tests (1,273 passing as of P-00; the suite had never run)
+- SOC2 Type II readiness: WITHDRAWN by P-00, never measured
 - 80,000+ lines of code
 
 ### Added (Round 5)
