@@ -32,7 +32,9 @@ database query.
 | 3 | P-02 Operator Scope & Sandbox | [#22](https://github.com/navigreen311/ChamberForge/pull/22) | `82cf9e0` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
 | 4 | P-11 NextAuth Guards & Identity | [#23](https://github.com/navigreen311/ChamberForge/pull/23) | `0c5e107` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
 | 5 | P-03 Audit Trail Integrity | [#24](https://github.com/navigreen311/ChamberForge/pull/24) | `6ac6973` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
-| 6 | P-04 AI Call-Path Governance | _in flight_ | — | see PR | 0 | 2026-09-10 |
+| 6 | P-04 AI Call-Path Governance | [#25](https://github.com/navigreen311/ChamberForge/pull/25) | `5b5ccb0` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 7 | P-07 Partner Integration Resilience | [#27](https://github.com/navigreen311/ChamberForge/pull/27) | `8700ad5` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| — | P-06 Trust Center & Honest Reporting | [#26](https://github.com/navigreen311/ChamberForge/pull/26) | _held_ | **CI GREEN — all 4 jobs** | 0 | awaiting disclosure ruling |
 
 ---
 
