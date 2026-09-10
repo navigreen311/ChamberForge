@@ -27,7 +27,7 @@ database query.
 
 | # | Package | PR | Merge SHA | Suite | Reverts | When |
 |---|---------|----|-----------|-------|---------|------|
-| 1 | P-00 Coordinator | _in flight_ | — | see below | 0 | 2026-09-09 |
+| 1 | P-00 Coordinator | [#19](https://github.com/navigreen311/ChamberForge/pull/19) | _pending merge_ | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
 
 ---
 
@@ -40,7 +40,7 @@ database query.
 | `npx tsc --noEmit` | **10 errors** | **0** |
 | `npm run build` | **failed** | **succeeds, 148/148 pages** |
 | `npm audit` | 13 vulns (3 critical) | 5 (1 critical) — rest need Next 16, **P-27** |
-| CI green, all time | **0 of 291 runs** | pending first run |
+| CI green, all time | **0 of 291 runs** | **GREEN — backend, frontend, integration-real, migration-drift** |
 | Backend suite (SQLite, local) | could not execute | 1,273 passed / 136 failed / 8 error |
 | Backend suite (**Postgres, CI**) | could not execute | **191 known failures** - the number that governs |
 | Open routes (no auth) | unmeasured | **206** — see the correction below |
@@ -60,7 +60,7 @@ which truncated `AWS_S3_BUCKET` at the digit. The file was always correct.
 
 ---
 
-## The 191 pre-existing test failures, assigned
+## The 190 pre-existing test failures, assigned
 
 Measured on **CI against PostgreSQL 16**, which is the arbiter. A local
 SQLite run shows only ~136 - it misses 55 auth-flow, isolation and
@@ -112,13 +112,12 @@ table.
 | `tests/unit/test_auth.py` | 5 | **P-11** | same |
 | `tests/test_migrations.py` | 4 | **P-01** | the four missing tables are exactly this |
 | `tests/test_upload_e2e.py` | 4 | **P-17** | same router |
-| `tests/security/test_xss.py` | 3 | **P-00** | output escaping - see note |
+| `tests/security/test_xss.py` | 3 | **P-13** | TestXSSProblemEndpoints hits the problems router |
 | `tests/test_template_versioning.py` | 3 | **P-17** | owns api/v1/polish.py |
 | `tests/integration/test_playbook_flow.py` | 2 | **P-14** | owns playbook_engine.py |
 | `tests/test_crisis_console.py` | 2 | **P-17** | owns api/v1/polish.py |
 | `tests/security/test_auth_bypass.py` | 1 | **P-11** | auth boundary |
 | `tests/security/test_csrf.py` | 1 | **P-11** | CSRF pairing ships with the cookie transport |
-| `tests/test_cicd_files.py` | 1 | **P-00** | asserts workflow file contents |
 
 Totals by package: **P-17 49** · **P-14 25** · **P-15 17** · **P-02 17** · **P-13 16** · P-30 14 · P-11 13 · P-08 10 · P-16 7 · P-29 5 · P-03 5 · P-04 5 · P-01 4 · P-00 4.
 

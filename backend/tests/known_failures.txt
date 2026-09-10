@@ -104,7 +104,6 @@ tests/test_ai_runtime.py::TestBudgetCheck::test_over_budget
 tests/test_ai_runtime.py::TestBudgetCheck::test_under_budget
 tests/test_ai_runtime.py::TestUsageTracking::test_track_single_usage
 tests/test_ai_runtime.py::TestUsageTracking::test_usage_dashboard
-tests/test_cicd_files.py::TestScripts::test_setup_sh_is_executable
 tests/test_client_portal.py::TestCreatePortalAccess::test_creates_access_with_token
 tests/test_client_portal.py::TestCreatePortalAccess::test_tokens_are_unique
 tests/test_client_portal.py::TestRevokeAccess::test_revoke_existing
