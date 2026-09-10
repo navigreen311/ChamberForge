@@ -88,35 +88,42 @@ table.
 
 | Test file | Count | Owner | Why it belongs there |
 |---|---:|---|---|
-| `tests/test_notifications.py` | 12 | **P-17** | owns `api/v1/notifications.py` |
+| `tests/security/test_file_upload_security.py` | 12 | **P-17** | owns api/v1/storage.py |
+| `tests/test_notifications.py` | 12 | **P-17** | owns api/v1/notifications.py |
+| `tests/integration/test_evidence_api.py` | 10 | **P-13** | owns api/v1/evidence.py |
+| `tests/test_consent_ledger.py` | 10 | **P-15** | owns api/v1/compliance.py |
+| `tests/test_retention.py` | 10 | **P-08** | owns jobs/tasks/retention_tasks.py |
+| `tests/integration/test_tenant_isolation.py` | 9 | **P-02** | owns the scope filter |
 | `tests/integration/test_notifications_api.py` | 8 | **P-17** | same router |
-| `tests/test_retention.py` | 10 | **P-08** | owns `jobs/tasks/retention_tasks.py` |
-| `tests/test_consent_ledger.py` | 10 | **P-15** | owns `api/v1/compliance.py` |
+| `tests/test_edge_cases.py` | 8 | **P-02** | scope-filter edge cases |
+| `tests/test_household_graph.py` | 8 | **P-14** | owns api/v1/household.py |
+| `tests/test_notifications_api.py` | 8 | **P-17** | same router |
+| `tests/test_secure_comms.py` | 8 | **P-30** | secure messaging is Phase 3 section 8 |
+| `tests/unit/test_offers_api.py` | 8 | **P-14** | owns api/v1/offers.py |
 | `tests/integration/test_compliance_api.py` | 7 | **P-15** | same router |
-| `tests/integration/test_evidence_api.py` | 10 | **P-13** | owns `api/v1/evidence.py` |
-| `tests/unit/test_offers_api.py` | 8 | **P-14** | owns `api/v1/offers.py` |
 | `tests/integration/test_offers_api.py` | 7 | **P-14** | same router |
-| `tests/test_secure_comms.py` | 8 | **P-30** | secure messaging is Phase 3 §8 |
-| `tests/test_client_portal.py` | 6 | **P-30** | owns `api/v1/portal.py` |
-| `tests/test_household_graph.py` | 8 | **P-14** | owns `api/v1/household.py` |
 | `tests/test_white_label.py` | 7 | **P-16** | owns the white-label admin endpoints |
-| `tests/security/test_file_upload_security.py` | 6 | **P-17** | owns `api/v1/storage.py` |
-| `tests/test_upload_e2e.py` | 4 | **P-17** | same router |
-| `tests/test_ai_runtime.py` | 5 | **P-04** | owns `services/backbone/ai_runtime.py` |
-| `tests/integration/test_billing_api.py` | 5 | **P-29** | owns `api/v1/billing.py` |
+| `tests/integration/test_auth_flow.py` | 6 | **P-11** | owns api/v1/auth.py and the identity repoint |
+| `tests/security/test_sql_injection.py` | 6 | **P-13** | owns api/v1/discovery.py |
+| `tests/test_client_portal.py` | 6 | **P-30** | owns api/v1/portal.py |
+| `tests/integration/test_billing_api.py` | 5 | **P-29** | owns api/v1/billing.py |
+| `tests/security/test_sensitive_data.py` | 5 | **P-03** | audit/PII disclosure surface |
+| `tests/test_ai_runtime.py` | 5 | **P-04** | owns services/backbone/ai_runtime.py |
+| `tests/unit/test_auth.py` | 5 | **P-11** | same |
 | `tests/test_migrations.py` | 4 | **P-01** | the four missing tables are exactly this |
-| `tests/test_template_versioning.py` | 3 | **P-17** | owns `api/v1/polish.py` |
-| `tests/test_crisis_console.py` | 2 | **P-17** | owns `api/v1/polish.py` |
-| `tests/integration/test_tenant_isolation.py` | 2 | **P-02** | owns the scope filter |
-| `tests/integration/test_playbook_flow.py` | 2 | **P-14** | owns `playbook_engine.py` |
-| `tests/test_edge_cases.py` | 1 | **P-02** | scope-filter edge case |
-| `tests/security/test_sql_injection.py` | 1 | **P-13** | owns `api/v1/discovery.py` |
+| `tests/test_upload_e2e.py` | 4 | **P-17** | same router |
+| `tests/security/test_xss.py` | 3 | **P-00** | output escaping - see note |
+| `tests/test_template_versioning.py` | 3 | **P-17** | owns api/v1/polish.py |
+| `tests/integration/test_playbook_flow.py` | 2 | **P-14** | owns playbook_engine.py |
+| `tests/test_crisis_console.py` | 2 | **P-17** | owns api/v1/polish.py |
+| `tests/security/test_auth_bypass.py` | 1 | **P-11** | auth boundary |
+| `tests/security/test_csrf.py` | 1 | **P-11** | CSRF pairing ships with the cookie transport |
+| `tests/test_cicd_files.py` | 1 | **P-00** | asserts workflow file contents |
 
-Totals by package: P-17 **35** · P-14 **25** · P-15 **17** · P-13 **11** ·
-P-08 10 · P-30 14 · P-16 7 · P-29 5 · P-04 5 · P-01 4 · P-02 3.
+Totals by package: **P-17 49** · **P-14 25** · **P-15 17** · **P-02 17** · **P-13 16** · P-30 14 · P-11 13 · P-08 10 · P-16 7 · P-29 5 · P-03 5 · P-04 5 · P-01 4 · P-00 4.
 
-**P-17 and P-14 carry the heaviest test debt.** Both are already large; size
-them accordingly.
+**P-17 carries the heaviest test debt at 49, then P-11 at 13 and P-14 at 25.**
+All three are already large; size them accordingly.
 
 ---
 
