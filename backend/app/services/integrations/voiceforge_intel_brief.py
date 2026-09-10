@@ -1,6 +1,4 @@
-"""VoiceForge Intel Brief Audio — converts intelligence briefs to audio."""
-import random
-import uuid
+"""VoiceForge Intel Brief Audio - converts intelligence briefs to audio."""
 
 from app.services.integrations.voiceforge_client import VoiceForgeClient
 
@@ -53,48 +51,58 @@ class IntelBriefAudio:
             {"text": brief_text, "voice_style": voice_style},
         )
 
-        # If we got a mock response (no API key), build a realistic one
+        # No API key: no audio exists, so none is described.
+        #
+        # This block used to assemble a convincing one. The duration was
+        # padded with `random.uniform(6.0, 10.0)` for an intro jingle, the
+        # file size was derived from that invented duration, and a bitrate,
+        # sample rate and a hardcoded `generated_at` of 2026-04-03T12:00:00Z
+        # described an mp3 that was never rendered. The only hint was
+        # `.mock` in the hostname of a URL nothing resolves.
+        #
+        # The same defect as the Trust Center's seeded uptime, which is why
+        # this one file crosses from P-07 into P-06: a plausible artefact
+        # returned in the shape of a real one.
         if result.get("mock"):
             profile = _VOICE_PROFILES.get(voice_style, _VOICE_PROFILES["professional"])
-            wpm = float(profile["words_per_minute"])
             word_count = len(brief_text.split())
+            wpm = float(profile["words_per_minute"])
+            sentence_count = max(
+                brief_text.count(".") + brief_text.count("!") + brief_text.count("?"), 1
+            )
+            # Kept because it is a calculation over the caller's own text
+            # rather than a claim about a file: how long this brief would
+            # take to read aloud. Named as an estimate and separate from
+            # `duration_seconds`, which stays absent because nothing was
+            # rendered and therefore nothing has a duration.
+            narration_estimate = round((word_count / wpm) * 60 + sentence_count * 0.3, 1)
 
-            # Calculate duration: words / WPM * 60, plus intro/outro padding
-            base_duration = (word_count / wpm) * 60
-            # Add natural pauses (roughly 0.3s per sentence)
-            sentence_count = max(brief_text.count(".") + brief_text.count("!") + brief_text.count("?"), 1)
-            pause_time = sentence_count * 0.3
-            # Add intro jingle and outro (3-5 seconds each)
-            intro_outro = random.uniform(6.0, 10.0)
-            raw_duration = base_duration + pause_time + intro_outro
-
-            # Clamp to realistic range (45-90 seconds for a typical brief)
-            duration = round(max(45.0, min(raw_duration, 90.0)), 1)
-
-            audio_id = str(uuid.uuid4())
             return {
-                "audio_url": f"https://voiceforge.mock/audio/{audio_id}.mp3",
-                "duration_seconds": duration,
+                "available": False,
+                "reason": "voiceforge_not_configured",
+                "detail": (
+                    "No VoiceForge API key is configured, so no audio was "
+                    "generated for this brief."
+                ),
+                "audio_url": None,
+                "duration_seconds": None,
                 "word_count": word_count,
                 "voice_style": voice_style,
+                "estimated_narration_seconds": narration_estimate,
+                # Static reference data about the requested style - a
+                # description of what would be produced, not of anything
+                # that was.
                 "voice_profile": {
                     "description": profile["description"],
                     "words_per_minute": int(wpm),
                     "pitch_range": profile["pitch_range"],
                     "accent": profile["accent"],
                 },
-                "metadata": {
-                    "format": "mp3",
-                    "bitrate_kbps": 192,
-                    "sample_rate_hz": 44100,
-                    "channels": 1,
-                    "sentence_count": sentence_count,
-                    "estimated_file_size_kb": round(duration * 24),  # ~192kbps mono
-                    "generated_at": "2026-04-03T12:00:00Z",
-                },
+                "metadata": {"sentence_count": sentence_count},
             }
 
         return {
+            "available": True,
             "audio_url": result.get("audio_url", ""),
             "duration_seconds": result.get("duration_seconds", 0),
         }

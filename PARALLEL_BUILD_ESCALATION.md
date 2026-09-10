@@ -505,3 +505,137 @@ both sides speak `degraded`.
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
 - 127 failures, unchanged from the P-04 baseline
 - **1400 passing**, up from 1380 · **33 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-06 — Trust Center & Honest Reporting
+
+Tasks T-021, T-022. Merge order 7 of 30.
+
+## 1. The card's blocker, and the decision taken
+
+> *"No uptime SLI is defined anywhere in the repository. Name a Datadog
+> monitor or approve the render-nothing interim before starting."*
+
+**Built on the render-nothing interim**, and flagged rather than blocked on.
+It is the package's own thesis — "no data yet" is honest, a plausible number
+is not — so proceeding under it cannot produce a wrong answer, only an empty
+one. Naming a monitor later is a configuration change, not a code change: the
+adapter is real and reads `DATADOG_UPTIME_SLO_ID`, `DD_API_KEY`, `DD_APP_KEY`
+and `DD_SITE`.
+
+## 2. The seeding was the dangerous part, not the randomness
+
+```python
+random.seed(f"{year}-{month}")          # "Deterministic per month"
+uptime = round(99.9 + random.uniform(-0.15, 0.1), 3)
+```
+
+A fluctuating random figure invites suspicion. A **seeded** one returned the
+same 99.87% for August on every request — so it survived the one check a
+sceptical reader actually performs: ask twice, compare. It behaved like a
+stored measurement, on the page a prospect reads to decide whether to trust
+the platform with a family's financial affairs.
+
+`uptime_source.py` has two states and no third: **measured** or **unknown**.
+No fallback, no estimate, no last-known-good. Every failure path —
+unconfigured, unreachable, malformed — resolves to unknown, so no caller can
+receive a number the adapter did not read from a monitor. A **partial**
+configuration counts as unconfigured, because a half-configured monitor fails
+in a way that looks like an outage and would be reported as one.
+
+## 3. The page mixed measurements with the firm's own claims
+
+Fixing only the uptime figure would have left the larger problem. Claims like
+*"annual third-party penetration testing"*, *"GDPR-ready"* and
+*"dpa_available: true"* are **not measurements the platform can take** — they
+are statements the operating firm makes about itself, and the platform cannot
+verify a single one. They were returned in the same flat dict as everything
+else, with the same apparent authority.
+
+Every field now carries a `source`: `measured`, `platform_configuration`, or
+`operator_declared`. **The claims are still published** — deleting a firm's
+compliance statements is not a decision code should make quietly — but a
+reader and a reviewer can now tell which is which.
+
+Two consequences worth naming:
+
+**`uptime_sla: "99.9%"` is marked declared, not measured.** It is what the
+firm undertakes to deliver; the uptime history is what was delivered. Those
+must never be conflated, and previously nothing distinguished them.
+
+**`incident_history: []` now carries a note.** An empty list on a trust page
+reads as a clean record. It is not one — it means unrecorded, because no
+incident source is wired up. A caller rendering only the list would publish
+an implied claim nobody made.
+
+## 4. `pen_test_summary` — needs a decision, not a code change
+
+`docs/compliance/pen-test-report-template.md` is a **template**. There is no
+completed penetration test report anywhere in the repository, while the API
+tells every reader that annual third-party testing happens.
+
+The claim may well be true of the firm. Nothing in this codebase
+substantiates it. It is marked `operator_declared` and recorded in
+`docs/compliance/trust-center-data-sources.md` for the document owner to
+either attach the report or amend the claim. **P-06 did not decide it in
+either direction.**
+
+## 5. The VoiceForge cross-cut was larger than line 68
+
+The card scopes this to `:68 random.uniform`. The whole mock block was the
+defect: with no API key it returned an `.mp3` URL, a duration padded by
+`random.uniform(6.0, 10.0)` for an "intro jingle", a bitrate, a sample rate,
+a file size derived from the invented duration, and a hardcoded
+`generated_at` of `2026-04-03T12:00:00Z` — a complete description of a file
+that was never rendered. The only signal was `.mock` in the hostname of a URL
+nothing resolves.
+
+It now returns `available: false` with a reason, no URL and no duration.
+
+**One value survives deliberately.** `estimated_narration_seconds` is word
+count over the voice profile's words-per-minute — arithmetic on the caller's
+own text, describing how long the brief *would* take to read aloud. That is a
+calculation, not a claim about an artefact, and it is named so it cannot be
+read as the length of a file.
+
+The route in `api/v1/voiceforge.py` is a pass-through, so P-18's file was not
+touched.
+
+## 6. The guard is structural, and repo-wide
+
+The card asks that no `random` import survive "asserted by test, not review".
+Both repaired files quote the offending lines in their docstrings, so a
+text search would fail on the explanation and pass on a comment. The test
+parses each file's **syntax tree** instead.
+
+It also sweeps **all of `app/services`**, not just the two known files. Both
+offenders sat in different packages and were found separately; the third one
+now fails at the moment it is written rather than when a customer asks where
+a number came from.
+
+## 7. Scope
+
+Exactly the card's file list — nothing outside it. The trust-center endpoints
+live in `primitives.py`, which is P-02's file, so both service methods keep
+their signatures and the routes were not touched.
+
+## 8. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- 127 failures, unchanged from what P-04 left
+- **17 tests added** · `ruff` 0 · frontend untouched
+
+## 9. NEEDS A RULING BEFORE MERGE
+
+The card carries a standing instruction: *"MISREPRESENTATION RISK.
+Customer-facing compliance surface. If any figure has been shown externally,
+escalate to Ivan before merging."*
+
+**I cannot determine this from the repository.** It is the audit's open
+question §9 Q5 — whether the v1.0.0 claims were ever shown to a third party.
+
+If a generated uptime figure has been shown to a prospect, a client, or an
+auditor, then a fabricated availability record has been presented as fact and
+that is a disclosure question, not an engineering one. The code fix does not
+address it and merging does not close it.
