@@ -1,9 +1,14 @@
 """Problem Ontology Engine — canonical schema validation and AI classification."""
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db.scope import current_scope
+from app.db.session import SessionLocal
 from app.models.enums import (
     BuyerType,
     ComplianceRisk,
@@ -17,7 +22,10 @@ from app.models.enums import (
     WealthTier,
     WTPProfile,
 )
+from app.models.ontology_extension import OntologyExtension
 from app.models.problem import Problem
+
+logger = logging.getLogger("chamberforge.ontology")
 
 # Canonical ontology definition — single source of truth
 _ONTOLOGY_FIELDS: dict[str, dict] = {
@@ -107,33 +115,114 @@ _KEYWORD_MAP: dict[str, dict[str, list[str]]] = {
     },
 }
 
-# Dynamic extensions (runtime-added values)
-_extensions: dict[str, list[str]] = {}
+# P-09 (T-035). What was here:
+#
+#     _extensions: dict[str, list[str]] = {}
+#
+# A module-level dict, so an ontology value added by one workspace was
+# immediately visible to every other workspace in the process - a tenancy
+# leak, not merely a durability bug - and every extension vanished on
+# restart. A firm that added a trigger event lost it at the next deploy,
+# and saw other firms' additions in the meantime.
+#
+# Extensions now live in `ontology_extensions`, scoped by workspace.
+
+
+def _resolve_workspace(workspace_id: str | None = None) -> str | None:
+    """The workspace to scope extensions to, or None.
+
+    Falls back to the operator scope P-02's middleware binds, so the
+    engine can be scoped without changing method signatures that
+    `api/v1/ontology.py` calls - that router belongs to P-13.
+
+    Returning None is meaningful: with no workspace, extensions cannot be
+    scoped, so none are applied. The base ontology is returned rather than
+    every workspace's additions, which is what the old global dict did.
+    """
+    if workspace_id:
+        return workspace_id
+    scope = current_scope()
+    return scope.workspace_id if scope else None
+
+
+def _load_extensions(
+    db: Session | None, workspace_id: str | None
+) -> dict[str, list[str]]:
+    """This workspace's extra allowed values, keyed by field.
+
+    Never raises. An unreachable database means the base ontology is used
+    for validation, which is strict - it rejects extended values rather
+    than accepting unknown ones, so the failure mode is a refusal a person
+    will notice, not silent acceptance.
+    """
+    if not workspace_id:
+        return {}
+
+    owned = db is None
+    session = db or SessionLocal()
+    try:
+        rows = (
+            session.query(OntologyExtension)
+            .filter(OntologyExtension.workspace_id == workspace_id)
+            .all()
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("could not load ontology extensions: %s", exc)
+        return {}
+    finally:
+        if owned:
+            session.close()
+
+    found: dict[str, list[str]] = {}
+    for row in rows:
+        found.setdefault(row.field_name, []).append(row.value)
+    return found
 
 
 class OntologyEngine:
     """Layer-1 service: canonical problem ontology validation and classification."""
 
-    def get_ontology_schema(self) -> dict:
-        """Return the full canonical data model definition."""
+    def get_ontology_schema(
+        self,
+        db: Session | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """The canonical data model, plus this workspace's extensions.
+
+        Both arguments are optional so the existing router keeps working
+        unchanged; the workspace comes from the operator scope when it is
+        not passed. P-13 can pass them explicitly without this signature
+        moving again.
+        """
+        workspace_id = _resolve_workspace(workspace_id)
+        extensions = _load_extensions(db, workspace_id)
         schema: dict = {}
         for field, meta in _ONTOLOGY_FIELDS.items():
             allowed = list(meta["allowed_values"])
-            if field in _extensions:
-                allowed.extend(_extensions[field])
+            if field in extensions:
+                allowed.extend(extensions[field])
             schema[field] = {
                 "description": meta["description"],
                 "allowed_values": allowed,
             }
         return schema
 
-    def validate_against_ontology(self, problem_data: dict) -> dict:
-        """Validate problem data against the ontology schema."""
+    def validate_against_ontology(
+        self,
+        problem_data: dict,
+        db: Session | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Validate problem data against this workspace's ontology.
+
+        Validation has to see the same extensions the schema does, or a
+        value a workspace legitimately added would be rejected as unknown.
+        """
         errors: list[str] = []
         warnings: list[str] = []
         auto_corrections: dict[str, str] = {}
 
-        schema = self.get_ontology_schema()
+        schema = self.get_ontology_schema(db=db, workspace_id=workspace_id)
 
         for field, meta in schema.items():
             value = problem_data.get(field)
@@ -204,19 +293,75 @@ class OntologyEngine:
             stats[field] = {str(val): cnt for val, cnt in rows}
         return stats
 
-    def update_ontology_mappings(self, field: str, new_values: list[str]) -> dict:
-        """Extend allowed values for a field (admin only)."""
+    def update_ontology_mappings(
+        self,
+        field: str,
+        new_values: list[str],
+        db: Session | None = None,
+        workspace_id: str | None = None,
+        created_by: str | None = None,
+    ) -> dict:
+        """Extend allowed values for a field, for this workspace only.
+
+        Writes rows rather than appending to a process-global list, so an
+        extension survives a restart and stays inside the workspace that
+        made it.
+
+        Refuses when no workspace can be resolved. An unscoped extension
+        has no owner, and the previous behaviour - apply it to everyone -
+        is the bug being fixed.
+        """
         if field not in _ONTOLOGY_FIELDS:
             return {"success": False, "error": f"Unknown field: {field}"}
 
-        if field not in _extensions:
-            _extensions[field] = []
+        workspace_id = _resolve_workspace(workspace_id)
+        if not workspace_id:
+            return {
+                "success": False,
+                "error": (
+                    "No workspace is bound to this request, so the extension "
+                    "has no owner and was not saved."
+                ),
+            }
 
-        added: list[str] = []
-        existing = set(_ONTOLOGY_FIELDS[field]["allowed_values"]) | set(_extensions[field])
-        for v in new_values:
-            if v not in existing:
-                _extensions[field].append(v)
+        owned = db is None
+        session = db or SessionLocal()
+        try:
+            existing_rows = _load_extensions(session, workspace_id).get(field, [])
+            existing = set(_ONTOLOGY_FIELDS[field]["allowed_values"]) | set(existing_rows)
+
+            added: list[str] = []
+            for v in new_values:
+                if v in existing:
+                    continue
+                session.add(
+                    OntologyExtension(
+                        workspace_id=workspace_id,
+                        field_name=field,
+                        value=v,
+                        created_by=created_by,
+                    )
+                )
+                existing.add(v)
                 added.append(v)
+            session.commit()
+        except IntegrityError:
+            # Another request added the same value first. The unique
+            # constraint is the authority; this is not an error worth
+            # surfacing, because the value the caller wanted now exists.
+            session.rollback()
+            added = []
+            existing = set(_ONTOLOGY_FIELDS[field]["allowed_values"]) | set(
+                _load_extensions(session, workspace_id).get(field, [])
+            )
+        finally:
+            if owned:
+                session.close()
 
-        return {"success": True, "field": field, "added": added, "total": len(existing) + len(added)}
+        return {
+            "success": True,
+            "field": field,
+            "added": added,
+            "total": len(existing),
+            "workspace_id": workspace_id,
+        }

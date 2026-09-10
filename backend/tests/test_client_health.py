@@ -1,6 +1,7 @@
 """Tests for ClientHealth service."""
 import pytest
 
+from app.db.scope import OperatorScope, reset_scope, set_scope
 from app.services.backbone.client_health import ClientHealth
 
 
@@ -66,14 +67,36 @@ class TestDetectChurnSignals:
 
 
 class TestGetHealthTrend:
-    @pytest.mark.asyncio
-    async def test_returns_correct_month_count(self):
-        trend = await ClientHealth.get_health_trend(None, "client-123", months=6)
-        assert len(trend) == 6
-        assert all("month" in t and "score" in t for t in trend)
+    """P-09: the trend is recorded history, not a generated series.
+
+    These asserted that six months of scores always came back, in range, for
+    any client id at all - satisfied by:
+
+        seed = int(hashlib.md5(client_id.encode()).hexdigest()[:8], 16)
+        score = 60 + (seed % 30) + ((seed >> (i * 2)) % 11) - 5
+
+    A stable, plausible health history for a named client, derived from a
+    hash. An advisor reviewing whether a relationship was deteriorating was
+    reading an md5 digest, and the suite guaranteed the series was always
+    there.
+    """
 
     @pytest.mark.asyncio
-    async def test_scores_in_range(self):
-        trend = await ClientHealth.get_health_trend(None, "any-id")
-        for entry in trend:
-            assert 0.0 <= entry["score"] <= 100.0
+    async def test_a_client_with_no_recorded_scores_has_no_trend(self):
+        trend = await ClientHealth.get_health_trend(None, "client-123", months=6)
+        assert trend == []
+
+    @pytest.mark.asyncio
+    async def test_recorded_scores_are_returned_in_range(self, db_session):
+        token = set_scope(OperatorScope(workspace_id="ws-trend", user_id="u1"))
+        try:
+            ClientHealth.calculate_health_score(
+                0.8, 0.7, 0.6, 0.9, client_id="client-123", db=db_session
+            )
+            trend = await ClientHealth.get_health_trend(db_session, "client-123")
+        finally:
+            reset_scope(token)
+
+        assert len(trend) == 1
+        assert all("month" in t and "score" in t for t in trend)
+        assert 0.0 <= trend[0]["score"] <= 100.0

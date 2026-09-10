@@ -505,3 +505,132 @@ both sides speak `degraded`.
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
 - 127 failures, unchanged from the P-04 baseline
 - **1400 passing**, up from 1380 · **33 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-09 — Ontology & Scoring Persistence
+
+Tasks T-035, T-039. Merge order 9 of 30.
+
+## 1. One line, two defects
+
+```python
+_extensions: dict[str, list[str]] = {}
+```
+
+The card calls this "a module-level dict that leaks ontology extensions
+across callers and loses them on restart". Both halves are true, and they are
+not equally serious.
+
+The **durability** bug is annoying: a firm extends its ontology and loses the
+change at the next deploy.
+
+The **tenancy leak** is the real one. There was no workspace dimension in the
+structure at all, so a value one firm added was immediately visible to every
+other firm in the process — and, because `validate_against_ontology` reads
+the same schema, silently *accepted* in their data. One firm's vocabulary
+ending up in another firm's records is a data-integrity problem that would be
+very hard to explain after the fact.
+
+Extensions now live in `ontology_extensions`, scoped by workspace, using the
+scope P-02 already binds — so no signature the router calls had to move.
+`api/v1/ontology.py` belongs to P-13 and was not opened.
+
+**A test that only exercises one workspace passes identically against a
+global dict and a scoped table**, which is why the isolation tests here
+matter more than the durability ones.
+
+## 2. Refusing to guess an owner
+
+`update_ontology_mappings` **refuses** when no workspace can be resolved,
+rather than falling back to something global. The old behaviour — apply it to
+everyone — is precisely the bug, so there is no version of "no workspace"
+that can be handled by writing the row anyway.
+
+Same principle in `scoring_store`: an unscoped scoring record would be
+invisible to the scope filter and unreadable by the workspace that made it,
+so it is skipped and logged rather than written.
+
+## 3. "Why was this approved in March" had no answer at all
+
+Four services computed a verdict, returned it, and kept nothing.
+
+`inputs` is stored beside the score deliberately. A recorded verdict without
+its inputs lets you *recite* a past decision but not *explain* it — and the
+offer or client will have changed by the time anyone asks. A guardrails
+`BLOCK` that was later overridden is exactly the case where the inputs are
+the whole story.
+
+Recording never fails a score: refusing to audit an offer because a write
+failed would take a compliance check offline to protect its own log. A
+failure is logged and `None` returned, which a caller can check.
+
+## 4. A third fabrication, not in the card
+
+`client_health.get_health_trend` was not merely unrecorded — it was
+**invented**:
+
+```python
+seed = int(hashlib.md5(client_id.encode()).hexdigest()[:8], 16)
+base = 60 + (seed % 30)
+score = base + ((seed >> (i * 2)) % 11) - 5
+```
+
+Six months of health scores for a named client, derived from a hash of their
+id. Stable, so the same client always showed the same history, and inside the
+range a real score occupies. **An advisor deciding whether a relationship was
+deteriorating was reading an md5 digest.**
+
+Same family as the trust-center uptime (P-06), the call profiles and crisis
+acknowledgements (P-07), and the agent sample data (P-04). This is the fourth
+package in a row to find one, in a service the card described only as needing
+persistence.
+
+It now reads the scores this service actually recorded. A client with no
+history returns an empty list, which renders as no trend rather than a
+reassuring one.
+
+## 5. Three tests asserted the defects
+
+- `test_returns_correct_month_count` — asserted six months of scores always
+  came back **for any client id at all**, which the hash guaranteed.
+- `test_scores_in_range` — asserted those invented scores were plausible.
+- `test_ontology.py` imported `_extensions` directly and cleared it between
+  tests, which coupled the suite to the global that was the bug.
+
+Rewritten in place.
+
+## 6. Scope
+
+The card's five service files, plus:
+
+- **`scoring_store.py`** — not in the card's `creates` list, which names only
+  the two test files. Four services need the same write path; putting it
+  inside one of them would have made the other three import from an unrelated
+  service.
+
+`alembic/`, `frontend/prisma/`, `api/v1/ontology.py`, `qualify.py`,
+`db/session.py` and `db/scope.py` were not opened. The card's flag — *"uses
+the P-02 scope filter, do not bypass it"* — is honoured: every read and write
+here is workspace-scoped, and `get_scores` requires a workspace rather than
+treating it as optional.
+
+## 7. Flagged, not fixed — `/api/v1/ontology/stats`
+
+```python
+def stats(workspace_id: str = "default", db: Session = Depends(get_db)):
+```
+
+A **client-supplied `workspace_id`**, defaulting to `"default"` — the same
+spoofable-tenancy pattern P-02 removed from `primitives.py`. Any caller can
+read another workspace's ontology distribution by naming it.
+
+`api/v1/ontology.py` is **P-13's file** and on this package's must-not-touch
+list, so it is flagged rather than fixed. **P-13 should close it**, and it is
+worth checking the other router packages for the same default.
+
+## 8. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- 127 failures, unchanged from the P-07 baseline
+- **1389 passing** · **25 tests added** · `ruff` 0 · frontend untouched

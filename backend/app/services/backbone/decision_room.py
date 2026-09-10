@@ -5,6 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
+from app.services.backbone.scoring_store import SCORER_DECISION_ROOM, record_score
+
 
 class ApprovalStatus:
     PENDING = "pending"
@@ -80,8 +84,22 @@ class DecisionRoom:
         stakeholder_id: str,
         status: str,
         notes: str = "",
+        db: Session | None = None,
+        workspace_id: str | None = None,
     ) -> dict | None:
-        """Update a stakeholder's approval status."""
+        """Update a stakeholder's approval status, and record the decision.
+
+        P-09 (T-039): an approval is a decision somebody is accountable for.
+        This mutated an in-memory dict and returned it, so who approved a
+        deal, when, and on what stated basis did not survive the process -
+        `_deals` is per-instance and the routers construct the service at
+        import time.
+
+        The in-memory map is left in place: it backs the live decision-room
+        view, and moving it is a schema change P-01 owns. What changes here
+        is that the decision itself is now durable, which is the half that
+        matters when the question is asked months later.
+        """
         deal = self._deals.get(deal_id)
         if not deal:
             return None
@@ -101,6 +119,25 @@ class DecisionRoom:
                 })
 
                 self._check_deal_status(deal)
+
+                record_score(
+                    scorer=SCORER_DECISION_ROOM,
+                    subject_type="deal",
+                    subject_id=deal_id,
+                    verdict=status,
+                    inputs={
+                        "stakeholder_id": stakeholder_id,
+                        "stakeholder_name": sh["name"],
+                        "status": status,
+                        "notes": notes,
+                    },
+                    detail={
+                        "deal_status": deal["status"],
+                        "deal_name": deal["name"],
+                    },
+                    db=db,
+                    workspace_id=workspace_id,
+                )
                 return deal
         return None
 
