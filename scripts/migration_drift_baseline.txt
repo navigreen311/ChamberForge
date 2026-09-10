@@ -1,0 +1,7 @@
+# Tables whose models exist but whose create_table was never written.
+# P-01 (Schema Reconciliation) closes all four and empties this file.
+# CI fails on any table NOT listed here, i.e. on new drift only.
+community_insights
+mfa_configs
+wealth_events
+white_label_configs

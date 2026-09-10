@@ -41,7 +41,8 @@ database query.
 | `npm run build` | **failed** | **succeeds, 148/148 pages** |
 | `npm audit` | 13 vulns (3 critical) | 5 (1 critical) — rest need Next 16, **P-27** |
 | CI green, all time | **0 of 291 runs** | pending first run |
-| Backend suite | could not execute | **1273 passed / 136 failed / 8 error / 33 skipped** |
+| Backend suite (SQLite, local) | could not execute | 1,273 passed / 136 failed / 8 error |
+| Backend suite (**Postgres, CI**) | could not execute | **191 known failures** - the number that governs |
 | Open routes (no auth) | unmeasured | **206** — see the correction below |
 | Model/migration drift | unmeasured | **4 tables missing** — P-01 closes |
 
@@ -59,10 +60,26 @@ which truncated `AWS_S3_BUCKET` at the digit. The file was always correct.
 
 ---
 
-## The 136 pre-existing test failures, assigned
+## The 191 pre-existing test failures, assigned
 
-Measured on the P-00 branch with SQLite. **Each package fixes only the
-failures in its own files.** Do not fix another package's tests; do not
+Measured on **CI against PostgreSQL 16**, which is the arbiter. A local
+SQLite run shows only ~136 - it misses 55 auth-flow, isolation and
+sensitive-data failures that need a real database. **Do not tune against
+SQLite.** The authoritative list is `backend/tests/known_failures.txt`.
+
+**CI now gates on the delta, not on green.** `scripts/check_test_regressions.py`
+compares each run to that baseline and fails only on a test that was passing
+and now is not. A permanently red suite gives twenty-nine agents no signal;
+"did you break something" is the only useful question during a remediation
+this size. Each package **deletes the lines it fixes** - the file only ever
+shrinks, and P-26 asserts it is empty. Adding a line to make your own PR pass
+is what the coordinator hands a PR back for.
+
+The same applies to migration drift: `scripts/migration_drift_baseline.txt`
+holds the four known-missing tables so CI fails on *new* drift only. P-01
+empties it.
+
+**Each package fixes only the failures in its own files.** Do not fix another package's tests; do not
 weaken an assertion to reach green.
 
 Three further failures in `tests/test_env_validator.py` were caused by
