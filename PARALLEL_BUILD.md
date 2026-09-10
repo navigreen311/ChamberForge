@@ -29,6 +29,9 @@ database query.
 |---|---------|----|-----------|-------|---------|------|
 | 1 | P-00 Coordinator | [#19](https://github.com/navigreen311/ChamberForge/pull/19) | `593333a` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
 | 2 | P-01 Schema Reconciliation | [#20](https://github.com/navigreen311/ChamberForge/pull/20) | `d996f14` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 3 | P-02 Operator Scope & Sandbox | [#22](https://github.com/navigreen311/ChamberForge/pull/22) | `82cf9e0` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 4 | P-11 NextAuth Guards & Identity | [#23](https://github.com/navigreen311/ChamberForge/pull/23) | `0c5e107` | **CI GREEN — all 4 jobs** | 0 | 2026-09-10 |
+| 5 | P-03 Audit Trail Integrity | _in flight_ | — | see PR | 0 | 2026-09-10 |
 
 ---
 

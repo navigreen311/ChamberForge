@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from sqlalchemy import JSON, Column, DateTime, String, Uuid, create_engine, text
+from sqlalchemy import JSON, Column, DateTime, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.middleware.audit import (
@@ -24,25 +24,47 @@ class _TestBase(DeclarativeBase):
 
 
 class AuditLogTest(_TestBase):
-    """Test-only mirror of AuditLog using sa.Uuid for SQLite compat."""
+    """Test-only mirror of AuditLog.
+
+    P-03 changed the id columns from sa.Uuid to String(36). The production
+    model uses String(36); a mirror that does not mirror is worse than none,
+    because it makes the service pass under types the real table would
+    reject. The identifiers below are strings for the same reason they are
+    strings in production.
+    """
+
     __tablename__ = "audit_logs"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    workspace_id = Column(Uuid, nullable=False)
-    user_id = Column(Uuid, nullable=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    workspace_id = Column(String(36), nullable=False)
+    user_id = Column(String(36), nullable=True)
     action = Column(String, nullable=False)
     resource_type = Column(String, nullable=False)
-    resource_id = Column(Uuid, nullable=True)
+    resource_id = Column(String(36), nullable=True)
     details = Column(JSON, default=dict)
     ip_address = Column(String, nullable=True)
     timestamp = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
+    # P-03: the mirror has to carry the chain columns too, or the service
+    # writes hashes into a model that cannot hold them.
+    prev_hash = Column(String(64), nullable=True)
+    entry_hash = Column(String(64), nullable=True)
 
 
 # Monkey-patch AuditService to use our test model for the duration of tests.
 import app.services.backbone.audit_service as _audit_mod  # noqa: E402
 
 _OrigAuditLog = _audit_mod.AuditLog
-_audit_mod.AuditLog = AuditLogTest  # type: ignore[assignment]
+
+
+# P-03: this substitution used to happen at module import and was never
+# undone, so it leaked into every test that ran afterwards - which is how
+# tests/test_audit_integrity.py passed alone and failed in the full suite.
+# Scoped to this module and restored on the way out.
+@pytest.fixture(autouse=True)
+def _use_sqlite_audit_model():
+    _audit_mod.AuditLog = AuditLogTest  # type: ignore[assignment]
+    yield
+    _audit_mod.AuditLog = _OrigAuditLog  # type: ignore[assignment]
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -61,12 +83,12 @@ def db():
 
 @pytest.fixture()
 def workspace_id():
-    return uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    return "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 @pytest.fixture()
 def user_id():
-    return uuid.UUID("11111111-2222-3333-4444-555555555555")
+    return "11111111-2222-3333-4444-555555555555"
 
 
 # ── AuditService.log_action ─────────────────────────────────────────────────
@@ -100,7 +122,7 @@ def test_log_action_creates_record(db, workspace_id, user_id):
 
 
 def test_get_audit_trail_filtering(db, workspace_id, user_id):
-    other_ws = uuid.UUID("ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb")
+    other_ws = "ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb"
     AuditService.log_action(db, workspace_id, user_id, "POST /api/v1/offers", "offers")
     AuditService.log_action(db, workspace_id, user_id, "DELETE /api/v1/problems/x", "problems")
     AuditService.log_action(db, other_ws, user_id, "PUT /api/v1/clients/y", "clients")
@@ -163,6 +185,8 @@ def test_extract_resource_type():
 
 def test_extract_resource_id():
     rid = _extract_resource_id("/api/v1/problems/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    # _extract_resource_id parses the path segment into a UUID object, so
+    # this one genuinely compares against a UUID rather than a string.
     assert rid == uuid.UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
     assert _extract_resource_id("/api/v1/problems") is None
 

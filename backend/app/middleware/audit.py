@@ -13,6 +13,43 @@ from app.services.backbone.audit_service import AuditService
 
 logger = logging.getLogger("chamberforge.audit")
 
+#: Mutations that reached a route without resolving an operator are recorded
+#: against this workspace rather than dropped. Deliberately not a real UUID -
+#: it should stand out in any query, and it must never collide with a
+#: workspace id.
+ANONYMOUS_WORKSPACE = "anonymous-unauthenticated"
+
+
+def _report_audit_failure(action: str, resource_type: str) -> None:
+    """Surface a failed audit write to monitoring, not just to the log.
+
+    A dropped audit entry is a compliance event. Sentry is optional in
+    development, so this must never raise - failing to report a failure
+    should not become a second failure.
+    """
+    try:
+        import sentry_sdk
+
+        sentry_sdk.capture_message(
+            "audit write failed",
+            level="error",
+            scope=None,
+        )
+    except Exception:  # noqa: BLE001 - reporting must not raise
+        pass
+
+    try:
+        from app.middleware.datadog_metrics import DatadogMetricsMiddleware
+
+        statsd = DatadogMetricsMiddleware._statsd()
+        if statsd is not None:
+            statsd.increment(
+                "chamberforge.audit.write_failed",
+                tags=[f"action:{action}", f"resource:{resource_type}"],
+            )
+    except Exception:  # noqa: BLE001 - metrics are best-effort
+        pass
+
 # Paths that should never be audited.
 _SKIP_PREFIXES = (
     "/api/health",
@@ -73,9 +110,20 @@ def _write_audit_log(
 ) -> None:
     """Background task: open a fresh DB session, write the audit row, close."""
     if workspace_id is None:
-        # Cannot record without a workspace; degrade gracefully.
-        logger.debug("Skipping audit write — no workspace_id available for %s", action)
-        return
+        # P-03 (T-011). This used to return here, silently.
+        #
+        # The 187 routes that still accept anonymous requests never populate a
+        # workspace, so the effect was that the least-authenticated surface in
+        # the platform was also the least audited - including, until P-16
+        # lands, every admin route. An attacker's requests were the ones that
+        # left no trace.
+        #
+        # Anonymous mutations are now recorded against a sentinel workspace
+        # instead of dropped. A row saying "we do not know who did this" is
+        # worth far more than no row, and it makes the anonymous surface
+        # visible in the trail rather than invisible.
+        workspace_id = ANONYMOUS_WORKSPACE
+        user_id = None
     db = SessionLocal()
     try:
         AuditService.log_action(
@@ -89,7 +137,14 @@ def _write_audit_log(
             ip_address=ip_address,
         )
     except Exception:
-        logger.exception("Failed to write audit log for %s", action)
+        # P-03 (T-014). Previously this logged and moved on, so audit loss was
+        # invisible to monitoring: the one failure mode nobody would notice is
+        # the trail quietly stopping.
+        logger.exception(
+            "audit_write_failed",
+            extra={"action": action, "resource_type": resource_type},
+        )
+        _report_audit_failure(action, resource_type)
         db.rollback()
     finally:
         db.close()
