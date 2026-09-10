@@ -634,3 +634,111 @@ worth checking the other router packages for the same default.
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
 - 127 failures, unchanged from the P-07 baseline
 - **1389 passing** · **25 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-10 — Distributed Rate Limiting
+
+Task T-029. Merge order 10 of 30.
+
+## 1. The configured limit was never the actual limit
+
+The sliding window lived in two per-process `defaultdict`s, so the limit
+applied **per instance**. Four workers behind a load balancer meant four
+independent windows and an effective limit four times the configured one,
+arriving unevenly depending on which worker a request landed on. A deploy
+reset every counter, which made waiting for one the cheapest way past the
+limiter.
+
+The window now lives in Redis and every instance reads and writes the same
+one.
+
+## 2. Check and record are a single atomic operation
+
+This is the part that makes it work rather than merely look distributed. A
+read-then-write from N instances is the exact race that keeps the old
+behaviour: each reads `count = limit - 1`, each decides it may proceed, and
+the window overshoots by N. A Lua script does both inside Redis, so the count
+a caller sees already includes its own request.
+
+The sorted-set member is a **uuid, not the timestamp**. Keyed by timestamp,
+two requests in the same millisecond collide on one member and the second
+overwrites rather than counts — quietly raising the real limit under exactly
+the burst the limiter exists for. There is a test for it.
+
+## 3. Fail open, deliberately
+
+The card's flag: *"a fail-closed limiter on /auth locks everyone out"*.
+
+On any Redis failure the limiter falls back to the in-process window rather
+than refusing traffic. That is **more permissive than intended** — each
+instance starts a fresh local window — and that is the correct direction to
+fail: `/api/v1/auth` is rate limited, so a fail-closed limiter during a Redis
+outage locks out every user, including the people trying to fix it.
+
+Fail-open here does not mean unlimited: the local window still applies, so a
+single instance still cannot be used without limit. It is a weaker,
+per-instance limit rather than no limit.
+
+Redis is retried on the **next** request rather than being written off for
+the process lifetime, so the shared window resumes as soon as Redis returns.
+Every fallback reports a metric — a limiter silently running per-process is
+the state this package exists to end, and it looks identical from outside to
+one that is working.
+
+## 4. The frozen constructor was not touched
+
+`main.py:61-75` is P-00-owned and the signature is frozen. Redis is
+configured from `settings.REDIS_URL`, which P-00 already added, so **no
+argument was added and `main.py` was not opened**. A test asserts the
+parameter list exactly, so a future change that needs an argument fails here
+rather than silently diverging from the call site.
+
+## 5. The problem worth reading — a frozen fixture and shared state
+
+`tests/conftest.py` resets rate limiting between tests by reaching into the
+middleware and calling `handler._requests.clear()`. That file is P-00-frozen.
+
+Once the window moved to Redis, clearing the local dict stopped clearing
+anything that mattered: Redis kept the counts across tests, so one test's
+requests exhausted the next test's limit. **Six tests in
+`tests/security/test_rate_limiting.py` failed**, and they failed in a way
+that looked like a limiter bug rather than shared state.
+
+It would have been easy to miss. CI's backend job has no Redis, so the
+limiter falls back to memory there and the suite passes — the failure only
+appears on a machine that happens to have a Redis running, which is every
+developer machine with the dev stack up. **Passing in CI would have been the
+false signal.**
+
+The fix puts the flush behind the call the frozen fixture already makes:
+`_requests` and `_workspace_requests` are a `dict` subclass whose `clear()`
+also deletes this limiter's own Redis keys. Production never calls it —
+`_cleanup_expired` rebinds and deletes individual keys, and nothing else
+clears the store.
+
+Verified in **both** conditions: with a live Redis (0 newly failing, 1441
+passing) and with Redis unreachable (the rate-limit files pass, the shared
+window tests skip).
+
+## 6. What the tests can and cannot prove
+
+The Redis group exercises the real Lua script against a real server and was
+run against Redis 7.2 during development: **15 passed, 0 skipped**, including
+two instances sharing one window and the window surviving a restart.
+
+Those tests **skip in CI**. `ci.yml` runs only three named files in the
+`integration-real` job that has a Redis service, and that file is
+P-00-frozen. The always-running group covers the fallback path, the
+overrides, and the frozen signature.
+
+**Worth doing when `ci.yml` next opens:** add
+`tests/test_rate_limit_distributed.py` to the `integration-real` job so the
+shared-window behaviour is gated rather than merely verified once by hand.
+
+## 7. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- 127 failures, unchanged from the P-09 baseline
+- **1441 passing** · **15 tests added** · `ruff` 0 · frontend untouched
+- Scope: exactly the card's two files
