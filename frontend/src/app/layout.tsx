@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 
+import AppProviders from "@/app/components/providers/AppProviders";
+
 export const viewport: Viewport = {
   themeColor: "#fbbf24",
 };
@@ -33,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-[#0D1117] text-white antialiased">
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

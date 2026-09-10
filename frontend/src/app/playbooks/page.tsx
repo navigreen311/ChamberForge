@@ -880,7 +880,7 @@ export default function PlaybooksPage() {
                               }}
                               className="accent-[#1D9E75]"
                             />
-                            I've addressed this
+                            I&rsquo;ve addressed this
                           </label>
                         </div>
                       </div>

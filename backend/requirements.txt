@@ -25,3 +25,16 @@ pytest-cov==6.1.1
 cryptography==44.0.2
 pyotp==2.9.0
 qrcode[pil]==8.0
+
+# --- P-00: dependencies the code already imports but never declared ---
+email-validator==2.2.0      # pydantic EmailStr - without it pytest cannot collect
+reportlab==4.2.5            # services/backbone/pdf_export.py
+PyJWT==2.10.1               # tests/security/test_rate_limiting.py
+
+# --- P-00: pinned to keep passlib working ---
+# passlib 1.7.4 reads bcrypt.__about__, removed in bcrypt 5. Unpinned, this
+# breaks every password hash with "password cannot be longer than 72 bytes".
+bcrypt==4.0.1
+
+# --- P-00: landed up front so no later package edits this file ---
+tenacity==9.0.0             # P-07 retry/backoff for partner integrations

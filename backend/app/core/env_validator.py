@@ -44,4 +44,14 @@ def validate_environment() -> dict:
     if not errors and not warnings:
         logger.info("All environment variables configured correctly")
 
+    # P-00: outside development, a configuration error is fatal. Previously
+    # this only logged, so the app would boot in production on the default
+    # JWT_SECRET of "changeme" - a publicly known signing key that lets
+    # anyone mint a valid token. Failing loudly at startup is the point.
+    if errors and settings.APP_ENV.lower() not in ("development", "dev", "local", "test", "testing"):
+        raise RuntimeError(
+            "Refusing to start in APP_ENV=%s with %d configuration error(s): %s"
+            % (settings.APP_ENV, len(errors), "; ".join(errors))
+        )
+
     return {"errors": errors, "warnings": warnings}

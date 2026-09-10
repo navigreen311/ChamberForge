@@ -208,7 +208,7 @@ export default function AutomationPage() {
     setRules(prev => prev.filter(r => r.id !== id))
   }
 
-  const useTemplate = (tpl: typeof TEMPLATES[0]) => {
+  const applyTemplate = (tpl: typeof TEMPLATES[0]) => {
     setRuleName(tpl.name)
     setSelectedTrigger(tpl.trigger)
     setSelectedActions([tpl.action])
@@ -274,7 +274,7 @@ export default function AutomationPage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => useTemplate(tpl)}
+                    onClick={() => applyTemplate(tpl)}
                     className="mt-4 w-full rounded-lg border border-white/20 py-1.5 text-xs font-medium text-white/70 hover:border-white/40 hover:text-white transition"
                   >
                     Use Template

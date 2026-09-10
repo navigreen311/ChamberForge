@@ -96,7 +96,7 @@ export default function CommandAICard() {
       </div>
 
       <EvidenceDrawer
-        open={drawerOpen}
+        isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         evidence={data.evidence_chain}
       />

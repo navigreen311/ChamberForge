@@ -68,6 +68,40 @@ class Settings(BaseSettings):
     VISIONAUDIOFORGE_API_URL: str = ""
     VISIONAUDIOFORGE_API_KEY: str = ""
 
+    # ------------------------------------------------------------------
+    # P-00: the complete settings surface for the parallel build.
+    # Every value below is landed up front with a safe default so that no
+    # later package needs to edit this file. Packages read settings.X;
+    # they do not add to it. See PARALLEL_BUILD.md.
+    # ------------------------------------------------------------------
+
+    # NextAuth (D1 - Prisma + NextAuth are the adopted auth path)
+    NEXTAUTH_SECRET: str = ""
+    NEXTAUTH_URL: str = "http://localhost:3000"
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
+    # AI runtime governance (P-04)
+    AI_TEMPERATURE: float = 0.0  # explicit, so golden tests have a stable baseline
+    AI_MONTHLY_BUDGET_USD: float = 250.0  # per workspace; enforced, not advisory
+    AI_BUDGET_ENFORCED: bool = True  # False only for local experimentation
+
+    # Partner integration resilience (P-07)
+    INTEGRATION_MAX_RETRIES: int = 3
+    INTEGRATION_BACKOFF_SECONDS: float = 0.5
+    INTEGRATION_CIRCUIT_THRESHOLD: int = 5  # consecutive failures before opening
+
+    # Rate limiting backend (P-10). "memory" is per-process and only correct
+    # for a single instance; "redis" is required for any real deployment.
+    RATE_LIMIT_BACKEND: str = "redis"
+
+    # Client delivery portal (P-30)
+    PORTAL_MAGIC_LINK_TTL_MINUTES: int = 30
+    PORTAL_MAGIC_LINK_RATE_LIMIT: int = 5  # per client per hour
+
+    # Audit integrity (P-03)
+    AUDIT_CHAIN_ENABLED: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

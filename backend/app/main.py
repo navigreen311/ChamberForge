@@ -88,7 +88,9 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
 )
 
-# --- All 31 Routers ---
+# --- All routers. P-00 froze this list: every router that will exist at
+# the end of the parallel build is registered here, stubs included, so no
+# other package ever opens this file. ---
 from app.api.v1.admin import router as admin_router  # noqa: E402
 from app.api.v1.auth import router as auth_router  # noqa: E402
 from app.api.v1.billing import router as billing_router  # noqa: E402
@@ -125,6 +127,7 @@ from app.api.v1.users import router as users_router  # noqa: E402
 from app.api.v1.visionaudio import router as visionaudio_router  # noqa: E402
 from app.api.v1.voiceforge import router as voiceforge_router  # noqa: E402
 from app.api.v1.webhooks.stripe import router as stripe_webhook_router  # noqa: E402
+from app.api.v1.websocket import router as websocket_router  # noqa: E402
 from app.api.v1.workspace_settings import router as workspace_settings_router  # noqa: E402
 from app.api.v1.workspaces import router as workspaces_router  # noqa: E402
 
@@ -166,6 +169,8 @@ app.include_router(ontology_router)
 app.include_router(community_router)
 app.include_router(onboarding_router)
 app.include_router(portal_router)
+# P-00: registered up front so P-12 never has to open this file.
+app.include_router(websocket_router)
 
 
 @app.on_event("startup")
