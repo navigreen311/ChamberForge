@@ -3,6 +3,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy.orm import Session
+
+from app.services.backbone.scoring_store import (
+    SCORER_CLIENT_HEALTH,
+    get_scores,
+    record_score,
+)
+
 
 class ClientHealth:
     """Calculates health scores and detects churn signals for clients."""
@@ -13,11 +21,20 @@ class ClientHealth:
         satisfaction: float,
         usage: float,
         payment: float,
+        client_id: str | None = None,
+        db: Session | None = None,
+        workspace_id: str | None = None,
     ) -> float:
         """Weighted average health score, capped 0-100.
 
         Weights: engagement 30%, satisfaction 30%, usage 20%, payment 20%.
         Each input should be 0.0-1.0; the result is scaled to 0-100.
+
+        P-09: the score is now recorded with its four inputs when a
+        `client_id` is supplied. Without them, a health score of 41 is a
+        number nobody can act on - the useful question is which of the
+        four dimensions moved, and that is unanswerable after the fact
+        unless the inputs were kept.
         """
         raw = (
             engagement * 0.3
@@ -25,7 +42,24 @@ class ClientHealth:
             + usage * 0.2
             + payment * 0.2
         ) * 100
-        return round(max(0.0, min(100.0, raw)), 2)
+        score = round(max(0.0, min(100.0, raw)), 2)
+
+        if client_id:
+            record_score(
+                scorer=SCORER_CLIENT_HEALTH,
+                subject_type="client",
+                subject_id=client_id,
+                score=score,
+                inputs={
+                    "engagement": engagement,
+                    "satisfaction": satisfaction,
+                    "usage": usage,
+                    "payment": payment,
+                },
+                db=db,
+                workspace_id=workspace_id,
+            )
+        return score
 
     @staticmethod
     def detect_churn_signals(
@@ -104,20 +138,39 @@ class ClientHealth:
     async def get_health_trend(
         db: Any, client_id: str, months: int = 6
     ) -> list[dict[str, Any]]:
-        """Retrieve monthly health scores for a client.
+        """Recorded monthly health scores for a client. Empty when none exist.
 
-        In production this queries the database. Currently returns mock data
-        when no real DB session is available.
+        What this returned before:
+
+            seed = int(hashlib.md5(client_id.encode()).hexdigest()[:8], 16)
+            base = 60 + (seed % 30)
+            score = base + ((seed >> (i * 2)) % 11) - 5
+
+        A six-month health trend for a named client, derived from a hash
+        of their id. It was stable, so the same client always showed the
+        same history, and it sat in the range a real score occupies - an
+        advisor reviewing whether a relationship was deteriorating was
+        reading an md5 digest.
+
+        Now it reads the scores this service actually recorded. A client
+        with no recorded history returns an empty list, which renders as
+        no trend rather than a reassuring one.
         """
-        # When a real async DB session is wired up, query health_scores table.
-        # For now, return a realistic placeholder based on client_id hash.
-        import hashlib
+        if db is None:
+            return []
 
-        seed = int(hashlib.md5(client_id.encode()).hexdigest()[:8], 16)
-        trend: list[dict[str, Any]] = []
-        base = 60 + (seed % 30)
-        for i in range(months):
-            month_label = f"M-{months - i}"
-            score = max(0.0, min(100.0, base + ((seed >> (i * 2)) % 11) - 5))
-            trend.append({"month": month_label, "score": round(score, 1)})
-        return trend
+        rows = get_scores(
+            db,
+            subject_type="client",
+            subject_id=client_id,
+            scorer=SCORER_CLIENT_HEALTH,
+            limit=months,
+        )
+        # get_scores returns newest first; a trend reads oldest first.
+        return [
+            {
+                "month": row.created_at.strftime("%Y-%m") if row.created_at else "",
+                "score": row.score,
+            }
+            for row in reversed(rows)
+        ]

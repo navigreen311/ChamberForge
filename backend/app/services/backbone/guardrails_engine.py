@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import re
 
+from sqlalchemy.orm import Session
+
+from app.services.backbone.scoring_store import SCORER_GUARDRAILS, record_score
+
 _LICENSED_ROLES = {"lawyer", "doctor", "financial_advisor", "licensed_security",
                    "attorney", "physician", "cpa", "registered_investment_advisor"}
 
@@ -16,7 +20,18 @@ class GuardrailsEngine:
     """Apply compliance guardrails to premium-service offers."""
 
     @staticmethod
-    def check_offer(offer_data: dict) -> dict:
+    def check_offer(
+        offer_data: dict,
+        db: Session | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Apply compliance guardrails, and record what was decided.
+
+        P-09: a BLOCK is a compliance decision. It was returned to the
+        caller and kept nowhere, so an offer that was blocked and then
+        shipped anyway left no trace of the block - which is precisely
+        the sequence anyone investigating would need to see.
+        """
         rules: list[dict[str, str]] = []
         overall = "PASS"
 
@@ -134,4 +149,14 @@ class GuardrailsEngine:
         elif "WARN" in statuses:
             overall = "WARN"
 
+        record_score(
+            scorer=SCORER_GUARDRAILS,
+            subject_type="offer",
+            subject_id=str(offer_data.get("id") or ""),
+            verdict=overall,
+            inputs=offer_data,
+            detail={"rules": rules},
+            db=db,
+            workspace_id=workspace_id,
+        )
         return {"overall_status": overall, "rules": rules}

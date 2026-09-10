@@ -3,14 +3,24 @@ import uuid
 
 import pytest
 
-from app.services.backbone.ontology_engine import OntologyEngine, _extensions
+from app.db.scope import OperatorScope, reset_scope, set_scope
+from app.services.backbone.ontology_engine import OntologyEngine
 
 
 @pytest.fixture()
 def ontology():
-    # Reset extensions between tests
-    _extensions.clear()
+    # P-09: extensions are rows scoped by workspace, not a module-level dict,
+    # so there is no global state to clear between tests. The `db_session`
+    # fixture rolls back, which is what isolates them now.
     return OntologyEngine()
+
+
+@pytest.fixture()
+def scoped():
+    """Bind an operator scope, as the tenant middleware does per request."""
+    token = set_scope(OperatorScope(workspace_id="ws-ontology-test", user_id="u1"))
+    yield
+    reset_scope(token)
 
 
 class TestGetOntologySchema:
@@ -69,17 +79,32 @@ class TestSuggestClassifications:
 
 
 class TestUpdateOntologyMappings:
-    def test_add_new_values(self, ontology):
-        result = ontology.update_ontology_mappings("wealth_tier", ["custom_tier_xyz"])
+    def test_add_new_values(self, ontology, db_session, scoped):
+        result = ontology.update_ontology_mappings(
+            "wealth_tier", ["custom_tier_xyz"], db=db_session
+        )
         assert result["success"] is True
         assert "custom_tier_xyz" in result["added"]
 
         # Verify it appears in schema
-        schema = ontology.get_ontology_schema()
+        schema = ontology.get_ontology_schema(db=db_session)
         assert "custom_tier_xyz" in schema["wealth_tier"]["allowed_values"]
 
-    def test_unknown_field_fails(self, ontology):
-        result = ontology.update_ontology_mappings("nonexistent_field", ["val"])
+    def test_unknown_field_fails(self, ontology, db_session, scoped):
+        result = ontology.update_ontology_mappings(
+            "nonexistent_field", ["val"], db=db_session
+        )
+        assert result["success"] is False
+
+    def test_an_extension_needs_a_workspace(self, ontology, db_session):
+        """P-09: without a scope an extension has no owner.
+
+        It used to be appended to a process-global list and applied to every
+        workspace, which is the tenancy leak this package removed.
+        """
+        result = ontology.update_ontology_mappings(
+            "wealth_tier", ["orphan_tier"], db=db_session
+        )
         assert result["success"] is False
 
 

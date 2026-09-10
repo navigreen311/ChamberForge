@@ -1,4 +1,7 @@
 """Red-team offer auditor — adversarial analysis of offer viability."""
+from sqlalchemy.orm import Session
+
+from app.services.backbone.scoring_store import SCORER_RED_TEAM, record_score
 
 
 class RedTeamAuditor:
@@ -22,12 +25,23 @@ class RedTeamAuditor:
         return "FAIL"
 
     @classmethod
-    def audit_offer(cls, offer_data: dict) -> dict:
-        """Run adversarial audit across 5 dimensions.
+    def audit_offer(
+        cls,
+        offer_data: dict,
+        db: Session | None = None,
+        workspace_id: str | None = None,
+    ) -> dict:
+        """Run adversarial audit across 5 dimensions and record the verdict.
 
         Args:
-            offer_data: Dict with keys like name, description, services, pricing,
-                       delivery_model, team, target_market, etc.
+            offer_data: Dict with keys like name, description, services,
+                pricing, delivery_model, team, target_market, etc.
+            db: Optional session. Omitted, the record is written on its own.
+            workspace_id: Optional; falls back to the operator scope.
+
+        P-09: the audit used to be computed and thrown away, so an offer
+        that passed a red-team review left no evidence it had been
+        reviewed - and none of what it was reviewed against.
         """
         dimensions = [
             cls._check_compliance(offer_data),
@@ -46,11 +60,27 @@ class RedTeamAuditor:
         overall_score = round(overall_score, 1)
         overall_status = cls._score_to_status(overall_score)
 
-        return {
+        result = {
             "overall_status": overall_status,
             "score": overall_score,
             "dimensions": dimensions,
         }
+
+        record_score(
+            scorer=SCORER_RED_TEAM,
+            subject_type="offer",
+            subject_id=str(offer_data.get("id") or ""),
+            score=overall_score,
+            verdict=overall_status,
+            # The offer as it was when audited. An audit explains nothing
+            # without it: the offer will have changed by the time anyone
+            # asks why this verdict was reached.
+            inputs=offer_data,
+            detail={"dimensions": dimensions},
+            db=db,
+            workspace_id=workspace_id,
+        )
+        return result
 
     @classmethod
     def _check_compliance(cls, offer: dict) -> dict:
