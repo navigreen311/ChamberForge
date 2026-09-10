@@ -24,7 +24,7 @@ jobs:
   # T-024. Production previously deployed on any v* tag with no test gate at
   # all - build-and-push was the only dependency in the file. A tag now has
   # to pass the same checks a pull request does before an image is built.
-  verify:
+  pre-deploy-checks:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -66,7 +66,7 @@ jobs:
         run: cd frontend && npx prisma generate && npm run typecheck && npm run build
 
   build-and-push:
-    needs: verify
+    needs: pre-deploy-checks
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.tag.outputs.IMAGE_TAG }}
