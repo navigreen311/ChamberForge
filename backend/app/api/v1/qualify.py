@@ -275,9 +275,24 @@ async def escalate_risk_item(
 async def assess_founder_readiness(
     req: FounderReadinessRequest,
     workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
 ):
-    result = _readiness.assess(req.skills, req.credentials, req.network_score)
-    return result
+    """Assess founder readiness, and record the result.
+
+    P-14 (T-019) made readiness a gate on playbook activation, and the gate
+    reads the most recent **recorded** assessment rather than taking one from
+    the caller. So this route has to persist what it computes - otherwise the
+    gate has nothing to read and would refuse every activation forever.
+
+    One line, in P-13's file, for exactly that reason. See the escalation.
+    """
+    return _readiness.assess(
+        req.skills,
+        req.credentials,
+        req.network_score,
+        db=db,
+        workspace_id=workspace_id,
+    )
 
 
 # ── Helpers ───────────────────────────────────────────────────

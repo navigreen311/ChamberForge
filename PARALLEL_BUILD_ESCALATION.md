@@ -987,3 +987,154 @@ is how the routes came to be open and stay open.
 - **Open routes: 187 → 164** (the run's primary progress counter)
 - 127 failures, unchanged from the P-08 baseline
 - **1481 passing** · **16 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-14 — Routers: Build & Sell, plus the Readiness Gate
+
+Tasks T-008 (slice), T-019, T-023. Merge order 14 of 30.
+
+## 1. The largest slice in the run
+
+Thirty-four reachable routes had no auth dependency — twenty-eight in
+`sell.py` alone. **Open routes: 164 → 130.**
+
+The edit was driven from the app's own route table rather than a hand-written
+list, so the set of routes fixed is by construction the set the auth-coverage
+guard measures. A list typed by hand drifts from the measurement.
+
+## 2. Two data defects, both worse than the open gate
+
+**`/offers/kpis` queried across every workspace.**
+
+```python
+active = db.query(Offer).filter(Offer.status == 'active').all()
+```
+
+No workspace filter at all. MRR, pipeline value and offer counts on any
+firm's dashboard were summed over the **entire database**, and the
+health-score lookup reached into `Client` unscoped too. On a single-operator
+deployment this is invisible; the moment a second firm exists it is a
+cross-tenant disclosure of revenue figures.
+
+**Measured and invented figures were mixed in one response.** `mrr_delta`,
+`renewals_due` and `needs_attention_count` were hardcoded to 12, 1 and 2 and
+returned **beside** the computed values, with nothing marking which was
+which. They are now omitted and *named* as unavailable — a field that simply
+disappears reads as a bug; one listed as unavailable reads as a decision.
+
+`/offers/mrr-history` returned a fixed six-month series (52,000 rising to
+75,000) under a `# TODO`, identical for every firm. Billing is Prisma-owned
+under D4/P-29, so it now returns nothing and says why.
+
+## 3. A second unregistered router
+
+`deliver.py` — six routes returning **fabricated client operations data**:
+
+```python
+{"client": "Wellington Trust", "deliverable": "Incident Response Plan",
+ "days_late": 2, "priority": "critical"}
+{"name": "Elizabeth Thornton", "adherence": 50, "status": "red"}
+```
+
+Named clients, SLA adherence, overdue counts, QA pass rates, an active
+onboarding for a named individual. *"Wellington Trust: Incident Response Plan
+2 days overdue"* is something an operator acts on within the hour.
+
+It is **registered nowhere** — `main.py` doesn't include it, and it appears
+only in `app/api/v1/router.py`, the file P-00 was to delete and which nothing
+imports. That is why its six routes never appeared in the open-route count
+despite having no auth. **This is the second such router**, after
+`problem_detail` in P-13.
+
+Gated and emptied rather than implemented: deliverables and SLA state are
+Prisma-owned, and P-22 serves these screens from the BFF. A zero on a
+delivery console is a claim — "nothing overdue" — so it reports unavailable
+instead.
+
+## 4. T-019 — readiness became a gate
+
+`FounderReadiness.assess` computed a score and handed it back. Nothing
+consulted it and nothing stored it, so a founder could be told `not_ready`
+and activate a playbook into a **client-facing offer** in the same session.
+
+Two properties make it a gate rather than a report:
+
+**Activation consults it, in the engine.** `PlaybookEngine.activate_to_offer`
+raises `ConflictError` (409) when the gate refuses. The check lives in the
+engine rather than in `playbooks.py` — that file belongs to P-17, and a check
+living in one caller is bypassed by the next, which is how this came to be
+advisory.
+
+**The gate reads a recorded assessment**, not one the caller supplies.
+Otherwise clearing it is a matter of passing better inputs at activation time
+than at assessment time — the same defect P-13 removed from risk-review
+approvals. Assessments are stored in `scoring_results` (P-09), which keeps
+the inputs beside the score, so "why was this activation allowed" has an
+answer.
+
+**No assessment on record is a refusal, not a pass.** A workspace that has
+never been assessed has not demonstrated readiness, and defaulting to allow
+would make the gate decorative.
+
+### A design correction during the work
+
+I first placed the gate **before** the activation lookup. Two existing tests
+caught it: a nonexistent activation started returning *"you are not ready"*
+instead of *"not found"*, sending an operator to fix the wrong problem. There
+is nothing to protect by that ordering — the caller is already authenticated
+to the workspace, and readiness is a property of the workspace, not the
+activation. The gate now runs after the lookup, and a test pins the ordering
+with the reason.
+
+## 5. Two known failures fixed — the baseline shrinks for the first time
+
+`test_full_flow` and `test_offer_contains_sop_and_kpi_data` were both in
+`known_failures.txt`. The cause was the **21-model `uuid.uuid4` defect**: the
+route parses `workspace_id` as a UUID and `Offer` stores `String(36)`, and
+`Offer.id` defaults to the callable rather than `str(...)`. SQLite refuses
+both.
+
+Fixed at the call site in `playbook_engine.py`, and the two entries are
+**removed from `known_failures.txt` — 186 → 184.** Per the run's rule, the
+baseline only ever shrinks.
+
+**This is the fourth package to work around the same defect** (P-03 hit it,
+P-04 fixed one instance, P-08 worked around it, P-14 twice). It belongs to
+P-01 to fix once across `app/models/`.
+
+## 6. One cross-package edit, declared
+
+`qualify.py` (P-13's file, merged) — **one line**. The gate reads a recorded
+assessment, and the only route that creates one is
+`POST /qualify/founder-readiness`. Without passing `db` and `workspace_id`,
+the assessment is never persisted, the gate finds nothing, and **every
+activation is refused forever**.
+
+Shipping an unsatisfiable gate would have been worse than the cross-package
+edit. The same situation arose in P-13, which passed `db` into P-09's
+guardrails engine for the same reason.
+
+## 7. Deliberately deferred — not a miss
+
+**Entitlement enforcement is out of scope under D2.** `require_feature`
+remains a P-00 pass-through and `services/backbone/entitlements.py` was not
+opened. ChamberForge runs one operator on one plan; there is nothing to gate
+until the white-label reseller tier arrives. The card flags this explicitly
+so the reduced scope is not read as an omission.
+
+`billing.py` and `webhooks/stripe.py` are reassigned to P-29 and untouched.
+
+## 8. Flagged, not fixed
+
+`playbooks.py:256` passes `body.workspace_id` into `activate_to_offer` — a
+**caller-supplied workspace** on a mutating route. The engine still verifies
+ownership against it, so it is not exploitable today, but it is the same
+pattern P-13 removed from `/risk-queue`. **`playbooks.py` is P-17's file.**
+
+## 9. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 164 → 130**
+- **Known failures: 186 → 184** — the first shrink of the run
+- **1508 passing** · **25 tests added** · `ruff` 0 · frontend untouched

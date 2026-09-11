@@ -60,8 +60,6 @@ tests/integration/test_offers_api.py::TestOffersCRUD::test_update_offer_name
 tests/integration/test_offers_api.py::TestOffersCRUD::test_update_offer_status_to_active
 tests/integration/test_offers_api.py::TestOffersFiltering::test_list_active_offers_only
 tests/integration/test_offers_api.py::TestOffersFiltering::test_list_all_offers
-tests/integration/test_playbook_flow.py::TestOfferHasPlaybookData::test_offer_contains_sop_and_kpi_data
-tests/integration/test_playbook_flow.py::TestPlaybookActivationToOfferFlow::test_full_flow
 tests/integration/test_tenant_isolation.py::TestBillingIsolation::test_invoices_list_isolated
 tests/integration/test_tenant_isolation.py::TestOfferIsolation::test_get_offer_cross_tenant_blocked
 tests/integration/test_tenant_isolation.py::TestOfferIsolation::test_list_offers_isolated

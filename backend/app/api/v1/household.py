@@ -37,7 +37,12 @@ def update_household_graph(client_id: str, data: dict = Body(...), workspace_id:
 
 
 @router.post("/{client_id}/members")
-def add_member(client_id: str, member_data: dict = Body(...), db: Session = Depends(get_db)):
+def add_member(
+    client_id: str,
+    member_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     # Check for duplicate member name
     existing_graph = svc.get(db, client_id)
     if not existing_graph:
@@ -55,7 +60,12 @@ def add_member(client_id: str, member_data: dict = Body(...), db: Session = Depe
 
 
 @router.post("/{client_id}/properties")
-def add_property(client_id: str, property_data: dict = Body(...), db: Session = Depends(get_db)):
+def add_property(
+    client_id: str,
+    property_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     graph = svc.add_property(db, client_id, property_data)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")
@@ -63,7 +73,12 @@ def add_property(client_id: str, property_data: dict = Body(...), db: Session = 
 
 
 @router.post("/{client_id}/staff")
-def add_staff(client_id: str, staff_data: dict = Body(...), db: Session = Depends(get_db)):
+def add_staff(
+    client_id: str,
+    staff_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     graph = svc.add_staff(db, client_id, staff_data)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")
@@ -71,7 +86,12 @@ def add_staff(client_id: str, staff_data: dict = Body(...), db: Session = Depend
 
 
 @router.post("/{client_id}/vendors")
-def add_vendor(client_id: str, vendor_data: dict = Body(...), db: Session = Depends(get_db)):
+def add_vendor(
+    client_id: str,
+    vendor_data: dict = Body(...),
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     graph = svc.add_vendor(db, client_id, vendor_data)
     if not graph:
         raise HTTPException(status_code=404, detail="Household graph not found")

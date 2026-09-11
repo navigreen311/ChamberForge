@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ConflictError
 from app.models.playbook import Playbook
 from app.models.playbook_activation import PlaybookActivation
+from app.services.backbone.founder_readiness import FounderReadiness
 from app.services.backbone.playbook_data import PLAYBOOK_TEMPLATES
 
 if TYPE_CHECKING:
@@ -207,6 +209,21 @@ class PlaybookEngine:
         Copies name, pricing model, SOP skeleton, and KPI stack from the
         playbook (with any customization overrides applied) into a new Offer
         record with status='draft'.
+
+        **Gated on founder readiness (T-019).** Activation is the step that
+        turns an internal playbook into a client-facing offer, and it was
+        ungated: `FounderReadiness.assess` computed a score that nothing
+        consulted, so a founder could read "not ready" and activate anyway.
+
+        The gate is enforced **here**, in the engine, rather than in the
+        route. `playbooks.py` belongs to P-17, and a check that lives only in
+        one caller is bypassed by the next one - which is how this came to be
+        advisory in the first place.
+
+        Raises `ConflictError` (409) when the gate refuses. Returning `None`
+        would be indistinguishable from "activation not found", and an
+        operator told their activation does not exist will go looking in
+        entirely the wrong place.
         """
         from app.models.offer import Offer
 
@@ -222,6 +239,16 @@ class PlaybookEngine:
         if str(activation.workspace_id) != str(workspace_id):
             return None
 
+        # The gate runs after the lookup, deliberately. Checking it first
+        # would answer "you are not ready" for an activation that does not
+        # exist, sending an operator to fix the wrong problem. There is
+        # nothing to protect by ordering it the other way: the caller is
+        # already authenticated to this workspace, and the gate is a property
+        # of the workspace rather than of the activation.
+        decision = FounderReadiness.gate(db, str(workspace_id))
+        if not decision.allowed:
+            raise ConflictError(decision.detail, resource="founder_readiness")
+
         playbook = activation.playbook
         customizations = activation.customizations or {}
 
@@ -233,7 +260,17 @@ class PlaybookEngine:
         icp = customizations.get("icp", playbook.icp or {})
 
         offer = Offer(
-            workspace_id=workspace_id,
+            # Explicit id: `Offer.id` defaults to the `uuid.uuid4` callable
+            # rather than `str(uuid.uuid4())`, which SQLite rejects outright.
+            # 21 models in app/models share that defect - P-03 hit it, P-04
+            # fixed one instance, P-08 worked around it, and this is the
+            # fourth. It belongs to P-01 to fix once.
+            id=str(uuid.uuid4()),
+            # str(): the route parses workspace_id as a UUID and `Offer`
+            # stores it as String(36). SQLite refuses the object outright,
+            # which is why both playbook-flow tests were in the known-failure
+            # baseline.
+            workspace_id=str(workspace_id),
             name=f"{offer_name} — Offer",
             description=f"Draft offer created from playbook: {playbook.name}. "
                         f"Target buyer: {playbook.target_buyer}. "

@@ -8,10 +8,54 @@ import uuid
 WORKSPACE_ID = str(uuid.uuid4())
 
 
+def _record_ready_assessment(db, workspace_id: str) -> None:
+    """Put a passing readiness assessment on record for *workspace_id*.
+
+    The gate reads the most recent recorded assessment rather than taking one
+    from the caller, so a test exercising the legitimate flow has to create
+    one the same way the application does.
+
+    Takes the test's own session: the client fixture overrides `get_db` to
+    yield it, and a write through a fresh `SessionLocal` lands in a different
+    transaction that the request never sees.
+    """
+    from app.db.scope import OperatorScope, reset_scope, set_scope
+    from app.services.backbone.founder_readiness import FounderReadiness
+
+    domains = (
+        "domain_expertise",
+        "sales_ability",
+        "operations",
+        "client_management",
+        "marketing",
+        "financial_literacy",
+        "leadership",
+        "technology",
+    )
+    token = set_scope(OperatorScope(workspace_id=str(workspace_id), user_id="test"))
+    try:
+        FounderReadiness.assess(
+            skills={d: 10 for d in domains},
+            credentials=[
+                "professional_certification",
+                "industry_license",
+                "advanced_degree",
+                "nda_template",
+                "insurance_coverage",
+                "business_entity",
+            ],
+            network_score=95,
+            db=db,
+            workspace_id=str(workspace_id),
+        )
+    finally:
+        reset_scope(token)
+
+
 class TestPlaybookActivationToOfferFlow:
     """End-to-end flow: list -> activate -> customize -> create offer."""
 
-    def test_full_flow(self, client):
+    def test_full_flow(self, client, db_session):
         # 1. List playbooks — should have 10 seeded templates
         resp = client.get("/api/v1/playbooks/")
         assert resp.status_code == 200
@@ -46,7 +90,14 @@ class TestPlaybookActivationToOfferFlow:
         assert custom["icp"]["wealth_tier"] == "UHNWI"
         assert custom["pricing_model"]["base_fee"] == 25000
 
-        # 4. Create offer from activation
+        # 4. Record a founder readiness assessment.
+        #
+        # P-14 (T-019) gated activation on readiness: turning a playbook into
+        # a client-facing offer now requires an assessment on record at or
+        # above the threshold. Before this step the next call returns 409.
+        _record_ready_assessment(db_session, WORKSPACE_ID)
+
+        # 5. Create offer from activation
         resp = client.post(
             f"/api/v1/playbooks/activations/{activation_id}/create-offer",
             json={"workspace_id": WORKSPACE_ID},
@@ -212,6 +263,10 @@ class TestOfferHasPlaybookData:
             json={"workspace_id": ws},
         )
         activation_id = act_resp.json()["activation"]["id"]
+
+        # P-14 (T-019): activation into a client-facing offer is gated on a
+        # recorded founder readiness assessment.
+        _record_ready_assessment(db_session, ws)
 
         # Create offer
         offer_resp = client.post(
