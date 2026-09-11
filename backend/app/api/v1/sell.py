@@ -217,26 +217,38 @@ async def map_gatekeepers(buyer: BuyerProfile, workspace_id: str = Depends(get_w
 
 
 @router.post("/relationships/referral-paths")
-async def design_referral_paths(offer: OfferData):
+async def design_referral_paths(
+    offer: OfferData,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return await relationship_ai.design_referral_paths(offer.model_dump())
 
 
 @router.post("/relationships/trust-scores")
-async def score_trust_channels(req: TrustChannelsRequest):
+async def score_trust_channels(
+    req: TrustChannelsRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return await relationship_ai.score_trust_channels(req.channels)
 
 
 # ── MarketingEngine Endpoints ───────────────────────────────────────
 
 @router.post("/marketing/dream-100")
-async def generate_dream_100(offer: OfferData):
+async def generate_dream_100(
+    offer: OfferData,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return marketing_engine.generate_dream_100(offer.model_dump())
 
 
 # ── RevenueProjector Endpoints ──────────────────────────────────────
 
 @router.post("/revenue/project")
-async def project_revenue(req: RevenueRequest):
+async def project_revenue(
+    req: RevenueRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return RevenueProjector.project_revenue(
         monthly_price=req.monthly_price,
         clients_month_1=req.clients_month_1,
@@ -249,33 +261,48 @@ async def project_revenue(req: RevenueRequest):
 # ── PartnerBuilder Endpoints ────────────────────────────────────────
 
 @router.get("/partners/ecosystem/{pain_category}")
-async def map_ecosystem(pain_category: str):
+async def map_ecosystem(
+    pain_category: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return PartnerBuilder.map_ecosystem(pain_category)
 
 
 # ── TrustNetwork Endpoints ──────────────────────────────────────────
 
 @router.get("/trust-network/{deal_id}")
-async def get_trust_map(deal_id: str):
+async def get_trust_map(
+    deal_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return trust_network.get_trust_map_summary(deal_id)
 
 
 # ── GTMLab Endpoints ────────────────────────────────────────────────
 
 @router.post("/gtm/headline-test")
-async def create_headline_test(req: HeadlineTestRequest):
+async def create_headline_test(
+    req: HeadlineTestRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return gtm_lab.create_headline_test(req.name, req.variants, req.target_audience)
 
 
 @router.post("/gtm/price-anchoring")
-async def generate_price_anchoring(req: PriceAnchorRequest):
+async def generate_price_anchoring(
+    req: PriceAnchorRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return GTMLab.generate_price_anchoring(req.target_price, req.num_tiers)
 
 
 # ── AuthorityPositioning Endpoints ──────────────────────────────────
 
 @router.post("/authority/content-plan")
-async def create_content_plan(req: ContentPlanRequest):
+async def create_content_plan(
+    req: ContentPlanRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return authority_pos.create_content_plan(
         req.brand_name, req.expertise_areas, req.target_audience, req.cadence_weeks
     )
@@ -284,12 +311,18 @@ async def create_content_plan(req: ContentPlanRequest):
 # ── OutcomeIntelligence Endpoints ───────────────────────────────────
 
 @router.post("/outcomes/kpi")
-async def define_kpi(req: KPIRequest):
+async def define_kpi(
+    req: KPIRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return outcome_intel.define_kpi(req.name, req.category, req.target_value, req.unit, req.frequency)
 
 
 @router.post("/outcomes/measurement")
-async def record_measurement(req: MeasurementRequest):
+async def record_measurement(
+    req: MeasurementRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = outcome_intel.record_measurement(req.kpi_id, req.value, req.period, req.notes)
     if not result:
         raise HTTPException(status_code=404, detail="KPI not found")
@@ -297,34 +330,49 @@ async def record_measurement(req: MeasurementRequest):
 
 
 @router.get("/outcomes/scorecard")
-async def get_scorecard(quarter: str = ""):
+async def get_scorecard(
+    quarter: str = "",
+    workspace_id: str = Depends(get_workspace_id),
+):
     return outcome_intel.generate_quarterly_scorecard(quarter)
 
 
 # ── ClientOnboarding Endpoints ──────────────────────────────────────
 
 @router.post("/onboarding/plan")
-async def create_onboarding_plan(req: OnboardingRequest):
+async def create_onboarding_plan(
+    req: OnboardingRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     plan = onboarding.create_90_day_plan(req.client_name, req.service_type, req.start_date)
     return plan
 
 
 @router.post("/onboarding/welcome")
-async def generate_welcome(req: OnboardingRequest):
+async def generate_welcome(
+    req: OnboardingRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return onboarding.generate_welcome_protocol(req.client_name, req.service_type, req.vip)
 
 
 # ── PersonaSimulator Endpoints ──────────────────────────────────────
 
 @router.post("/persona/session")
-async def create_persona_session(req: PersonaSessionRequest):
+async def create_persona_session(
+    req: PersonaSessionRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return persona_sim.create_session(
         req.persona_name, req.persona_role, req.persona_traits, req.scenario, req.difficulty
     )
 
 
 @router.post("/persona/chat")
-async def persona_chat(req: ChatMessageRequest):
+async def persona_chat(
+    req: ChatMessageRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = await persona_sim.send_message(req.session_id, req.message)
     if not result:
         raise HTTPException(status_code=404, detail="Session not found or ended")
@@ -332,7 +380,10 @@ async def persona_chat(req: ChatMessageRequest):
 
 
 @router.get("/persona/session/{session_id}")
-async def get_persona_session(session_id: str):
+async def get_persona_session(
+    session_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     session = persona_sim.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -340,7 +391,10 @@ async def get_persona_session(session_id: str):
 
 
 @router.post("/persona/score/{session_id}")
-async def score_persona_session(session_id: str):
+async def score_persona_session(
+    session_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = await persona_sim.score_performance(session_id)
     if not result:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -357,7 +411,11 @@ async def register_retention_client(req: RetentionClientRequest, workspace_id: s
 
 
 @router.put("/retention/client/{client_id}/metrics")
-async def update_client_metrics(client_id: str, req: MetricsUpdateRequest):
+async def update_client_metrics(
+    client_id: str,
+    req: MetricsUpdateRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = retention.update_metrics(
         client_id, req.engagement, req.satisfaction, req.usage, req.payment_history
     )
@@ -367,7 +425,10 @@ async def update_client_metrics(client_id: str, req: MetricsUpdateRequest):
 
 
 @router.get("/retention/client/{client_id}/health")
-async def get_client_health(client_id: str):
+async def get_client_health(
+    client_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = retention.get_health_score(client_id)
     if not result:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -380,7 +441,10 @@ async def list_retention_clients(workspace_id: str = Depends(get_workspace_id)):
 
 
 @router.get("/retention/client/{client_id}/renewal-cadence")
-async def get_renewal_cadence(client_id: str):
+async def get_renewal_cadence(
+    client_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = retention.generate_renewal_cadence(client_id)
     if not result:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -395,7 +459,11 @@ async def create_deal(req: DealRequest, workspace_id: str = Depends(get_workspac
 
 
 @router.post("/decision-room/deal/{deal_id}/stakeholder")
-async def add_stakeholder(deal_id: str, req: StakeholderRequest):
+async def add_stakeholder(
+    deal_id: str,
+    req: StakeholderRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = decision_room.add_stakeholder(
         deal_id, req.name, req.role, req.influence, req.stance, req.must_approve
     )
@@ -405,7 +473,10 @@ async def add_stakeholder(deal_id: str, req: StakeholderRequest):
 
 
 @router.get("/decision-room/deal/{deal_id}/map")
-async def get_stakeholder_map(deal_id: str):
+async def get_stakeholder_map(
+    deal_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = decision_room.get_stakeholder_map(deal_id)
     if not result:
         raise HTTPException(status_code=404, detail="Deal not found")
@@ -415,14 +486,20 @@ async def get_stakeholder_map(deal_id: str):
 # ── ProofReputation Endpoints ───────────────────────────────────────
 
 @router.post("/proof/case-study")
-async def create_case_study(req: CaseStudyRequest):
+async def create_case_study(
+    req: CaseStudyRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return proof_rep.create_case_study(
         req.client_name, req.industry, req.challenge, req.solution, req.results, req.quote
     )
 
 
 @router.post("/proof/testimonial")
-async def request_testimonial(req: TestimonialRequest):
+async def request_testimonial(
+    req: TestimonialRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return proof_rep.request_testimonial(
         req.client_name, req.client_email, req.service_type, req.prompt_questions
     )
@@ -449,7 +526,10 @@ async def list_experts(specialization: str | None = None, verified_only: bool = 
 
 
 @router.get("/experts/{expert_id}")
-async def get_expert(expert_id: str):
+async def get_expert(
+    expert_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = expert_net.get_expert(expert_id)
     if not result:
         raise HTTPException(status_code=404, detail="Expert not found")
@@ -457,12 +537,17 @@ async def get_expert(expert_id: str):
 
 
 @router.delete("/experts/{expert_id}")
-async def remove_expert(expert_id: str):
+async def remove_expert(
+    expert_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     if not expert_net.remove_expert(expert_id):
         raise HTTPException(status_code=404, detail="Expert not found")
     return {"status": "removed"}
 
 
 @router.get("/experts/verification/summary")
-async def get_verification_summary():
+async def get_verification_summary(
+    workspace_id: str = Depends(get_workspace_id),
+):
     return expert_net.get_verification_summary()

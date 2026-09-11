@@ -30,10 +30,28 @@ service_studio = ServiceDesignStudio()
 # ---------------------------------------------------------------------------
 
 @router.get("/kpis")
-async def get_offer_kpis(db: Session = Depends(get_db)):
-    """KPI metrics for offers dashboard."""
-    active = db.query(Offer).filter(Offer.status == 'active').all()
-    drafts = db.query(Offer).filter(Offer.status == 'draft').all()
+async def get_offer_kpis(
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
+    """KPI metrics for this workspace's offers.
+
+    P-14: these two queries had **no workspace filter**, so the MRR, pipeline
+    value and offer counts on every firm's dashboard were summed across
+    every workspace in the database. On a single-operator deployment that is
+    invisible; the moment a second firm exists it is a cross-tenant
+    disclosure of revenue figures.
+    """
+    active = (
+        db.query(Offer)
+        .filter(Offer.workspace_id == workspace_id, Offer.status == 'active')
+        .all()
+    )
+    drafts = (
+        db.query(Offer)
+        .filter(Offer.workspace_id == workspace_id, Offer.status == 'draft')
+        .all()
+    )
 
     mrr = sum(
         (o.pricing_model or {}).get('monthly', 0)
@@ -50,44 +68,65 @@ async def get_offer_kpis(db: Session = Depends(get_db)):
     health_scores: list[float] = []
     for o in active:
         if o.created_by:  # proxy for client relationship
-            client = db.query(Client).filter(Client.id == o.created_by).first()
+            client = (
+                db.query(Client)
+                .filter(
+                    Client.id == o.created_by,
+                    Client.workspace_id == workspace_id,
+                )
+                .first()
+            )
             if client and client.health_score:
                 health_scores.append(client.health_score)
 
     avg_health = sum(health_scores) / max(len(health_scores), 1)
     critical = sum(1 for h in health_scores if h < 50)
 
+    # mrr_delta, renewals_due and needs_attention_count were hardcoded to
+    # 12, 1 and 2 and returned alongside the computed values, so the
+    # dashboard mixed measured and invented figures with nothing marking
+    # which was which. They are omitted rather than zeroed: a zero delta is
+    # itself a claim, and these need a period-over-period comparison and a
+    # renewal date that this endpoint does not have.
     return {
         "mrr": mrr,
-        "mrr_delta": 12,
         "active_count": len(active),
         "active_revenue": mrr,
         "pipeline_value": pipeline,
         "draft_count": len(drafts),
         "avg_health": round(avg_health, 1),
         "critical_count": critical,
-        "renewals_due": 1,
-        "needs_attention_count": 2,
+        "unavailable": ["mrr_delta", "renewals_due", "needs_attention_count"],
+        "unavailable_reason": (
+            "These require a period comparison and renewal dates that this "
+            "endpoint does not compute. They were previously hardcoded."
+        ),
     }
 
 
 @router.get("/mrr-history")
-async def get_mrr_history():
-    """6-month MRR history."""
-    # TODO: Calculate from real billing data
-    return {"months": [
-        {"month": "Oct", "mrr": 52000},
-        {"month": "Nov", "mrr": 58000},
-        {"month": "Dec", "mrr": 63000},
-        {"month": "Jan", "mrr": 68000},
-        {"month": "Feb", "mrr": 72000},
-        {"month": "Mar", "mrr": 75000},
-    ]}
+async def get_mrr_history(
+    workspace_id: str = Depends(get_workspace_id),
+):
+    """Six-month MRR history. Empty until it is computed from real data.
 
+    This returned a fixed six-month series - 52,000 rising to 75,000 - under
+    a `# TODO: Calculate from real billing data`. It is a revenue chart on an
+    offers dashboard, and every firm saw the same one.
 
-# ---------------------------------------------------------------------------
-# CRUD
-# ---------------------------------------------------------------------------
+    Billing is Prisma-owned under D4 and P-29, so this endpoint cannot
+    compute it; the BFF serves the offers screens directly (P-21). Returning
+    nothing renders as no chart, which is the honest amount of information.
+    """
+    return {
+        "months": [],
+        "available": False,
+        "reason": (
+            "MRR history is not computed. Billing lives in Prisma "
+            "(Invoice/Subscription) and is not readable from this endpoint."
+        ),
+    }
+
 
 @router.get("/", response_model=list[OfferRead])
 def list_offers(
