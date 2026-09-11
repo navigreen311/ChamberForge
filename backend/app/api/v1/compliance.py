@@ -125,7 +125,10 @@ def get_deletion_candidates(
 
 
 @router.post("/explainability")
-def generate_explainability_report(req: ExplainabilityRequest):
+def generate_explainability_report(
+    req: ExplainabilityRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Generate an AI explainability report for an agent's output."""
     report = AIExplainability.generate_report(
         agent_name=req.agent_name,
@@ -226,7 +229,11 @@ def audit_trail(
 
 
 @router.get("/benchmarks/{pain_category}")
-def get_benchmarks(pain_category: str, db: Session = Depends(get_db)):
+def get_benchmarks(
+    pain_category: str,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Get anonymized benchmarks for a pain category."""
     return BenchmarkExchange.get_anonymized_benchmarks(db=db, pain_category=pain_category)
 

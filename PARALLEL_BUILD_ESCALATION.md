@@ -1138,3 +1138,118 @@ pattern P-13 removed from `/risk-queue`. **`playbooks.py` is P-17's file.**
 - **Open routes: 164 → 130**
 - **Known failures: 186 → 184** — the first shrink of the run
 - **1508 passing** · **25 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-15 — Routers: Lifecycle, Compliance & Clients
+
+Tasks T-008 (slice), T-023. Merge order 15 of 30.
+
+**Open routes: 130 → 102.** Twenty-eight gated, not the card's 21 — the card
+undercounted, the same way it did in P-13 and P-14.
+
+## 1. The export watermark named whoever the caller said
+
+The worst defect in this slice, and the least visible.
+
+```python
+user_id: str = Query(...),
+workspace_id: str = Query("default"),
+...
+pdf_bytes = pdf_export_service.export_offer(offer_data, user_id)
+```
+
+That `user_id` goes straight into
+`CF-WM|user={user_id}|ws={workspace_id}|ts={timestamp}` — a **traceability
+watermark**, the thing you consult to identify who leaked a document. On an
+unauthenticated route.
+
+So anyone could export a watermarked PDF stamped with **somebody else's
+identity**, and deliberately misattribute a leak. A watermark naming a person
+the caller chose is worse than no watermark at all: it produces confident,
+wrong evidence, and the entire point of the mechanism is that the name in it
+can be relied upon.
+
+Both halves now come from the session and cannot be set from outside.
+
+## 2. Command AI cached across workspaces
+
+```python
+key = cache.make_key("command:dashboard")
+```
+
+No workspace dimension, 60-second TTL. `/command/dashboard` and
+`/command/daily-brief` synthesise a workspace's own data, so the first
+request populated a shared key and **every other workspace was served that
+firm's dashboard** until it expired.
+
+Not exploitable *today* only because P-04 made CommandAI return a marked
+degraded result without an API key, so the cached payload carries no data.
+**It becomes a live cross-tenant disclosure the moment a key is configured**
+— which is exactly the class of latent defect that surfaces during a launch.
+
+`problems.py` already keys its cache by workspace, so the correct pattern was
+sitting in the next file.
+
+## 3. Community insights were attributed by the caller
+
+`ShareRequest` carried `workspace_id`, so an anonymous caller could publish an
+insight **in another firm's name** — on a network whose entire value is that
+contributions are attributable-but-anonymised. Same defect class as P-13's
+`reviewer_id`.
+
+## 4. A third unregistered router, and the most sensitive fabrication yet
+
+`clients_dashboard.py` — registered only in `app/api/v1/router.py`, the file
+P-00 was to delete and which nothing imports. **That is now three**
+(`problem_detail` P-13, `deliver` P-14, this).
+
+Inside it:
+
+- `/at-risk` returned **client names and health scores across every
+  workspace** — unscoped `Client` queries;
+- `/kpis` was unscoped too, with `mrr: 75000`, `mrr_delta: 12`,
+  `wealth_events_count: 3` hardcoded beside the computed values;
+- `/wealth-events` returned invented wealth events attributed to **named
+  individuals** — *"Marcus Reid, Series C exit ($120M)"*, *"Elizabeth
+  Thornton, inheritance, Estate transfer ($45M)"* — under a `# TODO`.
+
+The last is the most sensitive invention found in this codebase. An advisor
+acting on it would approach a client about an event that never happened.
+
+All three are gated and corrected. `Client` and `WealthEvent` are
+Prisma-owned under D4 and P-19/P-20 serve these screens, so the router is
+legacy — corrected rather than implemented.
+
+`/wealth-events` was **missed by the route-table-driven gating**, precisely
+because the router is unregistered and therefore absent from `app.routes`. A
+test written for a different reason caught it.
+
+## 5. Flagged, not fixed — a cross-tenant cache leak in P-17's file
+
+```python
+# app/api/v1/search.py:50
+key = cache.make_key("search:unified", q=q, index=index, filters=filters, ...)
+```
+
+**No workspace dimension.** Unified search results cached and served across
+workspaces. This is the same defect as §2 but on a surface that returns
+arbitrary indexed content, so the disclosure is broader.
+
+`search.py` belongs to **P-17**. It should key by workspace, and P-17 is
+worth reviewing for the pattern generally.
+
+(`playbooks.py:46` also caches unscoped, but playbooks are seeded global
+templates rather than workspace data, so that one appears benign. Worth a
+glance when P-17 opens the file.)
+
+## 6. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 130 → 102**
+- **1528 passing** · **20 tests added** · `ruff` 0 · frontend untouched
+
+Nine tests were passing because the routes were open; moved onto
+`authed_client` with anonymous-rejection tests added. One asserted that a
+**caller-supplied `user_id` appeared in the watermark** — a test that pinned
+the misattribution defect in place.

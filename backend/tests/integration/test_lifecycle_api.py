@@ -1,4 +1,9 @@
-"""Integration tests for the Lifecycle API — intel brief, health, scenario planner."""
+"""Integration tests for the Lifecycle API.
+
+P-15 gated all fourteen open lifecycle routes, so these use `authed_client`.
+They previously ran anonymously and passed, which is what the auth-coverage
+guard was counting.
+"""
 import uuid
 
 
@@ -29,8 +34,8 @@ class TestIntelBrief:
 
 
 class TestClientHealth:
-    def test_compute_health_score(self, client):
-        resp = client.post(
+    def test_compute_health_score(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/health/score",
             json={
                 "engagement": 0.8,
@@ -44,8 +49,8 @@ class TestClientHealth:
         assert "score" in data
         assert 0 <= data["score"] <= 100
 
-    def test_compute_health_score_low(self, client):
-        resp = client.post(
+    def test_compute_health_score_low(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/health/score",
             json={
                 "engagement": 0.1,
@@ -64,8 +69,8 @@ class TestClientHealth:
         assert data["client_id"] == "test-client-123"
         assert "churn_analysis" in data
 
-    def test_get_health_trend(self, client):
-        resp = client.get(
+    def test_get_health_trend(self, authed_client):
+        resp = authed_client.get(
             "/api/v1/lifecycle/health/trend/test-client-123?months=6"
         )
         assert resp.status_code == 200
@@ -74,8 +79,8 @@ class TestClientHealth:
         assert "trend" in data
         assert isinstance(data["trend"], list)
 
-    def test_health_score_missing_fields(self, client):
-        resp = client.post(
+    def test_health_score_missing_fields(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/health/score",
             json={"engagement": 0.5},
         )
@@ -83,8 +88,8 @@ class TestClientHealth:
 
 
 class TestScenarioPlanner:
-    def test_run_scenario(self, client):
-        resp = client.post(
+    def test_run_scenario(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/scenario",
             json={
                 "base_price": 15000.0,
@@ -96,8 +101,8 @@ class TestScenarioPlanner:
         data = resp.json()
         assert isinstance(data, dict)
 
-    def test_run_scenario_defaults(self, client):
-        resp = client.post(
+    def test_run_scenario_defaults(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/scenario",
             json={"base_price": 10000.0, "base_clients": 10},
         )
@@ -105,8 +110,8 @@ class TestScenarioPlanner:
 
 
 class TestOfferBrand:
-    def test_generate_brand_name(self, client):
-        resp = client.post(
+    def test_generate_brand_name(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/brand/name",
             json={
                 "offer_data": {
@@ -118,8 +123,8 @@ class TestOfferBrand:
         )
         assert resp.status_code == 200
 
-    def test_generate_brand_positioning(self, client):
-        resp = client.post(
+    def test_generate_brand_positioning(self, authed_client):
+        resp = authed_client.post(
             "/api/v1/lifecycle/brand/positioning",
             json={
                 "name": "ConciergeOps",
@@ -140,3 +145,23 @@ class TestMobileAccess:
     def test_get_active_alerts(self, authed_client):
         resp = authed_client.get("/api/v1/lifecycle/mobile/alerts")
         assert resp.status_code == 200
+
+
+class TestAnonymousAccess:
+    """No lifecycle route may be reached without a session.
+
+    The health and alumni endpoints read and write client records, which are
+    PII under D4 and stay FastAPI-owned.
+    """
+
+    def test_health_score_rejects_anonymous(self, client):
+        resp = client.post("/api/v1/lifecycle/health/score", json={})
+        assert resp.status_code in (401, 403, 422)
+
+    def test_health_trend_rejects_anonymous(self, client):
+        resp = client.get("/api/v1/lifecycle/health/trend/client-1")
+        assert resp.status_code in (401, 403)
+
+    def test_alumni_reentry_rejects_anonymous(self, client):
+        resp = client.get("/api/v1/lifecycle/alumni/client-1/reentry")
+        assert resp.status_code in (401, 403)
