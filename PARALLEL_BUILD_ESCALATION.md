@@ -1526,3 +1526,109 @@ Three things found inside that boundary, all escalated rather than fixed:
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
 - **Open routes: 63 → 38** on this branch; **9** after PR #34 and PR #35 merge
 - **1638 passing** · **46 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# Finding — the known-failure baseline is two defects, not 184 problems
+
+Recorded on the P-18 branch because that is where it was measured. It is not
+P-18's work and P-18 did not act on it beyond the five deletions below.
+
+## What the CI log actually says
+
+The backend job on PR #35 (run 34630886198, green) reports **127 failures**.
+Grouped by the exception each one raises:
+
+| Count | Cause |
+|---|---|
+| **115** | `sqlite3.ProgrammingError: Error binding parameter 1: type 'UUID' is not supported` |
+| **12** | `kombu.exceptions.OperationalError: Error 111 connecting to localhost:6379. Connection refused.` |
+| 0 | anything else |
+
+That is the whole baseline. Every remaining entry in
+`backend/tests/known_failures.txt` is one of those two.
+
+## 1. The 115 — the `uuid.uuid4` default on a `String(36)` column
+
+**Twenty-one model files** in `app/models/` declare
+
+```python
+id = Column(String(36), primary_key=True, default=uuid.uuid4)
+```
+
+`uuid.uuid4` returns a `uuid.UUID` object, not a string, and SQLite refuses
+to bind one. `tests/conftest.py` already carries `_patch_uuid_for_sqlite()`,
+but it patches the **`postgresql.UUID` type** — it cannot help a column
+typed `String(36)` whose Python-side default produces the wrong type. The fix
+is `default=lambda: str(uuid.uuid4())`, twenty-three occurrences across
+twenty-one files.
+
+**Five packages have now worked around this rather than fixed it** — P-04 in
+`ai_usage.py`, P-08 and P-14 by passing explicit string ids, P-17 and P-18 by
+leaving the affected tests in the baseline. `app/models/**` is **P-01
+exclusive** under the shared-file map, which is why no router package could
+close it, and P-01 merged at `d996f14` without it.
+
+This is the queued decision, now with a number against it: **one defaults
+change in one package clears 115 of the 127.**
+
+## 2. The 12 — no Redis broker in the CI backend job
+
+`POST /auth/register` and `POST /auth/login` publish a Celery task, and the
+backend job has no broker service, so twelve auth and sensitive-data tests
+fail on connection refused. They **pass locally**, where nothing is listening
+either — which is worth understanding before anyone "fixes" them: locally
+Celery falls back differently, so this is a CI-environment gap, not a code
+defect. `.github/workflows/**` is P-00-exclusive.
+
+## 3. Two claims in the plan that the evidence does not support
+
+Both come from P-00's revision note and have shaped how every package since
+has read its test results.
+
+**"CI against Postgres surfaces 55 more."** The backend job does export
+`DATABASE_URL: postgresql://...`, but `tests/conftest.py` creates its own
+`create_engine("sqlite://")` in-memory engine and overrides `get_db` with it.
+**The backend suite runs on SQLite on CI and locally alike.** The extra
+failures on CI are the missing Redis broker, not Postgres.
+
+**"Nobody should tune against SQLite."** Sound advice, but it is the only
+thing the suite runs on today, and `conftest.py` is P-00-frozen — so no
+package in this run has been able to act on it.
+
+The practical consequence is that **a local run and a CI run disagree by
+about 46 tests**, and the difference is entirely the broker. A package
+reading `newly passing: 51` locally will read `newly passing: 5` on CI. The
+CI number is the authoritative one; this is why P-17 deleted nothing from the
+baseline on local evidence.
+
+## 4. What was actually deleted
+
+The five entries CI confirms now pass:
+
+```
+tests/test_ai_runtime.py::TestAgentPerformance::test_agent_performance
+tests/test_ai_runtime.py::TestBudgetCheck::test_over_budget
+tests/test_ai_runtime.py::TestBudgetCheck::test_under_budget
+tests/test_ai_runtime.py::TestUsageTracking::test_track_single_usage
+tests/test_ai_runtime.py::TestUsageTracking::test_usage_dashboard
+```
+
+All five are **P-04's** — it fixed them in `ai_runtime.py` and
+`ai_cost_tracker.py` and did not delete the lines. The baseline rule is that
+it only ever shrinks and that each package removes what it fixed; P-04 has
+merged, so this is the coordinator doing the bookkeeping rather than a claim
+by P-18.
+
+**Baseline: 184 → 179.**
+
+## 5. What this means for P-26
+
+P-26's acceptance is that `known_failures.txt` is empty. On this evidence
+that is **two changes**, not twenty-nine packages of grinding:
+
+1. the defaults change across twenty-one model files (P-01's territory);
+2. a Redis service on the backend CI job (P-00's territory).
+
+Both are outside every remaining package's ownership, so both need a ruling
+before P-26 opens.
