@@ -87,7 +87,10 @@ async def create_intel_brief(client_id: str, body: IntelBriefRequest, workspace_
 # ---------------------------------------------------------------------------
 
 @router.post("/health/score")
-async def compute_health_score(body: HealthScoreRequest):
+async def compute_health_score(
+    body: HealthScoreRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     score = ClientHealth.calculate_health_score(
         body.engagement, body.satisfaction, body.usage, body.payment
     )
@@ -108,7 +111,13 @@ async def get_client_health(client_id: str, workspace_id: str = Depends(get_work
 
 
 @router.get("/health/trend/{client_id}")
-async def get_health_trend(client_id: str, months: int = Query(6, ge=1, le=24)):
+async def get_health_trend(
+    client_id: str,
+    months: int = Query(6,
+    ge=1,
+    le=24),
+    workspace_id: str = Depends(get_workspace_id),
+):
     trend = await ClientHealth.get_health_trend(None, client_id, months)
     return {"client_id": client_id, "trend": trend}
 
@@ -118,13 +127,19 @@ async def get_health_trend(client_id: str, months: int = Query(6, ge=1, le=24)):
 # ---------------------------------------------------------------------------
 
 @router.post("/brand/name")
-async def generate_brand_name(body: BrandNameRequest):
+async def generate_brand_name(
+    body: BrandNameRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     brand = OfferBrand()
     return await brand.generate_name(body.offer_data)
 
 
 @router.post("/brand/positioning")
-async def generate_brand_positioning(body: BrandPositioningRequest):
+async def generate_brand_positioning(
+    body: BrandPositioningRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     brand = OfferBrand()
     return await brand.generate_positioning(body.name, body.offer_data)
 
@@ -139,19 +154,30 @@ async def list_alumni(workspace_id: str = Depends(get_workspace_id)):
 
 
 @router.post("/alumni/{client_id}")
-async def create_alumni(client_id: str, final_deliverables: list[str] = []):
+async def create_alumni(
+    client_id: str,
+    final_deliverables: list[str] = [],
+    workspace_id: str = Depends(get_workspace_id),
+):
     return AlumniSystem.create_alumni_record(None, client_id, final_deliverables)
 
 
 @router.post("/alumni/{client_id}/touchpoint")
-async def schedule_alumni_touchpoint(client_id: str, body: TouchpointRequest):
+async def schedule_alumni_touchpoint(
+    client_id: str,
+    body: TouchpointRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return AlumniSystem.schedule_touchpoint(
         None, client_id, body.touchpoint_type, body.scheduled_date
     )
 
 
 @router.get("/alumni/{client_id}/reentry")
-async def get_reentry_path(client_id: str):
+async def get_reentry_path(
+    client_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return await AlumniSystem.get_reentry_path(None, client_id)
 
 
@@ -160,12 +186,18 @@ async def get_reentry_path(client_id: str):
 # ---------------------------------------------------------------------------
 
 @router.get("/moat/competitors/{pain_category}")
-async def scan_competitors(pain_category: str):
+async def scan_competitors(
+    pain_category: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return MoatTracker.scan_competitors(pain_category)
 
 
 @router.post("/moat/pricing-check")
-async def check_pricing_compression(body: PricingCheckRequest):
+async def check_pricing_compression(
+    body: PricingCheckRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return MoatTracker.detect_pricing_compression(
         body.current_price, body.market_benchmarks
     )
@@ -176,7 +208,10 @@ async def check_pricing_compression(body: PricingCheckRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/sunset/transition-plan")
-async def create_transition_plan(body: TransitionPlanRequest):
+async def create_transition_plan(
+    body: TransitionPlanRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return SunsetProtocol.generate_transition_plan(
         body.offer_data, body.client_count
     )
@@ -187,12 +222,18 @@ async def create_transition_plan(body: TransitionPlanRequest):
 # ---------------------------------------------------------------------------
 
 @router.get("/trainer/curriculum/{role}")
-async def get_curriculum(role: str):
+async def get_curriculum(
+    role: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return TeamTrainer.get_curriculum(role)
 
 
 @router.post("/trainer/progress")
-async def assess_trainer_progress(body: ProgressRequest):
+async def assess_trainer_progress(
+    body: ProgressRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return TeamTrainer.assess_progress(body.trainee_id, body.completed_modules)
 
 
@@ -201,7 +242,10 @@ async def assess_trainer_progress(body: ProgressRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/scenario")
-async def run_scenario(body: ScenarioRequest):
+async def run_scenario(
+    body: ScenarioRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return ScenarioPlanner.run_scenario(
         body.base_price, body.base_clients, body.adjustments
     )
@@ -212,7 +256,10 @@ async def run_scenario(body: ScenarioRequest):
 # ---------------------------------------------------------------------------
 
 @router.get("/mobile/brief/{client_id}")
-async def get_mobile_brief(client_id: str):
+async def get_mobile_brief(
+    client_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return await MobileAccess.get_mobile_brief(None, client_id)
 
 

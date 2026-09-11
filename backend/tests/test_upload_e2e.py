@@ -111,20 +111,23 @@ class TestExportEndpoints:
 
     def test_export_offer_returns_pdf(self, authed_client):
         response = authed_client.post(
-            f"/api/v1/exports/offer/offer-123?user_id={self.user_id}"
+            "/api/v1/exports/offer/offer-123"
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
         assert b"%PDF" in response.content
         # Watermark comment should be appended
         assert b"ChamberForge-Watermark" in response.content
-        assert self.user_id.encode() in response.content
+        # P-15: the watermark identity comes from the session, not from a
+        # `user_id` query parameter. Asserting a caller-supplied id appeared
+        # in the document was asserting the defect - anyone could stamp a
+        # document with somebody else's identity.
         # S3 download URL header
         assert "x-download-url" in response.headers
 
     def test_export_trust_pack_returns_pdf(self, authed_client):
         response = authed_client.post(
-            f"/api/v1/exports/trust-pack/tp-456?user_id={self.user_id}"
+            "/api/v1/exports/trust-pack/tp-456"
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
@@ -133,7 +136,7 @@ class TestExportEndpoints:
 
     def test_export_intel_brief_returns_pdf(self, authed_client):
         response = authed_client.post(
-            f"/api/v1/exports/intel-brief/ib-789?user_id={self.user_id}"
+            "/api/v1/exports/intel-brief/ib-789"
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"

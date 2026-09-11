@@ -1,9 +1,31 @@
-"""Export API — generate watermarked PDF exports, upload to S3, return download URL."""
+"""Export endpoints - watermarked PDF generation.
+
+P-15 (T-008). All three routes were anonymous, and both halves of the
+watermark came from the caller:
+
+    user_id: str = Query(...),
+    workspace_id: str = Query("default"),
+    ...
+    pdf_bytes = pdf_export_service.export_offer(offer_data, user_id)
+
+The watermark is `CF-WM|user={user_id}|ws={workspace_id}|ts={timestamp}` -
+a **traceability stamp**, the thing you consult to identify who leaked a
+document. Taking the user id from a query string on an unauthenticated route
+meant anyone could export a document watermarked with somebody else's
+identity, and deliberately misattribute the leak.
+
+A watermark naming a person the caller chose is worse than no watermark: it
+produces confident, wrong evidence.
+
+Both now come from the session and cannot be set from outside.
+"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 
+from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.identity import ResolvedIdentity
 from app.services.backbone.pdf_export import pdf_export_service
 from app.services.backbone.storage_service import storage_service
 
@@ -24,8 +46,8 @@ def _upload_pdf_to_s3(pdf_bytes: bytes, workspace_id: str, filename: str) -> str
 @router.post("/offer/{offer_id}")
 async def export_offer(
     offer_id: str,
-    user_id: str = Query(...),
-    workspace_id: str = Query("default"),
+    current_user: ResolvedIdentity = Depends(get_current_user),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Export an offer as a watermarked PDF.
 
@@ -46,7 +68,7 @@ async def export_offer(
         ],
     }
 
-    pdf_bytes = pdf_export_service.export_offer(offer_data, user_id)
+    pdf_bytes = pdf_export_service.export_offer(offer_data, current_user.id)
     filename = f"offer-{offer_id}.pdf"
     download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
 
@@ -63,8 +85,8 @@ async def export_offer(
 @router.post("/trust-pack/{trust_pack_id}")
 async def export_trust_pack(
     trust_pack_id: str,
-    user_id: str = Query(...),
-    workspace_id: str = Query("default"),
+    current_user: ResolvedIdentity = Depends(get_current_user),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Export a trust pack as a watermarked PDF."""
     trust_data = {
@@ -80,7 +102,7 @@ async def export_trust_pack(
         ],
     }
 
-    pdf_bytes = pdf_export_service.export_trust_pack(trust_data, user_id)
+    pdf_bytes = pdf_export_service.export_trust_pack(trust_data, current_user.id)
     filename = f"trust-pack-{trust_pack_id}.pdf"
     download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
 
@@ -97,8 +119,8 @@ async def export_trust_pack(
 @router.post("/intel-brief/{brief_id}")
 async def export_intel_brief(
     brief_id: str,
-    user_id: str = Query(...),
-    workspace_id: str = Query("default"),
+    current_user: ResolvedIdentity = Depends(get_current_user),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Export an intelligence brief as a watermarked PDF."""
     brief_data = {
@@ -123,7 +145,7 @@ async def export_intel_brief(
         ],
     }
 
-    pdf_bytes = pdf_export_service.export_intel_brief(brief_data, user_id)
+    pdf_bytes = pdf_export_service.export_intel_brief(brief_data, current_user.id)
     filename = f"intel-brief-{brief_id}.pdf"
     download_url = _upload_pdf_to_s3(pdf_bytes, workspace_id, filename)
 
