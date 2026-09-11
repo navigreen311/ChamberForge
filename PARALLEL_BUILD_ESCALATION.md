@@ -888,3 +888,102 @@ blocked result.
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
 - 127 failures, unchanged from the P-10 baseline
 - **1465 passing** · **29 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-13 — Routers: Discover & Qualify
+
+Tasks T-008 (slice), T-023 (own failures). Merge order 13 of 30.
+
+## 1. The missing auth was not the worst of it
+
+Twenty-three reachable routes had no auth dependency. Two defects rode along
+with that, and both are more serious than the open gate.
+
+**`reviewer_id` came from the request body.**
+`/risk-queue/{id}/approve` and `/reject` took the reviewer's identity as a
+caller-supplied field and wrote it straight onto the review record:
+
+```python
+class RiskApproveRequest(BaseModel):
+    reviewer_id: uuid.UUID
+    notes: str = ""
+...
+review = RiskReviewQueue.approve(db, item_id, req.reviewer_id, req.notes)
+```
+
+Combined with the missing gate, **an unauthenticated caller could approve a
+risk item and attribute the approval to somebody else** — a named colleague,
+or a compliance officer who never saw it. The stored record would then show a
+review that person did not perform, and it would look authoritative.
+
+An approval is a compliance record naming who signed it off. Taking that name
+from the caller made the record worse than worthless.
+
+**Workspaces came from the caller.** Six discovery routes took `workspace_id`
+as a query parameter or request-body field, four of them defaulting to
+`"default"`; `/risk-queue` took it as a required query parameter and `/stats`
+as an optional one. Any caller could read or write another firm's discovery
+data, list their pending risk reviews, or read their ontology distribution by
+naming their workspace.
+
+These are the same defect P-02 removed from `primitives.py` and P-11 removed
+from the audit trail: **input that should have come from the session.**
+`Depends(get_workspace_id)` closes the gate and the tenancy hole in one
+change, because the workspace now derives from the identity.
+
+## 2. The count is 23, not 25
+
+The card says 25. Measured against the auth-coverage guard: **187 → 164**.
+
+The difference is `problem_detail.py`, whose two routes are **not
+registered**. It is included only in `app/api/v1/router.py` — a file P-00's
+card said to delete, which still exists and which **nothing imports**.
+`main.py` does not include it and is P-00-frozen.
+
+So two endpoints exist, are maintained, and cannot be called. They are gated
+anyway — unreachable today is not unreachable forever — and
+`test_problem_detail_is_unreachable` asserts the situation, so the day
+somebody registers the router that test fails and they read why.
+
+**For P-00 or the coordinator:** either delete `router.py` as planned, or
+register `problem_detail` in `main.py` and let its two routes join the count.
+
+## 3. Scope
+
+Auth and identity only. Deliberately not touched:
+
+- **`/discovery/scan` writes `Problem`**, which is Prisma-owned under D4 —
+  the same boundary that blocks five background jobs in P-08. This package
+  gates the route; it does not migrate the write. The BFF (P-21) serves the
+  Discover screens directly, so these endpoints are legacy either way.
+- **`ontology.py` now passes `db` and `workspace_id`** into the engine P-09
+  made persistent and scoped, and attributes extensions to the session
+  operator via `created_by`. That is calling P-09's service through the
+  parameters it added, not changing it.
+- **`guardrails-check` now passes its session** so the verdict is recorded.
+  P-09 gave `check_offer` that parameter; without a caller passing it, the
+  compliance decision stayed advisory. Two packages had to meet for that to
+  work, and this is the half that closes it.
+
+`core/dependencies.py`, `services/backbone/*`, `main.py`, `config.py`,
+`alembic/` and `frontend/` were not opened. No new endpoints were built —
+T-028 stays closed under D4.
+
+## 4. Twelve tests were passing because the routes were open
+
+Every test in `tests/integration/test_qualify_api.py` called these routes
+**anonymously** and asserted a 200. They were not wrong when written; they
+became a measurement of the hole.
+
+Moved onto `authed_client`, and `TestAnonymousAccess` adds the half that was
+missing: asserting an unauthenticated caller is **refused**. Without it the
+file would pass just as happily if the dependency were removed again — which
+is how the routes came to be open and stay open.
+
+## 5. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 187 → 164** (the run's primary progress counter)
+- 127 failures, unchanged from the P-08 baseline
+- **1481 passing** · **16 tests added** · `ruff` 0 · frontend untouched

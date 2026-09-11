@@ -1,4 +1,24 @@
-"""Qualify API — validation, profiling, guardrails, risk-review, and readiness endpoints."""
+"""Qualify API - validation, profiling, guardrails, risk review, readiness.
+
+P-13 (T-008). All twelve routes were anonymous, and two of them were
+worse than that.
+
+**`reviewer_id` came from the request body.** `/risk-queue/{id}/approve`
+and `/reject` took the reviewer's identity as a field the caller
+supplied, and wrote it straight onto the review record. So an
+unauthenticated caller could approve a risk item **and attribute the
+approval to somebody else** - a named colleague, or a compliance
+officer who never saw it. The stored record would then show a review
+that person did not perform.
+
+The reviewer is now the session's operator and cannot be set from
+outside. This is the same defect class P-11 removed from the audit
+trail: identity that arrives with the request is not identity.
+
+**`/risk-queue` took `workspace_id` as a query parameter**, so any
+caller could list another firm's pending risk reviews by naming their
+workspace. It now derives from the session.
+"""
 from __future__ import annotations
 
 import uuid
@@ -8,6 +28,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_current_user, get_workspace_id
+from app.core.identity import ResolvedIdentity
 from app.db.session import get_db
 from app.services.agents.validator_ai import ValidatorAI
 from app.services.backbone.buyer_profiler import BuyerProfiler
@@ -53,12 +75,12 @@ class GeoComplianceRequest(BaseModel):
 
 
 class RiskApproveRequest(BaseModel):
-    reviewer_id: uuid.UUID
+    # reviewer_id removed. It was written straight onto the review
+    # record, so a caller could attribute an approval to anyone.
     notes: str = ""
 
 
 class RiskRejectRequest(BaseModel):
-    reviewer_id: uuid.UUID
     reason: str
 
 
@@ -83,10 +105,30 @@ _geo = GeoIntelligence()
 _readiness = FounderReadiness()
 
 
+def _reviewer_uuid(current_user: ResolvedIdentity) -> uuid.UUID:
+    """The session operator's id, as the review record stores it.
+
+    `RiskReviewQueue` types `reviewer_id` as a UUID and that service
+    belongs to another package, so the conversion happens here. An
+    identity that will not parse is refused rather than coerced: a review
+    attributed to a placeholder is the problem this replaced.
+    """
+    try:
+        return uuid.UUID(str(current_user.id))
+    except (ValueError, AttributeError, TypeError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="The signed-in operator has no reviewer identity.",
+        ) from exc
+
+
 # ── Endpoints ─────────────────────────────────────────────────
 
 @router.post("/validate/{problem_id}")
-async def validate_problem(problem_id: uuid.UUID):
+async def validate_problem(
+    problem_id: uuid.UUID,
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Run 4-point validation scorecard on a problem."""
     # In production this would load the problem from DB; for now accept inline data
     problem_data = {"id": str(problem_id), "title": "Premium problem", "pain_category": "Privacy"}
@@ -95,19 +137,28 @@ async def validate_problem(problem_id: uuid.UUID):
 
 
 @router.post("/buyer-profile")
-async def generate_buyer_profile(req: BuyerProfileRequest):
+async def generate_buyer_profile(
+    req: BuyerProfileRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     profile = _profiler.generate_profile(req.wealth_tier, req.life_stage, req.pain_category)
     return {"profile": profile}
 
 
 @router.post("/competitive-intel")
-async def analyze_competitive_intel(req: CompetitiveIntelRequest):
+async def analyze_competitive_intel(
+    req: CompetitiveIntelRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     analysis = _intel.analyze_market(req.pain_category, req.geo)
     return {"analysis": analysis}
 
 
 @router.post("/feasibility")
-async def assess_feasibility(req: FeasibilityRequest):
+async def assess_feasibility(
+    req: FeasibilityRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     margins = _feasibility.simulate_margins(req.monthly_price, req.costs, req.volume)
     complexity = _feasibility.score_complexity(req.delivery_model, req.num_services)
     liability = _feasibility.assess_liability(req.pain_category, req.compliance_risk)
@@ -119,31 +170,50 @@ async def assess_feasibility(req: FeasibilityRequest):
 
 
 @router.post("/guardrails-check")
-async def check_guardrails(req: GuardrailsCheckRequest):
-    result = _guardrails.check_offer(req.offer_data)
+async def check_guardrails(
+    req: GuardrailsCheckRequest,
+    workspace_id: str = Depends(get_workspace_id),
+    db: Session = Depends(get_db),
+):
+    # P-09 made this record its verdict; passing the session is what
+    # makes the compliance decision durable rather than advisory.
+    result = _guardrails.check_offer(
+        req.offer_data, db=db, workspace_id=workspace_id
+    )
     return result
 
 
 @router.get("/geo-rules/{country_code}")
-async def get_geo_rules(country_code: str):
+async def get_geo_rules(
+    country_code: str,
+    workspace_id: str = Depends(get_workspace_id),
+):
     rules = _geo.get_jurisdiction_rules(country_code)
     return rules
 
 
 @router.post("/geo-compliance")
-async def check_geo_compliance(req: GeoComplianceRequest):
+async def check_geo_compliance(
+    req: GeoComplianceRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     results = _geo.check_compliance(req.jurisdictions)
     return {"compliance": results}
 
 
 @router.get("/risk-queue")
 async def get_risk_queue(
-    workspace_id: uuid.UUID,
     status: str = "pending",
     skip: int = 0,
     limit: int = 20,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
+    """Pending risk reviews for the caller's own workspace.
+
+    `workspace_id` was a required query parameter, so any caller could
+    list another firm's risk queue by naming their workspace.
+    """
     items = RiskReviewQueue.get_queue(db, workspace_id, status, skip, limit)
     return {"items": [_serialize_review(r) for r in items]}
 
@@ -152,10 +222,19 @@ async def get_risk_queue(
 async def approve_risk_item(
     item_id: uuid.UUID,
     req: RiskApproveRequest,
+    current_user: ResolvedIdentity = Depends(get_current_user),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
+    """Approve a risk item, attributed to the signed-in operator.
+
+    The reviewer used to come from the request body. An approval is a
+    compliance record naming who signed it off; taking that name from
+    the caller made the record worthless.
+    """
+    reviewer_id = _reviewer_uuid(current_user)
     try:
-        review = RiskReviewQueue.approve(db, item_id, req.reviewer_id, req.notes)
+        review = RiskReviewQueue.approve(db, item_id, reviewer_id, req.notes)
     except Exception:
         raise HTTPException(status_code=404, detail="Risk review item not found")
     return _serialize_review(review)
@@ -165,10 +244,14 @@ async def approve_risk_item(
 async def reject_risk_item(
     item_id: uuid.UUID,
     req: RiskRejectRequest,
+    current_user: ResolvedIdentity = Depends(get_current_user),
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
+    """Reject a risk item, attributed to the signed-in operator."""
+    reviewer_id = _reviewer_uuid(current_user)
     try:
-        review = RiskReviewQueue.reject(db, item_id, req.reviewer_id, req.reason)
+        review = RiskReviewQueue.reject(db, item_id, reviewer_id, req.reason)
     except Exception:
         raise HTTPException(status_code=404, detail="Risk review item not found")
     return _serialize_review(review)
@@ -178,6 +261,7 @@ async def reject_risk_item(
 async def escalate_risk_item(
     item_id: uuid.UUID,
     req: RiskEscalateRequest,
+    workspace_id: str = Depends(get_workspace_id),
     db: Session = Depends(get_db),
 ):
     try:
@@ -188,7 +272,10 @@ async def escalate_risk_item(
 
 
 @router.post("/founder-readiness")
-async def assess_founder_readiness(req: FounderReadinessRequest):
+async def assess_founder_readiness(
+    req: FounderReadinessRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     result = _readiness.assess(req.skills, req.credentials, req.network_score)
     return result
 
