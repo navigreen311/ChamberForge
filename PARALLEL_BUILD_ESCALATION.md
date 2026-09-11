@@ -1256,10 +1256,139 @@ the misattribution defect in place.
 
 ---
 
+# P-16 — Routers: Admin & Platform
+
+Tasks T-008 (slice), T-009, T-028 (admin endpoints only), T-023.
+Merge order 16 of 30. **Open routes: 102 → 73.**
+
+## 1. It was not missing authentication — it was no authorisation at all
+
+There was **no role check anywhere** in `admin.py`, and no session check
+either. Twenty-two routes, and `security.py`'s seven, reachable by anyone who
+could open a socket to the port.
+
+Without credentials of any kind:
+
+| Route | Effect |
+|---|---|
+| `POST /admin/prompts/rollback` | Change what every AI agent says to clients |
+| `POST /admin/flags/set` | Turn platform features on or off |
+| `POST /admin/records/legal-hold/release` | **Release a legal hold** |
+| `POST /admin/records/cleanup` | Run a retention sweep, which deletes |
+| `POST /security/deletion-request/{id}/execute` | **Destroy a client's records** |
+| `POST /admin/backups/trigger`, `GET /admin/backups` | Enumerate and trigger backups |
+
+**The last ones compose.** Release the hold, then run the cleanup, and data
+under legal preservation is destroyed with no authenticated actor anywhere in
+the trail. That is spoliation, and the platform would have recorded nobody
+doing it.
+
+D2 does not soften this. One tenant still means anonymous, and "the only
+operator" is not the same as "anyone who can reach the port".
+
+Every route now requires `require_role("admin")`.
+
+## 2. Identity was an input on exactly the fields that must not be
+
+The pattern this run has found in every router package, here on the highest-
+stakes surfaces in the platform:
+
+```python
+class LegalHoldRelease(BaseModel):
+    released_by: uuid.UUID          # who ended the preservation obligation
+
+class DeletionRequestCreate(BaseModel):
+    requested_by: uuid.UUID         # who authorised destroying the records
+    workspace_id: uuid.UUID         # whose records
+```
+
+A deletion request names who authorised destroying a client's records. A hold
+release names who decided preservation could end. Both were free-text fields
+on unauthenticated endpoints, so the resulting record could name **anybody** —
+and would read as authoritative ever afterwards.
+
+`workspace_id` was caller-supplied on every records-governance route, so
+`manual_retention_cleanup(workspace_id)` — which **deletes** — could be
+pointed at any firm by naming it.
+
+All of it now comes from the session. `_as_uuid` refuses an unparseable
+identity rather than coercing it: a deletion recorded against a
+placeholder-shaped id is the record this replaced.
+
+## 3. T-028's stated exception — eight endpoints the UI called and nothing served
+
+Two of them were half-features:
+
+- **`POST /flags/set` existed with no way to read a flag back.** An operator
+  could change a flag and had no means of confirming it. `GET /flags` and
+  `GET /flags/{name}` now exist, and the latter returns both the stored row
+  *and* whether the flag resolves on for this workspace — they differ, and
+  showing only the row would have an operator reading `enabled: true` while
+  the feature stayed dark for them.
+- **`POST /prompts/rollback` took a target version the API would not tell
+  you.** `GET /prompts/{agent}` lists the history, and
+  `POST /prompts/{agent}/rollback/{version}` is the RESTful form the UI
+  calls. Both rollback paths go through the same service, so there is one
+  rollback rather than two that can diverge.
+
+Plus `GET`/`PUT /white-label`, `/portal-branding` and `/validate-domain`.
+
+**Nothing here invents data.** An unconfigured white-label returns
+`configured: false` rather than a default brand — a UI shown placeholder
+branding cannot tell it apart from branding somebody chose.
+
+## 4. The tests are per route, generated from the route table
+
+A router-level assertion passes while one handler is missing its dependency,
+and a single ungated route on this surface is the entire problem. The
+parametrisation is generated from the live route table, so a route added
+later is covered without anyone remembering to extend the test. **98 tests**,
+two per privileged route plus the identity and destructive-route checks.
+
+The four destructive routes are additionally listed **by path**, so renaming
+or removing one fails the suite and somebody confirms the replacement is
+gated.
+
+`test_the_admin_surface_is_not_empty` guards the guard: both parametrised
+tests pass vacuously over an empty list, which is how three unregistered
+routers escaped the count in P-13, P-14 and P-15.
+
+## 5. One thing the tests caught in my own work
+
+`require_role("admin")` returns an inner function named `dependency`, so the
+factory's name never appears in a route's dependency tree. My first version
+of the spoliation-pair test asserted `"require_role" in dependency_names`,
+which would have passed on **any** dependency at all — including a bare
+`get_workspace_id` with no role check. It now inspects the source, as the
+per-route test already did.
+
+## 6. Deliberately not touched
+
+- `api/v1/auth.py` — P-11 owns it and the identity repoint;
+- `api/v1/primitives.py` — P-02;
+- `services/backbone/{entitlements,ai_eval_lab,records_governance,white_label}.py`
+  — called, not changed;
+- `core/dependencies.py`, `main.py`, `alembic/`, `frontend/`.
+
+Entitlement enforcement remains deferred under D2, as in P-14.
+
+## 7. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 102 → 73** · admin routes 22 → 30
+- **1626 passing** · **98 tests added** · `ruff` 0 · frontend untouched
+
+---
+
 # P-17 — Routers: Playbooks, Notifications & Search
 
 Tasks T-008 (slice), T-009, T-023.
-Merge order 17 of 30. **Open routes: 102 → 63.**
+Merge order 17 of 30. **Open routes: 73 → 34** — thirty-nine closed.
+
+(The branch was cut from main before P-16 merged, so it measured 102 → 63
+against its own base. P-16 landed first and closed a disjoint 29, so the
+count on main after this merge is 34. Both numbers describe the same
+thirty-nine routes.)
 
 ## 1. Thirty-nine handlers across six files, no session anywhere
 
@@ -1355,5 +1484,7 @@ touch it.
 ## 7. Results
 
 - **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
-- **Open routes: 102 → 63** (the coverage test's own printed count)
-- **1592 passing** · **64 tests added** · `ruff` 0 · frontend untouched
+- **Open routes: 73 → 34** on main after this merge — the coverage test's
+  own printed count, re-measured on the merged tree rather than carried over
+  from the branch's own base
+- **64 tests added** · `ruff` 0 · frontend untouched
