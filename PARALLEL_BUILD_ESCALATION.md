@@ -1765,3 +1765,223 @@ that is **two changes**, not twenty-nine packages of grinding:
 
 Both are outside every remaining package's ownership, so both need a ruling
 before P-26 opens.
+
+---
+
+# P-19 — BFF: Dashboard & Signals
+
+Tasks T-027 (slice), T-053 (apply).
+Merge order 19 of 30. First of the five BFF packages, so it sets the handler
+pattern P-20 through P-23 follow.
+
+## 1. Eight handlers, no session, no database
+
+Every one returned hardcoded literals to anyone who asked. Not stale data —
+there was no data path at all. `dashboard/kpis` reported 127 active clients,
+a $284,500 monthly retainer and a $12.4M pipeline; `wealth-events` named two
+families and the sums they had come into; `risk-queue` reported a
+concentration-limit breach against the "Johnson Family Trust".
+
+All eight now call `requireSession()` and read from Prisma, scoped to the
+session operator.
+
+**P-19 writes nothing.** Seven handlers are reads, and reads do not audit, so
+`writeAuditEntry()` is correctly never called in this package. The eighth is
+§2. This is worth stating because an empty audit trail from a BFF package
+otherwise looks like an omission.
+
+## 2. The one that told the operator their work was saved
+
+`POST /revenue/save-projection`, in full:
+
+```ts
+const body = await request.json()
+// TODO: Save to database via Prisma
+const projectionId = `proj-${Date.now()}`
+return NextResponse.json({
+  success: true,
+  projectionId,
+  message: `Projection saved: ${body.offerName} — ...`,
+})
+```
+
+`success: true`, an id minted from the clock, and a confirmation quoting the
+operator's own figures back at them. Every signal a caller could check said
+the write had happened.
+
+This is the worst failure mode this run has produced, and it is a different
+kind from the rest. An invented KPI is a wrong number on a screen, and
+somebody looking closely can doubt it. This one is invisible until the
+operator comes back for work that was never there.
+
+**It cannot be fixed in this package.** There is no `Projection` model, and
+`frontend/prisma/**` is P-01's — needing a model is an escalation, not an
+edit. The handler now returns **501** with `saved: false` and says nothing
+was stored. A refusal the operator can see beats a confirmation they cannot
+verify. **P-01 owns the model; until it exists this feature does not work,
+and now it admits that.**
+
+## 3. Fabricated market and regulatory intelligence
+
+`daily-brief/today` served two lines every morning:
+
+```
+{ category: 'market',     summary: 'S&P 500 up 1.2% — tech sector leading' }
+{ category: 'regulatory', summary: 'New SEC disclosure requirements effective Q3' }
+```
+
+**This platform has no market data source and no regulatory feed.** Nothing
+was stale; there was never anything behind them.
+
+It is the sharpest form of the fabrication defect the run has found, because
+unlike an invented KPI it is *designed to be repeated to a third party*. An
+advisor reads a market move or an SEC deadline off their console and says it
+to a client.
+
+`alerts` and `actions` are now real — open high and critical risk items,
+overdue deliverables, tasks past due, renewals inside thirty days, and
+clients not contacted in fourteen. `changes` is an explicit absence:
+`available: false`, a reason, and an empty list.
+
+## 4. What the schema cannot support, stated rather than guessed
+
+Everything below returned a confident number and now returns `null` with a
+reason. None of it is recoverable at any effort — this is not a thing P-19
+declined to do.
+
+| Figure | Old value | Why it is not computable |
+|---|---|---|
+| CAC | `$8,400` | Nothing records acquisition spend |
+| LTV | `$168,000` | Needs margin and observed lifetime; neither recorded |
+| LTV:CAC | `20` | A ratio of two figures that do not exist |
+| Net retention | `112%` | Needs per-period expansion/contraction; nothing versioned |
+| Churn | `1.2%` | Needs subscription starts and cancellations (P-29) |
+| Close probability | `0.85` | No model scores deals; no outcome is stored |
+| Trend on clients / retainer / pipeline | `3.2`, `1.8`, `-2.1` | Current values only; no snapshot of thirty days ago |
+| `newClients` / `churned` per month | 12 months of both | Absence of an invoice is not churn |
+
+`revenueByTier` deserves its own line: the old payload broke revenue across
+**platinum, gold, silver and bronze**. Those tiers do not exist anywhere in
+this platform. The real values are `HNW` and `UHNW`.
+
+**Three trends *are* computable and are computed.** `risk_queue` compares
+the queue now against its size thirty days ago, which `createdAt` and
+`reviewedAt` pin down exactly; `wealth_events` counts thirty days against the
+prior thirty; `avg_health_score` averages `Client.healthTrend`, a trend the
+record already carries. Restoring the other three needs a periodic snapshot
+table — **P-01's schema, and a decision rather than an oversight.**
+
+`wealth-events` lost two fields rather than guessing them: `impact` and
+`value` have no column. An inheritance's size is exactly the number that must
+not be inferred from a description string.
+
+## 5. The handlers are honest now, and nothing reads them
+
+This is the finding that matters most, and it limits what P-19 achieved.
+
+**`/dashboard` does not call these APIs. It contains zero `fetch` calls.**
+The page renders its own inline constants — and they are *different* invented
+numbers from the ones the API returned: `12` active clients against the API's
+`127`, a `$1.4M` pipeline against `$12.4M`. The screen and the API were both
+fabricating, independently, and disagreeing.
+
+The components that *do* fetch these endpoints — `KPIStrip`,
+`WealthEventFeed`, `RiskReviewQueue`, `OpportunityRanker`, `DailyBrief`,
+and the `useDashboardData` hook — are **imported by nothing**. They are dead
+code. There are also two different `WealthEventFeed.tsx` files, in
+`src/app/components/dashboard/` and `src/components/dashboard/`.
+
+So this package made the data layer truthful and **no screen is any more
+truthful than it was**. The remaining work is wiring, and it is not P-19's:
+`dashboard/page.tsx`'s inline data is Phase 3 §2, and the components belong
+to **P-25**. The card allows touching `page.tsx` "only where the response
+shape changes" — the page consumes no response, so there was nothing in
+scope to change.
+
+**Nothing in the shape changes breaks a live screen**, precisely because
+nothing consumes them. P-25 should build against the new shapes, not the old.
+
+## 6. No CI job runs the frontend tests
+
+The `frontend` job runs `typecheck`, `lint` and `build`. **No workflow
+invokes `npm test`.** `jest` is configured and `npm test` works, and nothing
+calls it.
+
+Consequences, measured rather than assumed:
+
+- **23 frontend tests across 4 suites are failing today** — `login`,
+  `settings`, `discover` and `dashboard` page tests — and have been. The
+  count is identical before and after this package's changes, so none of them
+  is P-19's.
+- The card's acceptance for this package is *"a test must FAIL if a hardcoded
+  literal is reintroduced"*. That test now exists and was verified to bite —
+  reintroducing `probability: 0.85` fails it, removing it passes — but **CI
+  would not run it**, so the guarantee is currently manual.
+- The same applies to P-20 through P-23 and P-25, all of which are graded on
+  frontend tests.
+
+`.github/workflows/**` is P-00-exclusive, so this needs P-00 or P-26.
+
+There is a second, smaller instance: NextAuth ships ESM that this
+repository's jest transform does not handle, so importing `@/lib/auth` in a
+test fails with `Unexpected token 'export'` before any assertion runs. The
+auth boundary is mocked in `dashboard-apis.test.ts` to work around it.
+`jest.config.ts` is P-00-frozen.
+
+## 7. The old tests asserted the fabrications
+
+`dashboard-apis.test.ts` required the invented data to be present:
+
+```ts
+expect(typeof data[metric].trend).toBe('number')   // on an invented percentage
+expect(data.changes[0]).toHaveProperty('summary')  // on market commentary with no source
+expect(data.length).toBeGreaterThan(0)             // on a hardcoded array
+```
+
+They would have failed the moment a handler started telling the truth — the
+same shape as the P-15 watermark test that pinned a misattribution defect in
+place, and the third instance of this pattern in the run.
+
+The five tests covering P-19's routes now assert the property that survives
+real data: the route refuses an anonymous caller. The four covering routes
+this package does not own are untouched.
+
+## 8. How the tests are built, and why in three layers
+
+No single layer is sufficient here, and the reasoning is worth recording
+because P-20 through P-23 will face the same problem.
+
+1. **Source guards** (`dashboard-signals.test.ts`, no database needed) —
+   every handler calls `requireSession`, reaches `prisma`, and contains none
+   of the specific literals that were there. Matching the actual values is
+   what makes it bite; generic magic-number linting would not catch
+   `probability: 0.85`.
+2. **`tsc --noEmit`** — this is what proves the Prisma queries are *real*.
+   Every `select`, `where` and aggregate is checked against the generated
+   client, so a query naming a column that does not exist fails the build.
+   This already runs in CI and is green.
+3. **Contract tests** with the auth boundary mocked, pinning the
+   honest-absence behaviour.
+
+A mocked Prisma would prove nothing about the schema — a mock is a claim
+about an interface, and mocking a delegate makes it *look* like it exists.
+Layer 2 is the guard that actually holds, which is why it is named in the
+test file rather than left implicit.
+
+## 9. Queued for a decision
+
+| # | Needs | Owner |
+|---|---|---|
+| 1 | `Projection` model, or the revenue projection feature is dead | **P-01** |
+| 2 | Periodic snapshot table, or three dashboard trends stay null | **P-01** |
+| 3 | A market data / regulatory source, or the daily brief keeps that section empty | **unassigned** |
+| 4 | A win-probability model, or opportunities rank by value only | **unassigned** |
+| 5 | Run `npm test` in CI | **P-00 / P-26** |
+| 6 | jest ESM transform for NextAuth | **P-00** |
+| 7 | Wire `/dashboard` to these APIs; delete or adopt six dead components | **P-25 / Phase 3 §2** |
+
+## 10. Results
+
+- **8 handlers** gated and reading from Prisma · **31 tests added**, all passing
+- **Frontend: 0 newly failing** — 23 failures before and after, all pre-existing
+- `tsc` 0 · `next lint` 0 errors · `next build` succeeds · backend untouched

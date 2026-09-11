@@ -2,33 +2,43 @@
  * @jest-environment node
  */
 
-// Test all 9 dashboard API routes return proper data shapes
+// NextAuth ships ESM that this repository's jest transform does not handle -
+// importing `@/lib/auth` for real fails with "Unexpected token 'export'"
+// before any test runs. `jest.config.ts` is P-00-frozen, so the auth library
+// boundary is mocked here instead. What is under test is the handler's use of
+// the guard, not next-auth itself; that the handler calls `requireSession`
+// with the real signature is asserted against the source in
+// dashboard-signals.test.ts, which needs no mocks at all.
+jest.mock('next-auth/next', () => ({
+  getServerSession: jest.fn(async () => null),
+}))
+jest.mock('@/lib/auth', () => ({ authOptions: {} }))
+
+// Test all 9 dashboard API routes return proper data shapes.
+//
+// P-19 note: the five routes this package owns - dashboard/kpis,
+// opportunities/ranked, wealth-events, daily-brief/today and risk-queue -
+// used to be asserted here against their hardcoded contents. Those
+// assertions REQUIRED the fabrication: `typeof trend === 'number'` on an
+// invented percentage, `changes[0].summary` on market commentary with no
+// source behind it, `length > 0` on a literal array. They would have failed
+// the moment a handler started reading real data, which is the same shape as
+// the P-15 watermark test that pinned a misattribution defect in place.
+//
+// What is asserted here now is the property that survives real data: the
+// route refuses an anonymous caller. Shape and honest-absence contracts live
+// in dashboard-signals.test.ts, next to the source guards.
+//
+// The four routes below that P-19 does not own are untouched.
 describe('Dashboard API Routes', () => {
-  test('GET /api/dashboard/kpis returns 6 metrics with value/trend/direction', async () => {
+  test('GET /api/dashboard/kpis rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/dashboard/kpis/route')
     const response = await GET()
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    const expectedMetrics = [
-      'active_clients',
-      'monthly_retainer',
-      'pipeline_value',
-      'avg_health_score',
-      'wealth_events',
-      'risk_queue',
-    ]
-
-    for (const metric of expectedMetrics) {
-      expect(data).toHaveProperty(metric)
-      expect(data[metric]).toHaveProperty('value')
-      expect(data[metric]).toHaveProperty('trend')
-      expect(data[metric]).toHaveProperty('direction')
-      expect(['up', 'down', 'stable']).toContain(data[metric].direction)
-      expect(typeof data[metric].value).toBe('number')
-      expect(typeof data[metric].trend).toBe('number')
-    }
+    expect(data.error_code).toBe('not_authenticated')
   })
-
   test('GET /api/command-ai/next-action returns action with evidence chain', async () => {
     const { GET } = await import('@/app/api/command-ai/next-action/route')
     const response = await GET()
@@ -69,76 +79,30 @@ describe('Dashboard API Routes', () => {
     }
   })
 
-  test('GET /api/opportunities/ranked returns array with rank, tier, lifecycle', async () => {
+  test('GET /api/opportunities/ranked rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/opportunities/ranked/route')
     const response = await GET()
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
-
-    for (const opp of data) {
-      expect(opp).toHaveProperty('id')
-      expect(opp).toHaveProperty('rank')
-      expect(opp).toHaveProperty('tier')
-      expect(opp).toHaveProperty('lifecycle')
-      expect(opp).toHaveProperty('client')
-      expect(opp).toHaveProperty('value')
-      expect(opp).toHaveProperty('probability')
-      expect(typeof opp.rank).toBe('number')
-      expect(typeof opp.value).toBe('number')
-    }
-
-    // Verify ranked order
-    for (let i = 1; i < data.length; i++) {
-      expect(data[i].rank).toBeGreaterThan(data[i - 1].rank)
-    }
+    expect(data.error_code).toBe('not_authenticated')
   })
-
-  test('GET /api/wealth-events returns array with type and timestamp', async () => {
+  test('GET /api/wealth-events rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/wealth-events/route')
-    const response = await GET()
+    const response = await GET(new Request('http://localhost/api/test'))
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
-
-    for (const event of data) {
-      expect(event).toHaveProperty('id')
-      expect(event).toHaveProperty('type')
-      expect(event).toHaveProperty('timestamp')
-      expect(event).toHaveProperty('client')
-      expect(event).toHaveProperty('impact')
-      expect(typeof event.timestamp).toBe('string')
-      expect(new Date(event.timestamp).toString()).not.toBe('Invalid Date')
-    }
+    expect(data.error_code).toBe('not_authenticated')
   })
-
-  test('GET /api/daily-brief/today returns date, changes, alerts, actions', async () => {
+  test('GET /api/daily-brief/today rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/daily-brief/today/route')
     const response = await GET()
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    expect(data).toHaveProperty('date')
-    expect(data).toHaveProperty('changes')
-    expect(data).toHaveProperty('alerts')
-    expect(data).toHaveProperty('actions')
-
-    // date should be YYYY-MM-DD format
-    expect(data.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-
-    expect(Array.isArray(data.changes)).toBe(true)
-    expect(Array.isArray(data.alerts)).toBe(true)
-    expect(Array.isArray(data.actions)).toBe(true)
-
-    expect(data.changes[0]).toHaveProperty('category')
-    expect(data.changes[0]).toHaveProperty('summary')
-    expect(data.alerts[0]).toHaveProperty('severity')
-    expect(data.alerts[0]).toHaveProperty('message')
-    expect(data.actions[0]).toHaveProperty('priority')
-    expect(data.actions[0]).toHaveProperty('title')
+    expect(data.error_code).toBe('not_authenticated')
   })
-
   test('GET /api/agents/status returns array of 10 agents with status', async () => {
     const { GET } = await import('@/app/api/agents/status/route')
     const response = await GET()
@@ -157,25 +121,14 @@ describe('Dashboard API Routes', () => {
     }
   })
 
-  test('GET /api/risk-queue returns array with severity and module', async () => {
+  test('GET /api/risk-queue rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/risk-queue/route')
-    const response = await GET()
+    const response = await GET(new Request('http://localhost/api/test'))
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
-
-    for (const risk of data) {
-      expect(risk).toHaveProperty('id')
-      expect(risk).toHaveProperty('severity')
-      expect(risk).toHaveProperty('module')
-      expect(risk).toHaveProperty('title')
-      expect(risk).toHaveProperty('client')
-      expect(['high', 'medium', 'low', 'critical']).toContain(risk.severity)
-      expect(typeof risk.module).toBe('string')
-    }
+    expect(data.error_code).toBe('not_authenticated')
   })
-
   test('GET /api/integrations/status returns voiceforge + visionaudioforge', async () => {
     const { GET } = await import('@/app/api/integrations/status/route')
     const response = await GET()
