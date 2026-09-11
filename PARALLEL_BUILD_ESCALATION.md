@@ -1253,3 +1253,107 @@ Nine tests were passing because the routes were open; moved onto
 `authed_client` with anonymous-rejection tests added. One asserted that a
 **caller-supplied `user_id` appeared in the watermark** — a test that pinned
 the misattribution defect in place.
+
+---
+
+# P-17 — Routers: Playbooks, Notifications & Search
+
+Tasks T-008 (slice), T-009, T-023.
+Merge order 17 of 30. **Open routes: 102 → 63.**
+
+## 1. Thirty-nine handlers across six files, no session anywhere
+
+| File | Handlers gated |
+|---|---|
+| `playbooks.py` | 12 |
+| `polish.py` | 9 |
+| `email.py` | 7 |
+| `jobs.py` | 4 |
+| `onboarding.py` | 4 |
+| `search.py` | 3 |
+
+Among them: send an email as the firm, trigger or read any background task,
+execute an incident lockdown, roll a document back to an earlier version,
+reindex the search cluster. All now take
+`workspace_id: str = Depends(get_workspace_id)`.
+
+`notifications.py` and `storage.py` are in this slice by prefix but needed no
+change — they were already gated before this run. They are in the test's
+`OWNED_PREFIXES` anyway, so the per-route parametrisation covers them as a
+regression guard rather than a fix.
+
+## 2. Playbook workspaces came from the caller — including offer creation
+
+`GET /playbooks/activations` **required** `workspace_id` as a query
+parameter, and `ActivateRequest`, `CreateOfferRequest` and `ComposeRequest`
+each carried one in the body. An anonymous caller could therefore list
+another firm's activations, activate a playbook inside their workspace, or
+turn an activation into a **client-facing offer** there.
+
+P-14 flagged the last of these when it gated `activate_to_offer` in the
+engine; the engine check was the only thing standing between a stranger and
+a client-facing artefact in someone else's account. This package closes the
+route.
+
+`GET /email/history` took an optional `workspace_id` too, so a caller could
+read another firm's send history by naming it. Same fix.
+
+## 3. Unified search cached across workspaces
+
+`cache.make_key("search:unified", ...)` had no workspace dimension. The
+first caller's results were served to **every other workspace** for sixty
+seconds. P-15 fixed the two unscoped caches in `command.py` and flagged this
+one; it is the broadest of the three, because unified search returns
+arbitrary indexed content rather than one known shape.
+
+`playbooks.py`'s list cache is left global on purpose — playbooks are ten
+seeded templates, identical for every workspace. That is now recorded in a
+test, so a later reader does not "fix" it into a per-workspace key and
+quietly multiply the cache by the tenant count.
+
+## 4. Tests
+
+**64 added**, parametrised per route off the live route table, so a route
+added later is covered without anyone remembering to extend the test.
+`test_the_slice_is_not_empty` guards the guard — both parametrised tests
+pass vacuously over an empty list, which is how three unregistered routers
+escaped the count in P-13 through P-15.
+
+Four existing test modules asserted through the open routes and had to move
+onto a session. Two changes there are worth naming rather than burying:
+
+- `test_create_offer_wrong_workspace` activated in one workspace and passed
+  a different one to create-offer, expecting 404. That is **no longer
+  expressible from outside** — which is the point — so it now asserts the
+  engine's ownership check directly, which is what made the 404 correct.
+- `test_activate_missing_workspace` asserted 422 on a body with no
+  `workspace_id`. The field is gone, so "missing" is not a state a request
+  can be in; it now asserts the session check, which is the boundary it was
+  standing in for.
+
+`test_playbook_api.py` and `test_search_api.py` bring their own `client`
+fixture and their own database, so they get a session of their own rather
+than conftest's `authed_client`, which would have repointed `get_db` and
+lost the seeded playbooks.
+
+## 5. Still open, not invented here
+
+`tests/test_edge_cases.py::test_update_sunset_offer_returns_400` remains in
+the known-failure baseline. It fails on `Offer(id=uuid.uuid4())` — a
+`uuid.UUID` object into a `String(36)` column, which SQLite refuses. This is
+the **same defect in 21 model files**, now worked around by five separate
+packages. It belongs to P-01 and is queued as a decision; P-17 did not
+touch it.
+
+## 6. Deliberately not touched
+
+- `api/v1/auth.py` — P-11;
+- `api/v1/portal*.py` — P-30;
+- `core/dependencies.py`, `main.py`, `conftest.py` — frozen;
+- `services/backbone/search_service.py` — called, not changed.
+
+## 7. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 102 → 63** (the coverage test's own printed count)
+- **1592 passing** · **64 tests added** · `ruff` 0 · frontend untouched

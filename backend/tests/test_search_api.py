@@ -26,8 +26,20 @@ def _patch_search_service():
 
 @pytest.fixture
 def client():
+    # P-17: every search route now requires a session. This module mocks the
+    # search service outright and touches no database, so a workspace is all
+    # it needs.
+    from app.core.dependencies import get_workspace_id
     from app.main import app
-    return TestClient(app)
+
+    async def _workspace():
+        return "11111111-2222-3333-4444-555555555555"
+
+    app.dependency_overrides[get_workspace_id] = _workspace
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_unified_search_returns_structure(client):

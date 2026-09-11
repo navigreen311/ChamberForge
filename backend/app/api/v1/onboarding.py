@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.onboarding import OnboardingService
 
@@ -22,6 +23,7 @@ def _get_user_id() -> str:
 def get_onboarding_status(
     db: Session = Depends(get_db),
     user_id: str = Depends(_get_user_id),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Return onboarding progress for the authenticated user."""
     return OnboardingService.get_onboarding_status(db, user_id)
@@ -32,6 +34,7 @@ def complete_step(
     step_id: int,
     db: Session = Depends(get_db),
     user_id: str = Depends(_get_user_id),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Mark a specific onboarding step as completed."""
     try:
@@ -45,6 +48,7 @@ def skip_step(
     step_id: int,
     db: Session = Depends(get_db),
     user_id: str = Depends(_get_user_id),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Skip a specific onboarding step."""
     try:
@@ -57,6 +61,7 @@ def skip_step(
 def dismiss_onboarding(
     db: Session = Depends(get_db),
     user_id: str = Depends(_get_user_id),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Dismiss onboarding entirely, marking it as completed."""
     return OnboardingService.dismiss(db, user_id)

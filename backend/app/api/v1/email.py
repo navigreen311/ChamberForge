@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.email_drip import (
     advance_drip,
@@ -50,7 +51,10 @@ class EmailResponse(BaseModel):
 
 
 @router.post("/send", response_model=EmailResponse)
-async def send_email(body: SendEmailRequest):
+async def send_email(
+    body: SendEmailRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Send a single email (admin)."""
     svc = EmailService()
     result = await svc.send(
@@ -64,7 +68,10 @@ async def send_email(body: SendEmailRequest):
 
 
 @router.post("/send-template", response_model=EmailResponse)
-async def send_template_email(body: SendTemplateRequest):
+async def send_template_email(
+    body: SendTemplateRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Send an email using a named template."""
     svc = EmailService()
     try:
@@ -81,7 +88,9 @@ async def send_template_email(body: SendTemplateRequest):
 
 
 @router.get("/templates")
-async def get_templates():
+async def get_templates(
+    workspace_id: str = Depends(get_workspace_id),
+):
     """List all available email templates."""
     return {"templates": list_templates()}
 
@@ -96,6 +105,7 @@ def get_drip_status(
     user_id: str,
     sequence_name: str = Query("onboarding"),
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Return a user's drip sequence status."""
     return get_user_drip_status(db, user_id, sequence_name)
@@ -106,6 +116,7 @@ def advance_drip_endpoint(
     user_id: str,
     sequence_name: str = Query("onboarding"),
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Manually advance a user's drip sequence (admin)."""
     try:
@@ -119,6 +130,7 @@ def stop_drip_endpoint(
     user_id: str,
     sequence_name: str = Query("onboarding"),
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Stop a user's drip sequence."""
     return stop_drip(db, user_id, sequence_name)
@@ -128,7 +140,9 @@ def stop_drip_endpoint(
 async def get_history(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    workspace_id: str | None = None,
+    # workspace_id was an optional query parameter; it now derives from the
+    # session so a caller cannot read another firm's send history.
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Return email send history with pagination.
 

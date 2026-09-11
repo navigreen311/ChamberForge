@@ -5,10 +5,11 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.core.cache import cache
 from app.core.config import settings
+from app.core.dependencies import get_workspace_id
 from app.core.exceptions import ValidationError
 from app.services.backbone.search_indices import get_all_indices
 from app.services.backbone.search_service import SearchService
@@ -38,6 +39,7 @@ async def unified_search(
     filters: str = Query("{}", description="JSON-encoded filter dict"),
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
+    workspace_id: str = Depends(get_workspace_id),
 ) -> dict:
     """Unified search endpoint (cached 60s).
 
@@ -47,7 +49,20 @@ async def unified_search(
     if not q or not q.strip():
         raise ValidationError("Search query required", {"q": "Search query must not be empty"})
 
-    key = cache.make_key("search:unified", q=q, index=index, filters=filters, page=page, size=size)
+    # P-17: `workspace_id` was absent from this key, so the first caller's
+    # results were cached and served to every other workspace for sixty
+    # seconds. Unified search returns arbitrary indexed content, which makes
+    # it the broadest cross-tenant disclosure of the three unscoped caches
+    # this run found (P-15 fixed the two in command.py and flagged this one).
+    key = cache.make_key(
+        "search:unified",
+        workspace_id=workspace_id,
+        q=q,
+        index=index,
+        filters=filters,
+        page=page,
+        size=size,
+    )
     hit = cache.get(key)
     if hit is not None:
         return hit
@@ -108,7 +123,10 @@ async def unified_search(
 
 
 @router.post("/reindex/{index_name}")
-async def reindex(index_name: str) -> dict:
+async def reindex(
+    index_name: str,
+    workspace_id: str = Depends(get_workspace_id),
+) -> dict:
     """Trigger a full reindex for the given index (admin use)."""
     service = _get_service()
     result = await service.reindex_all(index_name, [])
@@ -117,7 +135,9 @@ async def reindex(index_name: str) -> dict:
 
 
 @router.get("/health")
-async def search_health() -> dict:
+async def search_health(
+    workspace_id: str = Depends(get_workspace_id),
+) -> dict:
     """Return Elasticsearch cluster health."""
     service = _get_service()
     return await service.health()

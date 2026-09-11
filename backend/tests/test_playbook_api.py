@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.core.dependencies import get_workspace_id
 from app.db.session import Base, get_db
 from app.main import app
 from app.models import Playbook, PlaybookActivation  # noqa: F401 — register models
@@ -32,7 +33,13 @@ def setup_db():
         finally:
             db.close()
 
+    async def _workspace():
+        # P-17: the workspace is no longer a request field. This module seeds
+        # and asserts against WORKSPACE_ID, so the session supplies it.
+        return WORKSPACE_ID
+
     app.dependency_overrides[get_db] = _override
+    app.dependency_overrides[get_workspace_id] = _workspace
     yield
     app.dependency_overrides.clear()
     Base.metadata.drop_all(_engine)
@@ -82,9 +89,8 @@ class TestGetPlaybook:
 class TestActivatePlaybook:
     def test_activate_success(self, client):
         resp = client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": WORKSPACE_ID},
-        )
+            "/api/v1/playbooks/private-ops-office/activate", json={}
+            )
         assert resp.status_code == 200
         data = resp.json()
         assert data["message"] == "Playbook activated"
@@ -92,18 +98,16 @@ class TestActivatePlaybook:
 
     def test_activate_nonexistent(self, client):
         resp = client.post(
-            "/api/v1/playbooks/fake-slug/activate",
-            json={"workspace_id": WORKSPACE_ID},
-        )
+            "/api/v1/playbooks/fake-slug/activate", json={}
+            )
         assert resp.status_code == 404
 
 
 class TestCustomizeAndProgress:
     def _activate(self, client, slug="ecosystem-orchestrator"):
         resp = client.post(
-            f"/api/v1/playbooks/{slug}/activate",
-            json={"workspace_id": WORKSPACE_ID},
-        )
+            f"/api/v1/playbooks/{slug}/activate", json={}
+            )
         return resp.json()["activation"]["id"]
 
     def test_customize(self, client):
