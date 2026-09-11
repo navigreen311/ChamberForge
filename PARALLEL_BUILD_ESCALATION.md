@@ -1488,3 +1488,280 @@ touch it.
   own printed count, re-measured on the merged tree rather than carried over
   from the branch's own base
 - **64 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# P-18 — Routers: VoiceForge & VisionAudio
+
+Tasks T-008 (final slice), T-023.
+Merge order 18 of 30. **Open routes: 34 → 9** — see §5, the card's
+acceptance criterion is not reachable and this package does not pretend it is.
+
+(Measured on the merged tree, with P-16 and P-17 in. On its own branch, cut
+before either landed, it read 63 → 38; the 29 extra were P-16's admin and
+security routes. Twenty-five routes closed either way.)
+
+## 1. Twenty-five routes, and two of the higher-stakes surfaces in the platform
+
+Neither router had an auth dependency on any handler.
+
+**`POST /voiceforge/crisis/escalate` places telephone calls.** It takes a
+list of names and phone numbers and an incident summary, and dials them. An
+anonymous caller could make the platform ring any number they chose, with
+any text they chose, presented as a crisis escalation from the firm. Of
+everything this run has found open, this is the only route whose abuse
+reaches a person who has no account on the platform at all.
+
+**All fifteen VisionAudio routes render a client-facing deliverable** — a
+quarterly performance report, a before/after proof scorecard, a trust pack,
+a firm's brand identity, a landing page, a video ad — and each one spends
+that firm's partner render quota to do it.
+
+All twenty-five now require a session.
+
+## 2. One session store for the whole process
+
+The three stateful VoiceForge services were held in module-level singletons
+in the router:
+
+```python
+_persona_instance: Optional[PersonaSimIntegration] = None
+_crisis_instance: Optional[CrisisEscalation] = None
+_trainer_instance: Optional[VoiceTrainer] = None
+```
+
+Each holds a `self._sessions` dict keyed only by session id, so there was
+one store for every firm on the instance. A persona-sim session id, a
+training session id or an escalation id belonging to one workspace resolved
+for any other. They are uuid4 and so not guessable, but they are not
+secrets either: they travel in URLs, server logs, support tickets and
+screenshots, and this route set is exactly where a support ticket gets
+opened.
+
+`crisis/{escalation_id}/status` is the one that matters most — it returns
+the incident summary and which contacts a call reached.
+
+The instances are now keyed by workspace, so an id from another firm is not
+found rather than served. The fix is in the router because the instance
+lifecycle is the router's; `_sessions` itself belongs to P-07 and was not
+touched.
+
+**One consequence worth recording:** the per-workspace dicts are never
+evicted, so a long-running process holds one instance per workspace that has
+used the feature. That is bounded by tenant count and no worse than the
+previous single instance holding every session — but it is a cache with no
+eviction, and P-26 may want it bounded.
+
+## 3. A trainee could be named by the caller
+
+`POST /trainer/start` took `trainee_id` in the request body. That id is what
+the session's certification result is recorded against. It is the same
+defect P-16 fixed on `released_by` and `requested_by`, on a record that
+reads as authoritative ever afterwards — a voice certification for a
+delivery-team member.
+
+It now comes from the session. The field is gone from the request model, not
+merely ignored.
+
+## 4. A partner that did not answer was a 200
+
+P-07 made both clients return a typed degraded envelope rather than raise,
+which is right for the service layer and wrong at the HTTP boundary: the
+route returned **200 OK** with a body that carried no `output_url`,
+`render_id` or `audio_url`. Anything that reads the status code — a queue, a
+retry policy, a UI spinner, a deliverables list — cannot tell that apart
+from a successful render.
+
+Both routers now translate a partner-side degraded result into **503**.
+
+The distinction the gate draws is deliberate. Only `partner_not_configured`,
+`partner_unavailable` and `partner_contract_changed` become 503. A degraded
+result carrying `no_calls` is a complete and correct answer about the
+caller's own input — there was nothing to analyse — and a 503 would tell
+them to retry something that will never change.
+
+`generate_templates` needed its own treatment: it returns a list whose
+entries keep only `render_id` and `status`, so the degraded flag does not
+survive into them. It lives in `visionaudio_brand.py`, which P-07 owns and
+this package must not change, so the check is on the one thing observable
+from outside — not a single template came back with a render id, meaning
+nothing was queued. A partly-queued set stays a 200, because it is a real
+partial answer and the caller can see which entries are missing.
+
+## 5. The card's acceptance criterion is not reachable — this is the reason
+
+> *"the guard reports ZERO open routes across all 45 routers — that is this
+> package's real acceptance criterion."*
+
+It reports **9**, confirmed on the merged tree with P-16 and P-17 in.
+Nothing was added to `PUBLIC_ALLOWLIST` to close the gap, and nothing
+should be.
+
+All nine have owners outside this package:
+
+| Route | Owner |
+|---|---|
+| `POST /portal/access`, `GET /portal/access/{client_id}`, `DELETE /portal/access/{portal_id}` | **P-30** — the card assigns `portal.py` to it |
+| `POST /billing/customers` | **P-29** — the card assigns `billing.py` to it |
+| `POST /auth/logout`, `POST /auth/mfa-verify` | **P-11**, merged. See below. |
+| `GET /api/health`, `GET /health/dependencies`, `GET /metrics/detailed` | **Unassigned.** See below. |
+
+**The two auth routes are a genuine open question, not an oversight.**
+`mfa-verify` runs before a session exists by definition, and `logout` may
+reasonably accept a token rather than a session. Either they belong in
+`TOKEN_AUTH_PREFIXES`, or they need a dependency. P-11 has merged, so
+somebody must decide; it should not be decided by whoever happens to be
+holding the file when P-26 flips the flag.
+
+**The three infrastructure routes need a ruling, and one of them looks
+wrong.** `GET /api/health` being public is ordinary and expected. But
+`GET /api/v1/health/dependencies` reports which downstream services are up
+or down, and `GET /api/v1/metrics/detailed` returns platform metrics — both
+are reconnaissance if public, and neither is needed by a load balancer.
+The honest resolution is a dependency on the latter two and an allowlist
+entry for `/api/health` alone.
+
+**P-26 cannot flip `AUTH_COVERAGE_ENFORCING` until all nine close.** That is
+now the only thing standing between this platform and an enforced auth
+guard, and it is four decisions, not a package of work.
+
+## 6. Deliberately not touched
+
+The card is explicit — *"services/integrations/** — P-07 owns 13, P-06 owns
+`voiceforge_intel_brief.py`. Call them; change neither."* — and it was not.
+Three things found inside that boundary, all escalated rather than fixed:
+
+- **`voiceforge_trainer.assess_performance` returns a hardcoded score.**
+  `score = 78`, `passed = True`, and three canned feedback lines, marked
+  only by an internal comment reading *"Mock scoring — production would use
+  VoiceForge AI grading"*. The route returns it as a real assessment, so a
+  delivery-team member receives a **voice certification nobody earned**,
+  with a number attached. Same defect class P-07 fixed in
+  `visionaudio_trainer`, in the file next to it, missed because the card
+  listed 13 files by directory rather than by defect. **No owner.**
+- **`voiceforge_intel_brief.convert_to_audio` fabricates a narration.** On
+  the degraded path it returns an `audio_url` at `https://voiceforge.mock/
+  audio/<uuid>.mp3`, a duration from `random.uniform`, a bitrate, a sample
+  rate, an estimated file size and a fixed `generated_at` of
+  `2026-04-03T12:00:00Z` — in the real response shape, with no degraded
+  flag. A UI renders an audio player for a brief that was never narrated.
+  Carved out to **P-06**, which is held on the disclosure ruling. This is
+  why `POST /intel-brief/audio` is the one route in this package with no
+  503 gate: there is no degraded signal to gate on.
+- **`GET /visionaudio/trainer/progress/{trainee_id}`** reads another user's
+  certification progress by id, with no check that they are in the caller's
+  workspace. The route is gated now, so this is no longer anonymous, but
+  the scoping belongs with whoever owns the trainee model.
+
+## 7. Results
+
+- **Backend: 0 newly failing** — `check_test_regressions.py`: `OK — no new failures`
+- **Open routes: 34 → 9** on the merged tree (63 → 38 measured on the
+  branch alone, before P-16 and P-17 landed)
+- **46 tests added** · `ruff` 0 · frontend untouched
+
+---
+
+# Finding — the known-failure baseline is two defects, not 184 problems
+
+Recorded on the P-18 branch because that is where it was measured. It is not
+P-18's work and P-18 did not act on it beyond the five deletions below.
+
+## What the CI log actually says
+
+The backend job on PR #35 (run 34630886198, green) reports **127 failures**.
+Grouped by the exception each one raises:
+
+| Count | Cause |
+|---|---|
+| **115** | `sqlite3.ProgrammingError: Error binding parameter 1: type 'UUID' is not supported` |
+| **12** | `kombu.exceptions.OperationalError: Error 111 connecting to localhost:6379. Connection refused.` |
+| 0 | anything else |
+
+That is the whole baseline. Every remaining entry in
+`backend/tests/known_failures.txt` is one of those two.
+
+## 1. The 115 — the `uuid.uuid4` default on a `String(36)` column
+
+**Twenty-one model files** in `app/models/` declare
+
+```python
+id = Column(String(36), primary_key=True, default=uuid.uuid4)
+```
+
+`uuid.uuid4` returns a `uuid.UUID` object, not a string, and SQLite refuses
+to bind one. `tests/conftest.py` already carries `_patch_uuid_for_sqlite()`,
+but it patches the **`postgresql.UUID` type** — it cannot help a column
+typed `String(36)` whose Python-side default produces the wrong type. The fix
+is `default=lambda: str(uuid.uuid4())`, twenty-three occurrences across
+twenty-one files.
+
+**Five packages have now worked around this rather than fixed it** — P-04 in
+`ai_usage.py`, P-08 and P-14 by passing explicit string ids, P-17 and P-18 by
+leaving the affected tests in the baseline. `app/models/**` is **P-01
+exclusive** under the shared-file map, which is why no router package could
+close it, and P-01 merged at `d996f14` without it.
+
+This is the queued decision, now with a number against it: **one defaults
+change in one package clears 115 of the 127.**
+
+## 2. The 12 — no Redis broker in the CI backend job
+
+`POST /auth/register` and `POST /auth/login` publish a Celery task, and the
+backend job has no broker service, so twelve auth and sensitive-data tests
+fail on connection refused. They **pass locally**, where nothing is listening
+either — which is worth understanding before anyone "fixes" them: locally
+Celery falls back differently, so this is a CI-environment gap, not a code
+defect. `.github/workflows/**` is P-00-exclusive.
+
+## 3. Two claims in the plan that the evidence does not support
+
+Both come from P-00's revision note and have shaped how every package since
+has read its test results.
+
+**"CI against Postgres surfaces 55 more."** The backend job does export
+`DATABASE_URL: postgresql://...`, but `tests/conftest.py` creates its own
+`create_engine("sqlite://")` in-memory engine and overrides `get_db` with it.
+**The backend suite runs on SQLite on CI and locally alike.** The extra
+failures on CI are the missing Redis broker, not Postgres.
+
+**"Nobody should tune against SQLite."** Sound advice, but it is the only
+thing the suite runs on today, and `conftest.py` is P-00-frozen — so no
+package in this run has been able to act on it.
+
+The practical consequence is that **a local run and a CI run disagree by
+about 46 tests**, and the difference is entirely the broker. A package
+reading `newly passing: 51` locally will read `newly passing: 5` on CI. The
+CI number is the authoritative one; this is why P-17 deleted nothing from the
+baseline on local evidence.
+
+## 4. What was actually deleted
+
+The five entries CI confirms now pass:
+
+```
+tests/test_ai_runtime.py::TestAgentPerformance::test_agent_performance
+tests/test_ai_runtime.py::TestBudgetCheck::test_over_budget
+tests/test_ai_runtime.py::TestBudgetCheck::test_under_budget
+tests/test_ai_runtime.py::TestUsageTracking::test_track_single_usage
+tests/test_ai_runtime.py::TestUsageTracking::test_usage_dashboard
+```
+
+All five are **P-04's** — it fixed them in `ai_runtime.py` and
+`ai_cost_tracker.py` and did not delete the lines. The baseline rule is that
+it only ever shrinks and that each package removes what it fixed; P-04 has
+merged, so this is the coordinator doing the bookkeeping rather than a claim
+by P-18.
+
+**Baseline: 184 → 179.**
+
+## 5. What this means for P-26
+
+P-26's acceptance is that `known_failures.txt` is empty. On this evidence
+that is **two changes**, not twenty-nine packages of grinding:
+
+1. the defaults change across twenty-one model files (P-01's territory);
+2. a Redis service on the backend CI job (P-00's territory).
+
+Both are outside every remaining package's ownership, so both need a ruling
+before P-26 opens.

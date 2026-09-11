@@ -97,11 +97,6 @@ tests/security/test_sql_injection.py::TestSQLInjectionProblems::test_create_prob
 tests/security/test_xss.py::TestXSSNotificationBody::test_notification_body_with_script_tag
 tests/security/test_xss.py::TestXSSProblemEndpoints::test_problem_description_xss_escaped
 tests/security/test_xss.py::TestXSSProblemEndpoints::test_problem_title_xss_not_executed
-tests/test_ai_runtime.py::TestAgentPerformance::test_agent_performance
-tests/test_ai_runtime.py::TestBudgetCheck::test_over_budget
-tests/test_ai_runtime.py::TestBudgetCheck::test_under_budget
-tests/test_ai_runtime.py::TestUsageTracking::test_track_single_usage
-tests/test_ai_runtime.py::TestUsageTracking::test_usage_dashboard
 tests/test_client_portal.py::TestCreatePortalAccess::test_creates_access_with_token
 tests/test_client_portal.py::TestCreatePortalAccess::test_tokens_are_unique
 tests/test_client_portal.py::TestRevokeAccess::test_revoke_existing
