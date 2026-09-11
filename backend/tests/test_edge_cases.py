@@ -96,9 +96,9 @@ def test_update_sunset_offer_returns_400(client, auth_headers, db_session):
 # 6. Playbooks — get nonexistent slug returns 404 with helpful message
 # ---------------------------------------------------------------------------
 
-def test_get_nonexistent_playbook_returns_404(client):
+def test_get_nonexistent_playbook_returns_404(authed_client):
     """Getting a nonexistent playbook slug should return 404 with a helpful message."""
-    resp = client.get("/api/v1/playbooks/nonexistent-slug-that-does-not-exist")
+    resp = authed_client.get("/api/v1/playbooks/nonexistent-slug-that-does-not-exist")
     assert resp.status_code == 404
     data = resp.json()
     detail = data.get("detail", "")
@@ -154,9 +154,9 @@ def test_get_household_no_graph_returns_404(client, auth_headers):
 # 10. Unified search — empty query returns 422
 # ---------------------------------------------------------------------------
 
-def test_unified_search_empty_query_returns_422(client):
+def test_unified_search_empty_query_returns_422(authed_client):
     """Unified search with empty query should return 422."""
-    resp = client.get("/api/v1/search/?q=")
+    resp = authed_client.get("/api/v1/search/?q=")
     assert resp.status_code == 422
     data = resp.json()
     msg = data.get("message", data.get("detail", ""))

@@ -55,9 +55,9 @@ def _record_ready_assessment(db, workspace_id: str) -> None:
 class TestPlaybookActivationToOfferFlow:
     """End-to-end flow: list -> activate -> customize -> create offer."""
 
-    def test_full_flow(self, client, db_session):
+    def test_full_flow(self, authed_client, db_session):
         # 1. List playbooks — should have 10 seeded templates
-        resp = client.get("/api/v1/playbooks/")
+        resp = authed_client.get("/api/v1/playbooks/")
         assert resp.status_code == 200
         data = resp.json()
         assert data["count"] == 10
@@ -65,13 +65,18 @@ class TestPlaybookActivationToOfferFlow:
         assert "private-ops-office" in slugs
 
         # 2. Activate a playbook
-        resp = client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": WORKSPACE_ID},
+        #
+        # P-17: the workspace comes from the session, not the body. The
+        # session's workspace is read back off the activation rather than
+        # assumed - `authed_client` generates a fresh one per test and does
+        # not expose it, and conftest is P-00-frozen.
+        resp = authed_client.post(
+            "/api/v1/playbooks/private-ops-office/activate", json={}
         )
         assert resp.status_code == 200
         activation = resp.json()["activation"]
         activation_id = activation["id"]
+        session_workspace = activation["workspace_id"]
         assert activation["status"] == "active"
         assert activation["completed_sections"] == 0
         assert activation["total_sections"] == 8
@@ -81,7 +86,7 @@ class TestPlaybookActivationToOfferFlow:
             "icp": {"wealth_tier": "UHNWI", "net_worth_range": "$50M+"},
             "pricing_model": {"type": "annual_retainer", "base_fee": 25000},
         }
-        resp = client.put(
+        resp = authed_client.put(
             f"/api/v1/playbooks/activations/{activation_id}/customize",
             json={"overrides": overrides},
         )
@@ -95,71 +100,78 @@ class TestPlaybookActivationToOfferFlow:
         # P-14 (T-019) gated activation on readiness: turning a playbook into
         # a client-facing offer now requires an assessment on record at or
         # above the threshold. Before this step the next call returns 409.
-        _record_ready_assessment(db_session, WORKSPACE_ID)
+        _record_ready_assessment(db_session, session_workspace)
 
         # 5. Create offer from activation
-        resp = client.post(
-            f"/api/v1/playbooks/activations/{activation_id}/create-offer",
-            json={"workspace_id": WORKSPACE_ID},
+        resp = authed_client.post(
+            f"/api/v1/playbooks/activations/{activation_id}/create-offer", json={}
         )
         assert resp.status_code == 200
         offer = resp.json()["offer"]
         assert offer["status"] == "draft"
         assert "Private Ops Office" in offer["name"] or "Offer" in offer["name"]
-        assert offer["workspace_id"] == WORKSPACE_ID
+        assert offer["workspace_id"] == session_workspace
 
         # 5. Verify the offer ID is a valid UUID
         offer_id = offer["id"]
         uuid.UUID(offer_id)  # raises if invalid
 
-    def test_create_offer_nonexistent_activation(self, client):
+    def test_create_offer_nonexistent_activation(self, authed_client):
         fake_id = str(uuid.uuid4())
-        resp = client.post(
-            f"/api/v1/playbooks/activations/{fake_id}/create-offer",
-            json={"workspace_id": WORKSPACE_ID},
+        resp = authed_client.post(
+            f"/api/v1/playbooks/activations/{fake_id}/create-offer", json={}
         )
         assert resp.status_code == 404
 
-    def test_create_offer_wrong_workspace(self, client):
-        # Activate with one workspace
-        resp = client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": WORKSPACE_ID},
+    def test_an_activation_cannot_be_converted_from_another_workspace(
+        self, authed_client, db_session
+    ):
+        """P-17 removed the caller's ability to name a workspace at all.
+
+        This test used to activate in one workspace and pass a different one
+        on the create-offer call, expecting a 404. That is no longer
+        expressible from outside - which is the point - so it now asserts the
+        engine's own ownership check, which is what made the 404 correct.
+        """
+        from app.services.backbone.playbook_engine import PlaybookEngine
+
+        resp = authed_client.post(
+            "/api/v1/playbooks/private-ops-office/activate", json={}
         )
         activation_id = resp.json()["activation"]["id"]
+        session_workspace = resp.json()["activation"]["workspace_id"]
+        _record_ready_assessment(db_session, session_workspace)
 
-        # Try to create offer with different workspace
-        wrong_ws = str(uuid.uuid4())
-        resp = client.post(
-            f"/api/v1/playbooks/activations/{activation_id}/create-offer",
-            json={"workspace_id": wrong_ws},
+        # A different workspace, asked directly of the engine.
+        assert (
+            PlaybookEngine.activate_to_offer(
+                db_session, str(uuid.uuid4()), uuid.UUID(activation_id)
+            )
+            is None
         )
-        assert resp.status_code == 404
 
 
 class TestListActivations:
     """Test the GET /activations endpoint."""
 
-    def test_list_activations_empty(self, client):
+    def test_list_activations_empty(self, authed_client):
         ws = str(uuid.uuid4())
-        resp = client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
+        resp = authed_client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
         assert resp.status_code == 200
         assert resp.json()["count"] == 0
 
-    def test_list_activations_with_data(self, client):
+    def test_list_activations_with_data(self, authed_client):
         ws = str(uuid.uuid4())
 
         # Activate two different playbooks
-        client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": ws},
+        authed_client.post(
+            "/api/v1/playbooks/private-ops-office/activate", json={},
         )
-        client.post(
-            "/api/v1/playbooks/ecosystem-orchestrator/activate",
-            json={"workspace_id": ws},
+        authed_client.post(
+            "/api/v1/playbooks/ecosystem-orchestrator/activate", json={},
         )
 
-        resp = client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
+        resp = authed_client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["count"] == 2
@@ -169,23 +181,22 @@ class TestListActivations:
             assert "completion_pct" in act
             assert "next_step" in act
 
-    def test_list_activations_with_progress(self, client):
+    def test_list_activations_with_progress(self, authed_client):
         ws = str(uuid.uuid4())
 
         # Activate
-        act_resp = client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": ws},
+        act_resp = authed_client.post(
+            "/api/v1/playbooks/private-ops-office/activate", json={},
         )
         activation_id = act_resp.json()["activation"]["id"]
 
         # Complete a section
-        client.put(
+        authed_client.put(
             f"/api/v1/playbooks/activations/{activation_id}/sections/ICP Definition",
             json={"status": "complete"},
         )
 
-        resp = client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
+        resp = authed_client.get(f"/api/v1/playbooks/activations?workspace_id={ws}")
         acts = resp.json()["activations"]
         assert len(acts) == 1
         assert acts[0]["completed_sections"] == 1
@@ -195,9 +206,9 @@ class TestListActivations:
 class TestCrossPlaybookCompose:
     """Test the POST /compose endpoint."""
 
-    def test_compose_two_playbooks(self, client):
+    def test_compose_two_playbooks(self, authed_client):
         ws = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             "/api/v1/playbooks/compose",
             json={
                 "workspace_id": ws,
@@ -214,9 +225,9 @@ class TestCrossPlaybookCompose:
         assert data["bundle_pricing"]["discount_applied"] == 10.0
         assert data["source_slugs"] == ["private-ops-office", "private-ops-office"]
 
-    def test_compose_nonexistent_slug(self, client):
+    def test_compose_nonexistent_slug(self, authed_client):
         ws = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             "/api/v1/playbooks/compose",
             json={
                 "workspace_id": ws,
@@ -225,9 +236,9 @@ class TestCrossPlaybookCompose:
         )
         assert resp.status_code == 404
 
-    def test_compose_single_slug_rejected(self, client):
+    def test_compose_single_slug_rejected(self, authed_client):
         ws = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             "/api/v1/playbooks/compose",
             json={
                 "workspace_id": ws,
@@ -236,9 +247,9 @@ class TestCrossPlaybookCompose:
         )
         assert resp.status_code == 422  # Pydantic min_length=2
 
-    def test_compose_too_many_slugs_rejected(self, client):
+    def test_compose_too_many_slugs_rejected(self, authed_client):
         ws = str(uuid.uuid4())
-        resp = client.post(
+        resp = authed_client.post(
             "/api/v1/playbooks/compose",
             json={
                 "workspace_id": ws,
@@ -251,27 +262,26 @@ class TestCrossPlaybookCompose:
 class TestOfferHasPlaybookData:
     """Verify the created offer actually contains playbook-sourced data."""
 
-    def test_offer_contains_sop_and_kpi_data(self, client, db_session):
+    def test_offer_contains_sop_and_kpi_data(self, authed_client, db_session):
         """After full flow, verify the Offer row has playbook fields populated."""
         from app.models.offer import Offer
 
-        ws = str(uuid.uuid4())
-
         # Activate
-        act_resp = client.post(
-            "/api/v1/playbooks/private-ops-office/activate",
-            json={"workspace_id": ws},
+        act_resp = authed_client.post(
+            "/api/v1/playbooks/private-ops-office/activate", json={},
         )
-        activation_id = act_resp.json()["activation"]["id"]
+        activation = act_resp.json()["activation"]
+        activation_id = activation["id"]
 
         # P-14 (T-019): activation into a client-facing offer is gated on a
-        # recorded founder readiness assessment.
-        _record_ready_assessment(db_session, ws)
+        # recorded founder readiness assessment - and it has to be recorded
+        # against the *session's* workspace, which P-17 made the only one the
+        # route will act in.
+        _record_ready_assessment(db_session, activation["workspace_id"])
 
         # Create offer
-        offer_resp = client.post(
-            f"/api/v1/playbooks/activations/{activation_id}/create-offer",
-            json={"workspace_id": ws},
+        offer_resp = authed_client.post(
+            f"/api/v1/playbooks/activations/{activation_id}/create-offer", json={},
         )
         assert offer_resp.status_code == 200
         offer_id = offer_resp.json()["offer"]["id"]

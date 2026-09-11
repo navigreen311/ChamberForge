@@ -1,4 +1,17 @@
-"""Playbook API endpoints."""
+"""Playbook endpoints - templates, activations, and offer creation.
+
+P-17 (T-008). Twelve anonymous routes, and every workspace on them came from
+the caller: `/activations` **required** it as a query parameter, and
+`ActivateRequest`, `CreateOfferRequest` and `ComposeRequest` each carried one
+in the body.
+
+So an anonymous caller could list another firm's activations, activate a
+playbook in their workspace, or turn one into a **client-facing offer** there.
+P-14 flagged the last of these when it gated `activate_to_offer` in the
+engine; this is the package that owns the route.
+
+All of them now derive from the session.
+"""
 from __future__ import annotations
 
 import uuid
@@ -8,6 +21,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.cache import cache
+from app.core.dependencies import get_workspace_id
 from app.db.session import get_db
 from app.services.backbone.cross_playbook import CrossPlaybookComposer
 from app.services.backbone.playbook_engine import PlaybookEngine
@@ -18,7 +32,12 @@ router = APIRouter(prefix="/api/v1/playbooks", tags=["playbooks"])
 # ── Request / Response schemas ────────────────────────────────────────
 
 class ActivateRequest(BaseModel):
-    workspace_id: uuid.UUID
+    """Deliberately empty of identity.
+
+    `workspace_id` came from the caller, so activation could be performed in
+    another firm's workspace by naming it. Kept as a model so the route
+    still accepts a body and a future field has somewhere to go.
+    """
 
 
 class CustomizeRequest(BaseModel):
@@ -30,19 +49,30 @@ class SectionUpdateRequest(BaseModel):
 
 
 class CreateOfferRequest(BaseModel):
-    workspace_id: uuid.UUID
+    """Empty for the same reason as ActivateRequest.
+
+    This one mattered most: P-14 flagged it because `activate_to_offer`
+    creates a **client-facing offer**, and the workspace it was created in
+    came from the request body.
+    """
 
 
 class ComposeRequest(BaseModel):
-    workspace_id: uuid.UUID
     slugs: list[str] = Field(..., min_length=2, max_length=3)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────
 
 @router.get("/")
-def list_playbooks(db: Session = Depends(get_db)):
+def list_playbooks(
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """List all available playbook templates (cached 600s)."""
+    # Unscoped deliberately: playbooks are the ten seeded global templates,
+    # identical for every workspace, so a shared key is correct here rather
+    # than an oversight. Noted because the two unscoped keys next door were
+    # real cross-tenant leaks.
     key = cache.make_key("playbooks:list")
     hit = cache.get(key)
     if hit is not None:
@@ -60,8 +90,8 @@ def list_playbooks(db: Session = Depends(get_db)):
 
 @router.get("/activations")
 def list_activations(
-    workspace_id: uuid.UUID = Query(...),
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """List all playbook activations for a workspace with progress."""
     activations = PlaybookEngine.get_activated_playbooks(db, workspace_id)
@@ -74,7 +104,11 @@ def list_activations(
 # ── Cross-Playbook Compose (must be before /{slug}) ──────────────────
 
 @router.post("/compose")
-def compose_playbooks(body: ComposeRequest, db: Session = Depends(get_db)):
+def compose_playbooks(
+    body: ComposeRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Compose 2-3 playbooks into a bundled offer draft."""
     # Fetch playbook data for each slug
     playbooks = []
@@ -109,7 +143,7 @@ def compose_playbooks(body: ComposeRequest, db: Session = Depends(get_db)):
     pricing = CrossPlaybookComposer.estimate_bundle_pricing(prices)
 
     composed["bundle_pricing"] = pricing
-    composed["workspace_id"] = str(body.workspace_id)
+    composed["workspace_id"] = str(workspace_id)
     composed["source_slugs"] = body.slugs
 
     return composed
@@ -118,7 +152,10 @@ def compose_playbooks(body: ComposeRequest, db: Session = Depends(get_db)):
 # ── KPI & Stats (must be before /{slug} to avoid route conflict) ─────
 
 @router.get("/kpis")
-async def get_playbook_kpis(db: Session = Depends(get_db)):
+async def get_playbook_kpis(
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """KPI metrics for playbooks dashboard."""
     from app.models.playbook import Playbook
     from app.models.playbook_activation import PlaybookActivation
@@ -138,7 +175,10 @@ async def get_playbook_kpis(db: Session = Depends(get_db)):
 
 
 @router.get("/stats")
-async def get_playbook_stats(db: Session = Depends(get_db)):
+async def get_playbook_stats(
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Detailed stats for playbooks."""
     from app.models.playbook import Playbook
     playbooks = db.query(Playbook).all()
@@ -152,7 +192,11 @@ async def get_playbook_stats(db: Session = Depends(get_db)):
 # ── Parameterized slug routes ─────────────────────────────────────────
 
 @router.get("/{slug}")
-def get_playbook(slug: str, db: Session = Depends(get_db)):
+def get_playbook(
+    slug: str,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Get detailed playbook by slug."""
     playbook = PlaybookEngine.get_playbook(db, slug)
     if not playbook:
@@ -164,15 +208,20 @@ def get_playbook(slug: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{slug}/activate")
-def activate_playbook(slug: str, body: ActivateRequest, db: Session = Depends(get_db)):
+def activate_playbook(
+    slug: str,
+    body: ActivateRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Activate a playbook for a workspace."""
     # Check if already activated
-    existing = PlaybookEngine.get_activated_playbooks(db, body.workspace_id)
+    existing = PlaybookEngine.get_activated_playbooks(db, workspace_id)
     for act in existing:
         act_dict = act if isinstance(act, dict) else act.to_dict() if hasattr(act, "to_dict") else {}
         if act_dict.get("slug") == slug or act_dict.get("playbook_slug") == slug:
             raise HTTPException(status_code=409, detail="Playbook already activated")
-    activation = PlaybookEngine.activate_playbook(db, body.workspace_id, slug)
+    activation = PlaybookEngine.activate_playbook(db, workspace_id, slug)
     if not activation:
         raise HTTPException(status_code=404, detail=f"Playbook '{slug}' not found")
     cache.invalidate_pattern("playbooks:*")
@@ -187,6 +236,7 @@ def customize_playbook(
     activation_id: uuid.UUID,
     body: CustomizeRequest,
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Customize an activated playbook with overrides."""
     activation = PlaybookEngine.customize_playbook(db, activation_id, body.overrides)
@@ -200,7 +250,11 @@ def customize_playbook(
 
 
 @router.get("/activations/{activation_id}/progress")
-def get_progress(activation_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_progress(
+    activation_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     """Get progress for an activated playbook."""
     progress = PlaybookEngine.get_progress(db, activation_id)
     if not progress:
@@ -214,6 +268,7 @@ def update_section(
     section_name: str,
     body: SectionUpdateRequest,
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Update a section's status in the playbook activation."""
     activation = PlaybookEngine.update_section_progress(
@@ -236,6 +291,7 @@ def export_playbook(
     activation_id: uuid.UUID,
     format: str = Query(default="json", alias="format"),
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Export full playbook with customizations applied."""
     result = PlaybookEngine.export_playbook(db, activation_id, fmt=format)
@@ -251,9 +307,10 @@ def create_offer_from_activation(
     activation_id: uuid.UUID,
     body: CreateOfferRequest,
     db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
 ):
     """Convert an activated playbook into a draft Offer."""
-    offer = PlaybookEngine.activate_to_offer(db, body.workspace_id, activation_id)
+    offer = PlaybookEngine.activate_to_offer(db, workspace_id, activation_id)
     if not offer:
         raise HTTPException(
             status_code=404,

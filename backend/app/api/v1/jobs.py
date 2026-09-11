@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.dependencies import get_workspace_id
 from app.jobs.celery_app import celery_app
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
@@ -41,7 +42,9 @@ class TaskStatusResponse(BaseModel):
 
 
 @router.get("/status")
-async def list_tasks_status() -> dict:
+async def list_tasks_status(
+    workspace_id: str = Depends(get_workspace_id),
+) -> dict:
     """Return active, scheduled, and reserved tasks across all workers."""
     inspect = celery_app.control.inspect()
 
@@ -68,7 +71,11 @@ async def list_tasks_status() -> dict:
 
 
 @router.post("/trigger/{task_name}")
-async def trigger_task(task_name: str, body: TriggerRequest | None = None) -> dict:
+async def trigger_task(
+    task_name: str,
+    body: TriggerRequest | None = None,
+    workspace_id: str = Depends(get_workspace_id),
+) -> dict:
     """Manually trigger a registered background task (admin only)."""
     if task_name not in TRIGGERABLE_TASKS:
         raise HTTPException(
@@ -91,7 +98,10 @@ async def trigger_task(task_name: str, body: TriggerRequest | None = None) -> di
 
 
 @router.get("/history")
-async def task_history(limit: int = 50) -> dict:
+async def task_history(
+    limit: int = 50,
+    workspace_id: str = Depends(get_workspace_id),
+) -> dict:
     """Return recent task results with status. Requires a result backend."""
     # NOTE: Celery does not natively store a task history list.
     # In production, you would query a results table or use Flower's API.
@@ -104,7 +114,10 @@ async def task_history(limit: int = 50) -> dict:
 
 
 @router.get("/result/{task_id}")
-async def get_task_result(task_id: str) -> TaskStatusResponse:
+async def get_task_result(
+    task_id: str,
+    workspace_id: str = Depends(get_workspace_id),
+) -> TaskStatusResponse:
     """Get the result of a specific task by its ID."""
     result = AsyncResult(task_id, app=celery_app)
     return TaskStatusResponse(

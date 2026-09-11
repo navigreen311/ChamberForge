@@ -112,7 +112,12 @@ def get_version_history(template_id: UUID, workspace_id: str = Depends(get_works
 
 
 @router.post("/versions/{template_id}/rollback/{version}")
-def rollback_version(template_id: UUID, version: int, db: Session = Depends(get_db)):
+def rollback_version(
+    template_id: UUID,
+    version: int,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         result = TemplateVersioning.rollback(db, template_id, version)
     except ValueError as e:
@@ -125,7 +130,10 @@ def rollback_version(template_id: UUID, version: int, db: Session = Depends(get_
 
 
 @router.post("/versions/diff")
-def diff_versions(req: DiffRequest):
+def diff_versions(
+    req: DiffRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return TemplateVersioning.diff_versions(req.v1_content, req.v2_content)
 
 
@@ -181,7 +189,12 @@ def get_incident_detail(incident_id: UUID, workspace_id: str = Depends(get_works
 
 
 @router.post("/crisis/{incident_id}/timeline")
-def add_timeline_event(incident_id: UUID, req: TimelineEventRequest, db: Session = Depends(get_db)):
+def add_timeline_event(
+    incident_id: UUID,
+    req: TimelineEventRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         incident = CrisisConsole.add_timeline_event(db, incident_id, req.event_type, req.description)
     except ValueError as e:
@@ -190,7 +203,12 @@ def add_timeline_event(incident_id: UUID, req: TimelineEventRequest, db: Session
 
 
 @router.post("/crisis/{incident_id}/escalation")
-def set_escalation_tree(incident_id: UUID, req: EscalationTreeRequest, db: Session = Depends(get_db)):
+def set_escalation_tree(
+    incident_id: UUID,
+    req: EscalationTreeRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         incident = CrisisConsole.set_escalation_tree(db, incident_id, req.tree)
     except ValueError as e:
@@ -199,7 +217,12 @@ def set_escalation_tree(incident_id: UUID, req: EscalationTreeRequest, db: Sessi
 
 
 @router.post("/crisis/{incident_id}/lockdown")
-def execute_lockdown(incident_id: UUID, req: LockdownRequest, db: Session = Depends(get_db)):
+def execute_lockdown(
+    incident_id: UUID,
+    req: LockdownRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         incident = CrisisConsole.execute_lockdown(db, incident_id, req.actions)
     except ValueError as e:
@@ -208,7 +231,12 @@ def execute_lockdown(incident_id: UUID, req: LockdownRequest, db: Session = Depe
 
 
 @router.post("/crisis/{incident_id}/resolve")
-def resolve_incident(incident_id: UUID, req: ResolveRequest, db: Session = Depends(get_db)):
+def resolve_incident(
+    incident_id: UUID,
+    req: ResolveRequest,
+    db: Session = Depends(get_db),
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         incident = CrisisConsole.resolve_incident(db, incident_id, req.resolution_notes)
     except ValueError as e:
@@ -220,7 +248,10 @@ def resolve_incident(incident_id: UUID, req: ResolveRequest, db: Session = Depen
 
 
 @router.post("/compose")
-def compose_playbooks(req: ComposeRequest):
+def compose_playbooks(
+    req: ComposeRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     try:
         result = CrossPlaybookComposer.compose(req.playbooks)
     except ValueError as e:
@@ -229,7 +260,10 @@ def compose_playbooks(req: ComposeRequest):
 
 
 @router.post("/compose/pricing")
-def estimate_bundle_pricing(req: BundlePricingRequest):
+def estimate_bundle_pricing(
+    req: BundlePricingRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return CrossPlaybookComposer.estimate_bundle_pricing(req.playbook_prices, req.discount_pct)
 
 
@@ -237,5 +271,8 @@ def estimate_bundle_pricing(req: BundlePricingRequest):
 
 
 @router.post("/red-team")
-def audit_offer(req: AuditRequest):
+def audit_offer(
+    req: AuditRequest,
+    workspace_id: str = Depends(get_workspace_id),
+):
     return RedTeamAuditor.audit_offer(req.offer_data)
