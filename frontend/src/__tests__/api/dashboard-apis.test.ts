@@ -59,26 +59,20 @@ describe('Dashboard API Routes', () => {
     expect(typeof data.evidence_chain[0].credibility).toBe('number')
   })
 
-  test('GET /api/clients/health-summary returns array of clients with score', async () => {
+  test('GET /api/clients/health-summary rejects an anonymous caller', async () => {
+    // P-20 owns this route and made it read from Prisma. The previous
+    // assertions here required the hardcoded rows to be present - and those
+    // rows disagreed with the client list's fabrications about the same ids,
+    // calling c-001 "Johnson Family Trust" where the list called it
+    // "Jonathan Wellington III". Shape and literal guards now live in
+    // clients.test.ts.
     const { GET } = await import('@/app/api/clients/health-summary/route')
     const response = await GET()
+
+    expect(response.status).toBe(401)
     const data = await response.json()
-
-    expect(Array.isArray(data)).toBe(true)
-    expect(data.length).toBeGreaterThan(0)
-
-    for (const client of data) {
-      expect(client).toHaveProperty('id')
-      expect(client).toHaveProperty('name')
-      expect(client).toHaveProperty('score')
-      expect(client).toHaveProperty('tier')
-      expect(client).toHaveProperty('trend')
-      expect(typeof client.score).toBe('number')
-      expect(client.score).toBeGreaterThanOrEqual(0)
-      expect(client.score).toBeLessThanOrEqual(100)
-    }
+    expect(data.error_code).toBe('not_authenticated')
   })
-
   test('GET /api/opportunities/ranked rejects an anonymous caller', async () => {
     const { GET } = await import('@/app/api/opportunities/ranked/route')
     const response = await GET()

@@ -1,116 +1,161 @@
 import { NextResponse } from 'next/server'
 
-const clientDetails: Record<string, object> = {
-  'c-001': {
-    id: 'c-001',
-    name: 'Jonathan Wellington III',
-    company: 'Wellington Family Office',
-    tier: 'platinum',
-    status: 'active',
-    pain_categories: ['estate-planning', 'tax-optimization'],
-    last_contact_at: '2026-03-22T14:30:00Z',
-    last_contact_type: 'video-call',
-    last_contact_days: 12,
-    wealth_event: null,
-    health_score: 62,
-    health_trend: 'declining',
-    kpis_defined: 4,
-    kpis_total: 6,
-    monthly_retainer: 25000,
-    renewal_date: '2026-06-15',
-    renewal_days: 73,
-    trust_channel: 'advisor-direct',
-    touchpoints_count: 18,
-    offers_count: 2,
-    created_at: '2024-09-01T00:00:00Z',
-    household_summary: {
-      people_count: 5,
-      vendor_count: 3,
-      property_count: 4,
-    },
-    recent_touchpoints: [
-      { type: 'video-call', description: 'Quarterly portfolio review — discussed tax-loss harvesting strategy', created_at: '2026-03-22T14:30:00Z' },
-      { type: 'email', description: 'Sent updated estate planning proposal with trust restructuring options', created_at: '2026-03-15T10:00:00Z' },
-      { type: 'in-person', description: 'Dinner meeting with Jonathan and spouse; discussed succession timeline', created_at: '2026-03-01T19:00:00Z' },
-    ],
-    active_offers: [
-      { name: 'Platinum Estate Planning Suite', monthly: 15000 },
-      { name: 'Tax Optimization Advisory', monthly: 10000 },
-    ],
-    pain_signals: [
-      'Mentioned concern about estate tax changes in recent call',
-      'Spouse expressed frustration with lack of consolidated reporting',
-      'Delayed response to last two follow-up emails',
-    ],
-    recommended_actions: [
-      'Schedule in-person meeting to address declining engagement',
-      'Prepare consolidated household report to address spouse concern',
-      'Present updated estate tax impact analysis for 2026 legislative changes',
-      'Review and refresh KPI targets before Q2 review',
-    ],
-  },
-  'c-003': {
-    id: 'c-003',
-    name: 'Elena Rivera',
-    company: 'Rivera Foundation',
-    tier: 'platinum',
-    status: 'active',
-    pain_categories: ['philanthropy', 'impact-investing'],
-    last_contact_at: '2026-03-30T09:15:00Z',
-    last_contact_type: 'email',
-    last_contact_days: 4,
-    wealth_event: { type: 'liquidity-event', description: 'Foundation received $12M endowment' },
-    health_score: 91,
-    health_trend: 'improving',
-    kpis_defined: 6,
-    kpis_total: 6,
-    monthly_retainer: 32000,
-    renewal_date: '2026-12-01',
-    renewal_days: 243,
-    trust_channel: 'advisor-direct',
-    touchpoints_count: 31,
-    offers_count: 4,
-    created_at: '2023-11-20T00:00:00Z',
-    household_summary: {
-      people_count: 3,
-      vendor_count: 5,
-      property_count: 2,
-    },
-    recent_touchpoints: [
-      { type: 'email', description: 'Shared impact investing opportunities matching foundation mission', created_at: '2026-03-30T09:15:00Z' },
-      { type: 'video-call', description: 'Foundation board presentation — endowment deployment strategy', created_at: '2026-03-25T14:00:00Z' },
-      { type: 'in-person', description: 'Attended foundation gala; introduced to two board members', created_at: '2026-03-10T18:30:00Z' },
-    ],
-    active_offers: [
-      { name: 'Foundation Management Suite', monthly: 12000 },
-      { name: 'Impact Investing Advisory', monthly: 8000 },
-      { name: 'Philanthropic Strategy', monthly: 7000 },
-      { name: 'ESG Portfolio Analysis', monthly: 5000 },
-    ],
-    pain_signals: [
-      'Board requesting more granular impact measurement metrics',
-      'Need to deploy $12M endowment within 6-month window',
-    ],
-    recommended_actions: [
-      'Prepare impact measurement dashboard for board review',
-      'Present phased endowment deployment timeline with ESG-aligned options',
-      'Schedule quarterly foundation strategy session',
-    ],
-  },
-}
+import { daysSince, daysUntil, trendLabel } from '@/app/api/clients/_rules'
+import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/require-session'
+
+/**
+ * A single client's detail view.
+ *
+ * P-20 (T-027, T-053). This served a hardcoded record for exactly two ids,
+ * `c-001` and `c-003`, and 404'd for the other six the list handler showed —
+ * a list of eight where two rows opened.
+ *
+ * What the two records contained is the reason this handler needed rewriting
+ * rather than merely gating. Alongside the invented figures were invented
+ * **private observations about a named family**:
+ *
+ *     'Spouse expressed frustration with lack of consolidated reporting'
+ *     'Delayed response to last two follow-up emails'
+ *     'Dinner meeting with Jonathan and spouse; discussed succession timeline'
+ *
+ * An advisor reading those believes their client is unhappy, and acts on it.
+ * Nothing recorded them; they were prose in a route file, served to anyone.
+ *
+ * The record is now read from `Client`, scoped to the session operator, with
+ * its real offers and wealth events. Four sections are **absent rather than
+ * generated** — see `unavailable` in the payload, and §3 of the escalation.
+ */
+
+const RECENT_EVENTS = 10
 
 export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const detail = clientDetails[params.id]
+  const session = await requireSession()
+  if (!session.ok) return session.response
 
-  if (!detail) {
+  const client = await prisma.client.findFirst({
+    // Scoped by operator as well as id: a client id from another operator's
+    // book must read as absent, not as forbidden. A 403 would confirm the
+    // record exists.
+    where: { id: params.id, userId: session.userId },
+    select: {
+      id: true,
+      name: true,
+      company: true,
+      tier: true,
+      status: true,
+      painCategories: true,
+      lastContactAt: true,
+      lastContactType: true,
+      healthScore: true,
+      healthTrend: true,
+      monthlyRetainer: true,
+      renewalDate: true,
+      trustChannel: true,
+      onboardedAt: true,
+      createdAt: true,
+      offers: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          priceMin: true,
+          priceMax: true,
+          pricingModel: true,
+          healthScore: true,
+          renewalDate: true,
+        },
+      },
+      wealthEvents: {
+        orderBy: { detectedAt: 'desc' },
+        take: RECENT_EVENTS,
+        select: {
+          id: true,
+          type: true,
+          description: true,
+          personName: true,
+          detectedAt: true,
+        },
+      },
+    },
+  })
+
+  if (!client) {
+    // No identifier in the payload - this route carries PII and an error
+    // body is the easiest place for one to escape into a log.
     return NextResponse.json(
-      { error: 'Client not found' },
+      { error_code: 'not_found', message: 'Client not found.' },
       { status: 404 }
     )
   }
 
-  return NextResponse.json(detail)
+  return NextResponse.json({
+    id: client.id,
+    name: client.name,
+    company: client.company,
+    tier: client.tier,
+    status: client.status,
+    pain_categories: client.painCategories,
+    last_contact_at: client.lastContactAt?.toISOString() ?? null,
+    last_contact_type: client.lastContactType,
+    last_contact_days: daysSince(client.lastContactAt),
+    health_score: client.healthScore,
+    health_trend: trendLabel(client.healthTrend),
+    health_trend_points: client.healthTrend,
+    monthly_retainer: client.monthlyRetainer,
+    renewal_date: client.renewalDate?.toISOString() ?? null,
+    renewal_days: daysUntil(client.renewalDate),
+    trust_channel: client.trustChannel,
+    onboarded_at: client.onboardedAt?.toISOString() ?? null,
+    created_at: client.createdAt.toISOString(),
+
+    offers: client.offers.map((offer) => ({
+      id: offer.id,
+      name: offer.name,
+      status: offer.status,
+      price_min: offer.priceMin,
+      price_max: offer.priceMax,
+      pricing_model: offer.pricingModel,
+      health_score: offer.healthScore,
+      renewal_date: offer.renewalDate?.toISOString() ?? null,
+    })),
+
+    wealth_events: client.wealthEvents.map((event) => ({
+      id: event.id,
+      type: event.type,
+      description: event.description,
+      person_name: event.personName,
+      detected_at: event.detectedAt.toISOString(),
+    })),
+
+    unavailable: [
+      {
+        fields: ['pain_signals'],
+        reason: 'no_pain_signal_record',
+        detail:
+          'Nothing records observations about a client relationship. The previous values were written prose, and an advisor acting on an invented signal is the harm this removes.',
+      },
+      {
+        fields: ['recommended_actions'],
+        reason: 'no_recommendation_source',
+        detail:
+          'No model produces recommendations for a client. Advice is not inferred here.',
+      },
+      {
+        fields: ['recent_touchpoints'],
+        reason: 'no_touchpoint_model',
+        detail:
+          'There is no touchpoint history in the schema - only the single most recent contact, returned above as last_contact_at.',
+      },
+      {
+        fields: ['household_summary'],
+        reason: 'household_owned_by_backend',
+        detail:
+          'Household composition lives in the FastAPI household_graph tables, not in Prisma, and the BFF has no authenticated server-to-server channel to reach it. See /api/clients/[id]/household-graph/summary.',
+      },
+    ],
+  })
 }

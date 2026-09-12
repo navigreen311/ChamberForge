@@ -1985,3 +1985,211 @@ test file rather than left implicit.
 - **8 handlers** gated and reading from Prisma · **31 tests added**, all passing
 - **Frontend: 0 newly failing** — 23 failures before and after, all pre-existing
 - `tsc` 0 · `next lint` 0 errors · `next build` succeeds · backend untouched
+
+---
+
+# P-20 — BFF: Clients
+
+Tasks T-027 (slice), T-053 (apply).
+Merge order 20 of 30.
+
+## 1. Eight handlers, eight fictional families, no session
+
+Every handler in `api/clients/**` served hardcoded data to anonymous callers.
+The list alone carried **eight invented families** with names, companies,
+retainers, health scores, and in four cases the size of an inheritance, an
+IPO or a practice sale.
+
+The filtering, sorting and pagination were all real. They operated on a
+literal array.
+
+All eight now call `requireSession()` and read from Prisma scoped to the
+session operator — except two, which refuse; see §4.
+
+**P-20 writes nothing**, so `writeAuditEntry()` is correctly never called.
+The one mutating route generates a brief and is blocked.
+
+## 2. The three things that were being made up about real people
+
+This package's fabrications differ in kind from P-19's. A wrong KPI misleads
+an operator at their desk. These were about **named families**, and two of
+them were built to leave the building.
+
+**Invented private observations.** `[id]/detail` carried, as data:
+
+```
+'Spouse expressed frustration with lack of consolidated reporting'
+'Delayed response to last two follow-up emails'
+'Dinner meeting with Jonathan and spouse; discussed succession timeline'
+```
+
+An advisor reading those believes their client is unhappy, and acts on it.
+Nothing recorded them — they were prose in a route file.
+
+**Financial claims written to be said to the client.** `[id]/generate-brief`
+assembled a pre-meeting brief containing "tax savings of $180K", "net savings
+of $180K", "3 vendor negotiations closed", "Portfolio underperformed
+benchmark by 1.2% in Q1", and a satisfaction figure — "client satisfaction
+survey results (92nd percentile)" — from no survey. It added a scripted
+opener using the client's first name, and objection handling that cited the
+invented figures as proof.
+
+An advisor telling a family "we saved you $180K this quarter" from a number a
+template produced is a misrepresentation to a client about their own affairs.
+Nothing downstream could have caught it: the payload was well-formed and the
+figures were plausible.
+
+**A household roster with street addresses.** `[id]/household-graph/summary`
+returned, unauthenticated, five named relatives (spouse, two adult children,
+a parent), three named professional firms, and four properties:
+
+```
+'1240 Park Avenue, New York, NY'       primary residence
+'88 Oceanview Dr, Palm Beach, FL'      vacation
+'15 Rue de Rivoli, Paris, France'      investment
+'200 Commerce Blvd, Greenwich, CT'     commercial
+```
+
+For a firm serving UHNW families, that is the artefact a physical-security
+threat would want. That these particular families are fictional is not the
+mitigation it appears to be — the route was built to return real ones, and
+would have from the first real record onward.
+
+## 3. Smaller things the rewrite surfaced
+
+- **The fabrications disagreed with each other.** `health-summary` called
+  `c-001` *"Johnson Family Trust"*; the list called the same id *"Jonathan
+  Wellington III"*. Two invented datasets, describing the same client
+  differently.
+- **A list of eight where two rows opened.** `[id]/detail` had records for
+  `c-001` and `c-003` only, so six of the eight clients 404'd on click.
+- **`tier` was platinum / gold / silver.** That vocabulary exists nowhere in
+  this platform; the real values are `HNW` and `UHNW`. P-19 found the same
+  invented tiers in the revenue handler — two packages, one fiction.
+- **`recommended_action`** told the advisor what to do about a situation that
+  did not exist. It is not returned at all now: naming the trigger says what
+  is wrong, inventing the remedy says what to do about it, and those are
+  different claims.
+
+## 4. Two handlers refuse, and the reason is one missing piece
+
+`[id]/generate-brief` and `[id]/household-graph/summary` return **501**.
+Neither is reimplemented and neither is replaced with a lesser version.
+
+Both need the backend:
+
+- the card is explicit that generate-brief **must call the backend
+  intel-brief service rather than reimplement it**, and that service is real —
+  `POST /api/v1/lifecycle/intel-brief/{client_id}` builds a brief from the
+  client data it is given, via Claude when a key is present and the record's
+  own fields otherwise;
+- household composition lives in the FastAPI `household_graph` tables under
+  D4, reached through `GET /api/v1/household/{client_id}`.
+
+**There is no authenticated server-to-server channel from the BFF to
+FastAPI.** FastAPI authenticates with `HTTPBearer`; the BFF holds a NextAuth
+session and has no way to mint or forward a bearer token. `lib/api.ts` is a
+browser axios instance that sends a cookie, is P-11-owned and frozen, and
+does not work from a route handler.
+
+Building that channel is an auth design decision — **P-11 or P-23**, not this
+package. Calling the backend unauthenticated would reopen precisely the hole
+this package closes.
+
+Both handlers still resolve and scope the client before refusing, so each
+becomes a proxy call and nothing else the moment the channel exists.
+
+## 5. The hook called an endpoint that has never existed
+
+The card predicted this and it is worse than "not implemented": `useClients`
+sent every operation to `/api/v1/clients` on FastAPI, and **there is no
+`clients.py` router in that codebase**. Only `clients_dashboard.py`, which is
+one of the three routers reachable solely through the `api/v1/router.py` that
+P-00 deleted.
+
+So list, get, create, update and delete all 404'd, and the screen rendered
+`'Failed to fetch clients'`. Under D4 the BFF reads Prisma directly and never
+needs that route; the reads now go to `/api/clients` and
+`/api/clients/[id]/detail`.
+
+**The mutations have no endpoint on either stack.** Create, update and delete
+exist in neither FastAPI nor the BFF, and building them is not in this card.
+They now reject with a message saying so, rather than producing "Failed to
+create client" from a 404 — a developer should be able to tell *never built*
+from *the request failed*. **Someone must decide whether the Clients screen
+is read-only.**
+
+## 6. A real bug the tests found, in code this package rewrote
+
+`useClients` took `filters` as a `useCallback` dependency, and `filters` is
+normally an object literal at the call site — a new reference every render.
+New reference → new `fetchClients` → the effect re-runs → state updates →
+render → repeat. **An unbounded fetch loop, triggered by passing any filter
+at all.**
+
+The original hook had the same shape, so this predates P-20; the rewrite
+carried it forward and the hook tests surfaced it as a hanging assertion. The
+dependency is now the serialised filter string.
+
+Worth recording because it is the second time in two packages that writing
+the test found something the rewrite missed.
+
+## 7. PII handling, per the card's flag
+
+> *"PII on the wire. No client identifiers in logs or error payloads."*
+
+- No handler interpolates `params.id` into an error message. A test asserts
+  it across all eight.
+- A client in **another operator's book returns 404, not 403**, and the body
+  is identical to a genuinely missing record. A 403 confirms the record
+  exists, which on a route that returns a family's affairs is itself a
+  disclosure.
+- `wealth-events` does not parse a dollar figure out of `description` into a
+  `value` field. A number lifted from prose by a regex is a guess wearing a
+  number's clothes.
+
+## 8. One rule, one definition
+
+`/clients/at-risk` and `/clients/kpis` must agree about what "at risk" means,
+or the screen reads *"1 at risk"* above a list of three. Next.js forbids
+exporting a constant from a `route.ts` — it is a type error, which is how
+this was caught — so the thresholds live in `api/clients/_rules.ts`, a
+non-route module inside the prefix this package owns. Both import from it,
+and a test asserts neither re-declares them.
+
+`risk_reasons` quote the value that fired the rule ("Health score 62 is below
+the 65 threshold", "No contact recorded in 41 days"), so an advisor can check
+the judgement instead of taking it on trust.
+
+## 9. What is still hardcoded, and why it was not touched
+
+`src/app/clients/page.tsx` contains **no `fetch` call and does not use the
+hook** — 727 lines rendering its own inline constants. Exactly the pattern
+P-19 found on `/dashboard`.
+
+The card permits touching that file "only where the response shape changes",
+and the page consumes no response, so there was nothing in scope. **Two BFF
+packages have now made a data layer honest beneath a screen that does not
+read it.** That is a Phase 3 §2 / P-25 concern and it should be stated
+plainly rather than discovered later.
+
+## 10. Queued for a decision
+
+| # | Needs | Owner |
+|---|---|---|
+| 1 | Authenticated BFF → FastAPI channel. Blocks generate-brief and household, and every future BFF route needing the backend | **P-11 or P-23** |
+| 2 | Client create / update / delete endpoints, or the screen is read-only by decision | **unassigned** |
+| 3 | Wire `/clients/page.tsx` to these handlers | **P-25 / Phase 3 §2** |
+| 4 | A touchpoint model, or `recent_touchpoints` and `touchpoints_count` stay absent | **P-01** |
+| 5 | KPI coverage per client, or `kpis_defined` / `kpis_total` stay absent | **P-01** |
+| 6 | `Client.status` in `src/types` is `'active' \| 'inactive' \| 'prospect' \| 'churned'`; the data uses `active` / `prospect` / `alumni`. Harmless today only because the interface has an index signature | **P-25** |
+
+Carried forward from P-19 and unchanged: **no CI job runs the frontend
+tests.** The 61 tests this package adds do not run in CI either.
+
+## 11. Results
+
+- **8 handlers** gated and scoped · **61 tests added**, all passing
+- **Frontend: 0 newly failing** — 23 failures before and after, all pre-existing
+- **313 → 314 passing** in the suite overall
+- `tsc` 0 · `next lint` 0 errors · `next build` succeeds · backend untouched
